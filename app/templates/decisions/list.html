@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Decisions — WES Vendor Portal{% endblock %}
+{% block nav_desktop_dec_cls %}text-brand-600 font-semibold bg-brand-50{% endblock %}
+{% block nav_decisions %}tab-active{% endblock %}
+{% block nav_decisions_icon %}text-brand-600{% endblock %}
+{% block nav_decisions_label %}text-brand-600 font-semibold{% endblock %}
+{% block content %}
+<div class="slide-up">
+
+    <div class="mb-4">
+        <h1 class="text-xl font-bold text-slate-900">Decisions</h1>
+        <p class="text-xs text-slate-400 mt-0.5">Track vendor selections &amp; approvals</p>
+    </div>
+
+    {% if decisions %}
+    <div class="space-y-3">
+        {% for d in decisions %}
+        <a href="/decisions/{{ d.id }}" class="block bg-white rounded-2xl border border-slate-200 p-4 hover:shadow-md hover:border-brand-200 transition shadow-sm group active:scale-[0.98]">
+            <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0 flex-1">
+                    <h3 class="font-bold text-sm text-slate-900 group-hover:text-brand-600 transition truncate">{{ d.requisition.title }}</h3>
+                    <div class="flex items-center gap-2 mt-2">
+                        <div class="w-5 h-5 rounded-md bg-emerald-50 flex items-center justify-center shrink-0">
+                            <svg class="w-3 h-3 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                        </div>
+                        <span class="text-sm text-slate-700 font-medium truncate">{{ d.winning_vendor.company_name }}</span>
+                    </div>
+                    <p class="text-xs text-slate-400 mt-1.5">By {{ d.decider.full_name }}</p>
+                </div>
+                <div class="shrink-0">
+                    {% if d.management_approved is none %}
+                    <span class="text-[10px] font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 uppercase tracking-wide">Pending</span>
+                    {% elif d.management_approved %}
+                    <span class="text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 uppercase tracking-wide">Approved</span>
+                    {% else %}
+                    <span class="text-[10px] font-bold px-2.5 py-1 rounded-full bg-red-100 text-red-700 uppercase tracking-wide">Rejected</span>
+                    {% endif %}
+                </div>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+
+    {% else %}
+    <div class="bg-white rounded-2xl border border-slate-200 p-14 text-center shadow-sm">
+        <div class="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-4">
+            <svg class="w-7 h-7 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        </div>
+        <p class="text-sm font-semibold text-slate-900 mb-1">No decisions yet</p>
+        <p class="text-xs text-slate-400">Decisions appear after selecting a winner from comparison</p>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}

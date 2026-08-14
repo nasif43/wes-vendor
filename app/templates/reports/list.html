@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% block title %}Reports — WES Vendor Portal{% endblock %}
+{% block nav_desktop_rep_cls %}text-brand-600 font-semibold bg-brand-50{% endblock %}
+{% block nav_reports %}tab-active{% endblock %}
+{% block nav_reports_icon %}text-brand-600{% endblock %}
+{% block nav_reports_label %}text-brand-600 font-semibold{% endblock %}
+{% block content %}
+<div class="slide-up">
+
+    <div class="flex items-center justify-between mb-5">
+        <div>
+            <h1 class="text-xl font-bold text-slate-900">Reports</h1>
+            <p class="text-xs text-slate-400 mt-0.5">Filter deliveries and invoices</p>
+        </div>
+        <button onclick="window.print()" class="bg-white border border-slate-200 text-slate-700 h-10 px-4 rounded-xl text-sm font-semibold hover:bg-slate-50 transition shadow-sm flex items-center gap-2 active:scale-[0.97]">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+            Print
+        </button>
+    </div>
+
+    <!-- FILTERS -->
+    <div class="bg-white rounded-2xl border border-slate-200 p-4 mb-5 shadow-sm flex flex-wrap gap-3 items-center">
+        <div class="relative flex-1 min-w-[200px]">
+            <svg class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            <input type="text" id="report-search" placeholder="Search invoices or orders…"
+                class="w-full pl-9 pr-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition bg-slate-50 focus:bg-white"
+                oninput="filterReports()">
+        </div>
+        <select id="payment-filter" onchange="filterReports()" class="py-2.5 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 bg-slate-50">
+            <option value="all">All Payments</option>
+            <option value="pending">Pending Payment</option>
+            <option value="paid">Paid</option>
+        </select>
+    </div>
+
+    {% if report_data %}
+    <div class="space-y-3" id="report-list">
+        {% for item in report_data %}
+        <div class="report-item bg-white rounded-2xl border border-slate-200 p-4 shadow-sm" data-payment="{{ item.requisition.payment_status }}">
+            
+            <div class="flex items-start justify-between gap-3 mb-3">
+                <div class="min-w-0 flex-1">
+                    <h3 class="font-bold text-sm text-slate-900 truncate report-title">{{ item.requisition.title }}</h3>
+                    <p class="text-xs text-slate-400 mt-1">Invoice: <span class="font-semibold text-slate-700 report-invoice">{{ item.requisition.invoice_number or 'N/A' }}</span></p>
+                </div>
+                <div class="shrink-0 text-right">
+                    <div class="text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wide inline-block
+                        {% if item.requisition.payment_status == 'paid' %}bg-emerald-100 text-emerald-700
+                        {% else %}bg-amber-100 text-amber-700{% endif %}">
+                        {{ item.requisition.payment_status }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 border-t border-slate-100 pt-3">
+                <div>
+                    <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Delivery Time</div>
+                    <div class="text-sm font-bold text-slate-800">
+                        {% if item.duration_days is not none %}
+                            {{ item.duration_days }} days
+                        {% else %}
+                            —
+                        {% endif %}
+                    </div>
+                </div>
+                <div>
+                    <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">QC By</div>
+                    <div class="text-sm font-semibold text-slate-700 truncate">
+                        {{ item.requisition.creator.full_name if item.requisition.creator else 'System' }}
+                    </div>
+                </div>
+            </div>
+
+            {% if item.requisition.invoice_url or item.requisition.delivery_image_url %}
+            <div class="flex gap-2 border-t border-slate-100 pt-3 mt-3">
+                {% if item.requisition.invoice_url %}
+                <a href="{{ item.requisition.invoice_url }}" target="_blank" class="flex-1 bg-slate-50 border border-slate-200 text-slate-600 py-2 rounded-xl text-xs font-semibold hover:bg-slate-100 transition text-center flex items-center justify-center gap-1.5 min-h-[36px]">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    Invoice
+                </a>
+                {% endif %}
+                {% if item.requisition.delivery_image_url %}
+                <a href="{{ item.requisition.delivery_image_url }}" target="_blank" class="flex-1 bg-slate-50 border border-slate-200 text-slate-600 py-2 rounded-xl text-xs font-semibold hover:bg-slate-100 transition text-center flex items-center justify-center gap-1.5 min-h-[36px]">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                    Delivery Photo
+                </a>
+                {% endif %}
+            </div>
+            {% endif %}
+
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="bg-white rounded-2xl border border-slate-200 p-14 text-center shadow-sm">
+        <div class="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-4">
+            <svg class="w-7 h-7 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        </div>
+        <p class="text-sm font-semibold text-slate-900 mb-1">No reports available</p>
+        <p class="text-xs text-slate-400">Reports appear once a delivery is marked as QC completed.</p>
+    </div>
+    {% endif %}
+
+</div>
+
+{% block scripts %}
+<script>
+function filterReports() {
+    const q = document.getElementById('report-search').value.toLowerCase();
+    const p = document.getElementById('payment-filter').value;
+    
+    document.querySelectorAll('.report-item').forEach(item => {
+        const title = item.querySelector('.report-title').textContent.toLowerCase();
+        const invoice = item.querySelector('.report-invoice').textContent.toLowerCase();
+        const payment = item.dataset.payment;
+        
+        const matchSearch = title.includes(q) || invoice.includes(q);
+        const matchPayment = p === 'all' || p === payment;
+        
+        item.style.display = (matchSearch && matchPayment) ? '' : 'none';
+    });
+}
+</script>
+{% endblock %}
+{% endblock %}

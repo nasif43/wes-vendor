@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Sign In — WES Vendor Portal{% endblock %}
+{% block body_class %}bg-brand-600{% endblock %}
+{% block unauth_content %}
+<div class="slide-up max-w-md mx-auto">
+    <h1 class="text-2xl font-bold text-white text-center mb-1">Welcome Back</h1>
+    <p class="text-blue-200 text-sm text-center mb-6">Sign in to your portal account</p>
+
+    {% if error %}
+    <div class="bg-red-500/20 border border-red-400/30 text-red-100 px-4 py-3 rounded-2xl mb-4 text-sm flex items-center gap-2 backdrop-blur">
+        <svg class="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+        {{ error }}
+    </div>
+    {% endif %}
+
+    <!-- QUICK DEMO LOGINS BANNER -->
+    <div class="bg-white/10 backdrop-blur border border-white/20 rounded-2xl p-4 mb-4 text-xs text-blue-100">
+        <div class="font-bold text-white mb-2 flex items-center justify-between">
+            <span>⚡ Quick Demo Logins</span>
+            <a href="/auth/seed-db" class="text-[10px] bg-white/20 hover:bg-white/30 text-white px-2 py-0.5 rounded transition font-semibold">
+                🔄 Re-Seed DB
+            </a>
+        </div>
+        <div class="grid grid-cols-2 gap-1.5 font-medium">
+            <button type="button" onclick="fillLogin('admin@wenerbd.com')" class="text-left p-1.5 rounded bg-white/5 hover:bg-white/15 transition truncate">
+                👑 Admin
+            </button>
+            <button type="button" onclick="fillLogin('mizanur.rahman@wenerbd.com')" class="text-left p-1.5 rounded bg-white/5 hover:bg-white/15 transition truncate">
+                🔒 Management
+            </button>
+            <button type="button" onclick="fillLogin('tanjila.akter@wenerbd.com')" class="text-left p-1.5 rounded bg-white/5 hover:bg-white/15 transition truncate">
+                🛒 Purchaser
+            </button>
+            <button type="button" onclick="fillLogin('kamrul.hasan@wenerbd.com')" class="text-left p-1.5 rounded bg-white/5 hover:bg-white/15 transition truncate">
+                🚚 QC Receiver
+            </button>
+        </div>
+    </div>
+
+    <form method="post" action="/auth/login" id="login-form" class="bg-white/10 backdrop-blur border border-white/20 rounded-2xl p-6 space-y-4 shadow-xl">
+        <div>
+            <label class="block text-sm font-medium text-blue-100 mb-1.5">Email</label>
+            <input type="email" name="email" id="email-input" required autocomplete="email" placeholder="you@wenerbd.com"
+                class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-sm text-white placeholder-blue-300 focus:outline-none focus:ring-2 focus:ring-white/40 focus:border-white/40 transition">
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-blue-100 mb-1.5">Password</label>
+            <input type="password" name="password" id="password-input" required autocomplete="current-password" value="password123" placeholder="Your password"
+                class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-sm text-white placeholder-blue-300 focus:outline-none focus:ring-2 focus:ring-white/40 focus:border-white/40 transition">
+        </div>
+        <button type="submit" class="w-full bg-white text-brand-700 py-3 rounded-xl text-sm font-semibold hover:bg-blue-50 transition shadow-sm active:scale-[0.98]">
+            Sign In
+        </button>
+    </form>
+
+    <p class="text-center text-sm text-blue-200 mt-5">
+        Don't have an account? <a href="/auth/signup" class="text-white font-semibold hover:underline">Sign up</a>
+    </p>
+</div>
+
+<script>
+function fillLogin(email) {
+    document.getElementById('email-input').value = email;
+    document.getElementById('password-input').value = 'password123';
+    document.getElementById('login-form').submit();
+}
+</script>
+{% endblock %}

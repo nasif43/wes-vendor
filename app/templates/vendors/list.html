@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Vendors — WES Vendor Portal{% endblock %}
+{% block nav_desktop_ven_cls %}text-brand-600 font-semibold bg-brand-50{% endblock %}
+{% block nav_vendors %}tab-active{% endblock %}
+{% block nav_vendors_icon %}text-brand-600{% endblock %}
+{% block nav_vendors_label %}text-brand-600 font-semibold{% endblock %}
+{% block content %}
+<div class="slide-up">
+
+    <!-- HEADER -->
+    <div class="flex items-center justify-between mb-4">
+        <div>
+            <h1 class="text-xl font-bold text-slate-900">Vendors</h1>
+            <p class="text-xs text-slate-400 mt-0.5">{{ vendors|length }} active</p>
+        </div>
+        <a href="/vendors/new" class="bg-brand-600 text-white h-10 px-4 rounded-xl text-sm font-semibold hover:bg-brand-700 transition shadow-sm flex items-center gap-1.5 active:scale-[0.97]">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+            Add
+        </a>
+    </div>
+
+    {% if vendors %}
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {% for vendor in vendors %}
+        <a href="/vendors/{{ vendor.id }}" class="bg-white rounded-2xl border border-slate-200 p-4 hover:shadow-md hover:border-brand-200 transition group active:scale-[0.98]">
+            <div class="flex items-start justify-between">
+                <div class="flex items-center gap-3 min-w-0">
+                    <div class="w-10 h-10 rounded-xl bg-brand-600 flex items-center justify-center shrink-0 shadow-sm">
+                        <span class="text-sm font-bold text-white">{{ vendor.company_name[:2] | upper }}</span>
+                    </div>
+                    <div class="min-w-0">
+                        <h3 class="font-bold text-sm text-slate-900 truncate">{{ vendor.company_name }}</h3>
+                        <p class="text-xs text-slate-400 truncate">{{ vendor.contact_email }}</p>
+                        {% if vendor.contact_person %}
+                        <p class="text-xs text-slate-400 truncate">{{ vendor.contact_person }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+                <svg class="w-4 h-4 text-slate-300 group-hover:text-slate-400 transition shrink-0 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            </div>
+            {% if vendor.categories %}
+            <div class="flex flex-wrap gap-1 mt-3 pt-3 border-t border-slate-100">
+                {% for cat in vendor.categories %}
+                <span class="text-[10px] font-semibold bg-brand-50 text-brand-700 px-2 py-0.5 rounded-full border border-brand-100">{{ cat.name }}</span>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </a>
+        {% endfor %}
+    </div>
+
+    {% else %}
+    <div class="bg-white rounded-2xl border border-slate-200 p-14 text-center shadow-sm">
+        <div class="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-4">
+            <svg class="w-7 h-7 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+        </div>
+        <p class="text-sm font-semibold text-slate-900 mb-1">No vendors yet</p>
+        <p class="text-xs text-slate-400 mb-5">Add vendors to start sending quotation requests</p>
+        <a href="/vendors/new" class="inline-flex items-center gap-2 bg-brand-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-brand-700 transition shadow-sm">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+            Add Vendor
+        </a>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}

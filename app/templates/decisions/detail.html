@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block title %}Decision — WES Vendor Portal{% endblock %}
+{% block nav_desktop_dec_cls %}text-brand-600 font-semibold bg-brand-50{% endblock %}
+{% block nav_decisions %}tab-active{% endblock %}
+{% block nav_decisions_icon %}text-brand-600{% endblock %}
+{% block nav_decisions_label %}text-brand-600 font-semibold{% endblock %}
+{% block content %}
+<div class="slide-up max-w-lg mx-auto">
+
+    <div class="flex items-center gap-3 mb-5">
+        <a href="/decisions" class="w-9 h-9 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50 transition shadow-sm shrink-0">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+        </a>
+        <h1 class="text-xl font-bold text-slate-900">Decision</h1>
+    </div>
+
+    <!-- DECISION DETAILS -->
+    <div class="bg-white rounded-2xl border border-slate-200 p-5 mb-4 shadow-sm">
+        <h2 class="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-4">Decision Details</h2>
+        <div class="space-y-4">
+            <div>
+                <p class="text-[11px] text-slate-400 font-semibold uppercase tracking-wider mb-1">Requisition</p>
+                <p class="text-sm font-semibold text-slate-900">{{ decision.requisition.title }}</p>
+            </div>
+            <div class="border-t border-slate-100 pt-4">
+                <p class="text-[11px] text-slate-400 font-semibold uppercase tracking-wider mb-2">Winning Vendor</p>
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-xl bg-brand-600 flex items-center justify-center shrink-0 shadow-sm">
+                        <span class="text-white text-xs font-bold">{{ decision.winning_vendor.company_name[:2] | upper }}</span>
+                    </div>
+                    <div>
+                        <p class="text-sm font-bold text-slate-900">{{ decision.winning_vendor.company_name }}</p>
+                        <p class="text-xs text-slate-400">{{ decision.winning_vendor.contact_email }}</p>
+                    </div>
+                    <div class="ml-auto w-7 h-7 rounded-full bg-emerald-100 flex items-center justify-center">
+                        <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                    </div>
+                </div>
+            </div>
+            <div class="border-t border-slate-100 pt-4">
+                <p class="text-[11px] text-slate-400 font-semibold uppercase tracking-wider mb-1">Decided By</p>
+                <p class="text-sm text-slate-800">{{ decision.decider.full_name }}</p>
+            </div>
+            {% if decision.notes %}
+            <div class="border-t border-slate-100 pt-4">
+                <p class="text-[11px] text-slate-400 font-semibold uppercase tracking-wider mb-1">Notes</p>
+                <p class="text-sm text-slate-700 leading-relaxed">{{ decision.notes }}</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- MANAGEMENT APPROVAL -->
+    <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+        <h3 class="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-4">Management Approval</h3>
+        {% if decision.management_approved is not none %}
+        <div class="flex items-center gap-3 p-4 rounded-2xl
+            {% if decision.management_approved %}bg-emerald-50 border border-emerald-200{% else %}bg-red-50 border border-red-200{% endif %}">
+            {% if decision.management_approved %}
+            <div class="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center">
+                <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+            </div>
+            <div>
+                <span class="font-bold text-emerald-700 block">Decision Approved</span>
+                {% if decision.approver %}
+                <span class="text-xs text-emerald-600">by <strong>{{ decision.approver.full_name }}</strong>
+                    {% if decision.approved_at %}· {{ decision.approved_at.strftime('%b %d, %Y %H:%M') }}{% endif %}
+                </span>
+                {% endif %}
+            </div>
+            {% else %}
+            <div class="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center">
+                <svg class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+            </div>
+            <div>
+                <span class="font-bold text-red-700 block">Decision Rejected</span>
+                {% if decision.approver %}
+                <span class="text-xs text-red-600">by <strong>{{ decision.approver.full_name }}</strong>
+                    {% if decision.approved_at %}· {{ decision.approved_at.strftime('%b %d, %Y %H:%M') }}{% endif %}
+                </span>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+
+        {% else %}
+        <p class="text-xs text-slate-400 mb-4">Awaiting management review</p>
+        <form method="post" action="/decisions/{{ decision.id }}/approve" class="flex gap-3">
+            <button type="submit" name="approved" value="true" class="flex-1 py-3.5 rounded-xl text-sm font-bold bg-emerald-600 text-white hover:bg-emerald-700 transition shadow-sm active:scale-[0.97] min-h-[48px]">✓ Approve</button>
+            <button type="submit" name="approved" value="false" class="flex-1 py-3.5 rounded-xl text-sm font-bold bg-red-600 text-white hover:bg-red-700 transition shadow-sm active:scale-[0.97] min-h-[48px]">✕ Reject</button>
+        </form>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}

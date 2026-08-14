@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Create Account — WES Vendor Portal{% endblock %}
+{% block body_class %}bg-brand-600{% endblock %}
+{% block unauth_content %}
+<div class="slide-up">
+    <h1 class="text-2xl font-bold text-white text-center mb-1">Create Account</h1>
+    <p class="text-blue-200 text-sm text-center mb-6">Join the WES Vendor Portal</p>
+
+    {% if error %}
+    <div class="bg-red-500/20 border border-red-400/30 text-red-100 px-4 py-3 rounded-2xl mb-4 text-sm flex items-center gap-2 backdrop-blur">
+        <svg class="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+        {{ error }}
+    </div>
+    {% endif %}
+
+    <form method="post" action="/auth/signup" class="bg-white/10 backdrop-blur border border-white/20 rounded-2xl p-6 space-y-4 shadow-xl">
+        <div>
+            <label class="block text-sm font-medium text-blue-100 mb-1.5">Full Name</label>
+            <input type="text" name="full_name" required autocomplete="name" placeholder="John Doe"
+                class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-sm text-white placeholder-blue-300 focus:outline-none focus:ring-2 focus:ring-white/40 focus:border-white/40 transition">
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-blue-100 mb-1.5">Email</label>
+            <input type="email" name="email" required autocomplete="email" placeholder="you@company.com"
+                class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-sm text-white placeholder-blue-300 focus:outline-none focus:ring-2 focus:ring-white/40 focus:border-white/40 transition">
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-blue-100 mb-1.5">Password</label>
+            <input type="password" name="password" required autocomplete="new-password" placeholder="Create a password"
+                class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-sm text-white placeholder-blue-300 focus:outline-none focus:ring-2 focus:ring-white/40 focus:border-white/40 transition">
+        </div>
+        <button type="submit" class="w-full bg-white text-brand-700 py-3 rounded-xl text-sm font-semibold hover:bg-blue-50 transition shadow-sm active:scale-[0.98] mt-2">
+            Sign Up
+        </button>
+    </form>
+
+    <p class="text-center text-sm text-blue-200 mt-5">
+        Already have an account? <a href="/auth/login" class="text-white font-semibold hover:underline">Sign in</a>
+    </p>
+</div>
+{% endblock %}

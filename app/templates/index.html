@@ -1,0 +1,348 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — Wener Vendor Management Platform{% endblock %}
+{% block nav_side_dash %}bg-brand-600 text-white shadow-md shadow-brand-600/30{% endblock %}
+
+{% block content %}
+<div class="slide-up max-w-7xl mx-auto pb-6">
+
+    <!-- WELCOME HEADER SECTION -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div>
+            <h1 class="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+                Welcome back{% if user and user.full_name %}, {{ user.full_name.split(' ')[0] }}{% endif %} 👋
+            </h1>
+            <p class="text-xs text-slate-500 font-medium mt-1">Overview of requisitions, vendor quotes, management decisions, and delivery QC.</p>
+        </div>
+        <a href="/requisitions/new" class="inline-flex items-center gap-2 px-4 py-2.5 bg-brand-600 text-white rounded-xl text-xs font-bold hover:bg-brand-700 transition shadow-sm active:scale-95 shrink-0 self-start sm:self-auto">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+            New Requisition
+        </a>
+    </div>
+
+    <!-- TOP METRIC CARDS ROW: PROCUREMENT OPERATIONAL SUMMARY -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+        
+        <!-- CARD 1: ACTIVE REQUISITIONS -->
+        <a href="/requisitions?view=kanban" class="bg-white rounded-2xl border border-slate-200/80 p-4.5 hover:shadow-md hover:border-brand-200 transition group active:scale-[0.99] flex items-center justify-between">
+            <div class="flex items-center gap-3.5">
+                <div class="w-11 h-11 rounded-2xl bg-blue-50 text-brand-600 flex items-center justify-center shrink-0 shadow-xs">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                </div>
+                <div>
+                    <div class="text-2xl font-black text-slate-900 tracking-tight">{{ stats.open_requisitions if stats else 0 }}</div>
+                    <div class="text-xs font-semibold text-slate-500 mt-0.5">Active Reqs</div>
+                    <span class="text-[10px] font-bold text-brand-600 group-hover:translate-x-0.5 transition inline-flex items-center gap-1 mt-0.5">
+                        Kanban Board &rarr;
+                    </span>
+                </div>
+            </div>
+        </a>
+
+        <!-- CARD 2: CONFIRMED ORDERS -->
+        <a href="/requisitions?view=kanban" class="bg-white rounded-2xl border border-slate-200/80 p-4.5 hover:shadow-md hover:border-blue-200 transition group active:scale-[0.99] flex items-center justify-between">
+            <div class="flex items-center gap-3.5">
+                <div class="w-11 h-11 rounded-2xl bg-sky-50 text-sky-600 flex items-center justify-center shrink-0 shadow-xs">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
+                </div>
+                <div>
+                    <div class="text-2xl font-black text-slate-900 tracking-tight">{{ stats.confirmed_orders if stats else 0 }}</div>
+                    <div class="text-xs font-semibold text-slate-500 mt-0.5">Confirmed Orders</div>
+                    <span class="text-[10px] font-bold text-sky-600 group-hover:translate-x-0.5 transition inline-flex items-center gap-1 mt-0.5">
+                        In-Transit &rarr;
+                    </span>
+                </div>
+            </div>
+        </a>
+
+        <!-- CARD 3: PENDING DECISIONS -->
+        <a href="/decisions" class="bg-white rounded-2xl border border-slate-200/80 p-4.5 hover:shadow-md hover:border-amber-200 transition group active:scale-[0.99] flex items-center justify-between">
+            <div class="flex items-center gap-3.5">
+                <div class="w-11 h-11 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0 shadow-xs">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                </div>
+                <div>
+                    <div class="text-2xl font-black text-slate-900 tracking-tight">{{ stats.pending_decisions if stats else 0 }}</div>
+                    <div class="text-xs font-semibold text-slate-500 mt-0.5">Pending Approval</div>
+                    <span class="text-[10px] font-bold text-amber-600 group-hover:translate-x-0.5 transition inline-flex items-center gap-1 mt-0.5">
+                        Review Quotes &rarr;
+                    </span>
+                </div>
+            </div>
+        </a>
+
+        <!-- CARD 4: DELIVERED & QC DONE -->
+        <a href="/reports" class="bg-white rounded-2xl border border-slate-200/80 p-4.5 hover:shadow-md hover:border-emerald-200 transition group active:scale-[0.99] flex items-center justify-between">
+            <div class="flex items-center gap-3.5">
+                <div class="w-11 h-11 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 shadow-xs">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                </div>
+                <div>
+                    <div class="text-2xl font-black text-slate-900 tracking-tight">{{ stats.delivered_requisitions if stats else 0 }}</div>
+                    <div class="text-xs font-semibold text-slate-500 mt-0.5">Delivered &amp; QC</div>
+                    <span class="text-[10px] font-bold text-emerald-600 group-hover:translate-x-0.5 transition inline-flex items-center gap-1 mt-0.5">
+                        View Audits &rarr;
+                    </span>
+                </div>
+            </div>
+        </a>
+
+        <!-- CARD 5: AVG LEAD TIME -->
+        <a href="/reports" class="bg-white rounded-2xl border border-slate-200/80 p-4.5 hover:shadow-md hover:border-purple-200 transition group active:scale-[0.99] flex items-center justify-between">
+            <div class="flex items-center gap-3.5">
+                <div class="w-11 h-11 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0 shadow-xs">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                </div>
+                <div>
+                    <div class="text-2xl font-black text-slate-900 tracking-tight">
+                        {% if stats and stats.avg_lead_time_days is not none %}
+                            {{ stats.avg_lead_time_days }}d
+                        {% else %}
+                            —
+                        {% endif %}
+                    </div>
+                    <div class="text-xs font-semibold text-slate-500 mt-0.5">Avg Lead Time</div>
+                    <span class="text-[10px] font-bold text-purple-600 group-hover:translate-x-0.5 transition inline-flex items-center gap-1 mt-0.5">
+                        Performance &rarr;
+                    </span>
+                </div>
+            </div>
+        </a>
+
+    </div>
+
+    <!-- MAIN DASHBOARD CONTENT GRID (2/3 LEFT, 1/3 RIGHT) -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+
+        <!-- LEFT COLUMN (2/3 WIDTH) -->
+        <div class="lg:col-span-2 space-y-6">
+
+            <!-- RECENT REQUISITIONS TABLE CARD -->
+            <div class="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <h2 class="text-sm font-bold text-slate-900">Recent Requisitions</h2>
+                        <p class="text-[11px] text-slate-400">Track active purchase requisitions and vendor invite links</p>
+                    </div>
+                    <a href="/requisitions" class="text-xs font-bold text-brand-600 hover:text-brand-700 transition">View All &rarr;</a>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="border-b border-slate-100 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                                <th class="pb-3 pr-3">Title</th>
+                                <th class="pb-3 px-3">Quantity</th>
+                                <th class="pb-3 px-3">Created</th>
+                                <th class="pb-3 px-3">Status</th>
+                                <th class="pb-3 pl-3 text-right">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 text-xs">
+                            {% if recent_requisitions %}
+                                {% for req in recent_requisitions %}
+                                <tr class="hover:bg-slate-50/80 transition">
+                                    <td class="py-3.5 pr-3 font-bold text-slate-900 truncate max-w-[200px]">{{ req.title }}</td>
+                                    <td class="py-3.5 px-3 text-slate-600 font-medium">{{ req.quantity }} {{ req.unit or '' }}</td>
+                                    <td class="py-3.5 px-3 text-slate-500 whitespace-nowrap">{{ req.created_at.strftime('%d %b %Y') }}</td>
+                                    <td class="py-3.5 px-3">
+                                        <span class="text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wide
+                                            {% if req.status.value == 'draft' %}bg-slate-100 text-slate-600
+                                            {% elif req.status.value == 'sent' %}bg-amber-100 text-amber-700
+                                            {% elif req.status.value == 'received' %}bg-blue-100 text-blue-700
+                                            {% elif req.status.value == 'decided' %}bg-emerald-100 text-emerald-700
+                                            {% elif req.status.value == 'delivered' %}bg-amber-100 text-amber-800
+                                            {% elif req.status.value == 'closed' %}bg-purple-100 text-purple-700
+                                            {% else %}bg-slate-100 text-slate-600{% endif %}">
+                                            {{ req.status.value }}
+                                        </span>
+                                    </td>
+                                    <td class="py-3.5 pl-3 text-right">
+                                        <a href="/requisitions/{{ req.id }}" class="inline-block px-3 py-1.5 bg-slate-100 hover:bg-brand-50 hover:text-brand-600 text-slate-700 rounded-lg text-[11px] font-bold transition active:scale-95">
+                                            View Details
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="5" class="py-8 text-center text-slate-400">
+                                        <p class="text-xs mb-3">No requisitions created yet.</p>
+                                        <a href="/requisitions/new" class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-brand-600 text-white rounded-xl text-xs font-bold hover:bg-brand-700 transition">
+                                            + Create First Requisition
+                                        </a>
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- SYSTEM PERFORMANCE & OPERATIONAL METRICS -->
+            <div class="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <h2 class="text-sm font-bold text-slate-900">Procurement Operational Summary</h2>
+                        <span class="text-[11px] text-slate-400 font-medium">Real-time status overview across active orders</span>
+                    </div>
+                    <a href="/reports" class="text-xs font-bold text-brand-600 hover:text-brand-700 transition">View Full Analytics &rarr;</a>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+                    <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
+                        <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Total Requisitions</div>
+                        <div class="text-xl font-black text-slate-900">{{ stats.total_requisitions if stats else 0 }}</div>
+                        <div class="text-[10px] text-brand-600 font-semibold mt-1">All pipeline records</div>
+                    </div>
+                    <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
+                        <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">QC Completion Rate</div>
+                        <div class="text-xl font-black text-slate-900">{{ stats.qc_completion_rate if stats else 0.0 }}%</div>
+                        <div class="text-[10px] text-emerald-600 font-semibold mt-1">QC passed deliveries</div>
+                    </div>
+                    <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
+                        <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Avg Lead Time</div>
+                        <div class="text-xl font-black text-slate-900">
+                            {% if stats and stats.avg_lead_time_days is not none %}
+                                {{ stats.avg_lead_time_days }} days
+                            {% else %}
+                                N/A
+                            {% endif %}
+                        </div>
+                        <div class="text-[10px] text-purple-600 font-semibold mt-1">Confirmation to QC Received</div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- RIGHT COLUMN (1/3 WIDTH) -->
+        <div class="lg:col-span-1 space-y-6">
+
+            <!-- QUICK ACTIONS GRID -->
+            <div class="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs">
+                <h2 class="text-sm font-bold text-slate-900 mb-4">Quick Actions</h2>
+
+                <div class="grid grid-cols-2 gap-2.5">
+                    {% if not user or user.role in ('requester', 'purchase_person', 'admin') %}
+                    <a href="/requisitions/new" class="p-3 rounded-xl border border-slate-200 hover:border-brand-300 hover:bg-brand-50/50 transition text-left flex flex-col justify-between group active:scale-95 min-h-[72px]">
+                        <svg class="w-4 h-4 text-brand-600 group-hover:scale-110 transition mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                        <span class="text-xs font-bold text-slate-800 group-hover:text-brand-700">New Requisition</span>
+                    </a>
+                    {% endif %}
+
+                    {% if not user or user.role in ('purchase_person', 'admin') %}
+                    <a href="/vendors/new" class="p-3 rounded-xl border border-slate-200 hover:border-brand-300 hover:bg-brand-50/50 transition text-left flex flex-col justify-between group active:scale-95 min-h-[72px]">
+                        <svg class="w-4 h-4 text-emerald-600 group-hover:scale-110 transition mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
+                        <span class="text-xs font-bold text-slate-800 group-hover:text-emerald-700">Enlist Vendor</span>
+                    </a>
+
+                    <a href="/quotations/inbox" class="p-3 rounded-xl border border-slate-200 hover:border-brand-300 hover:bg-brand-50/50 transition text-left flex flex-col justify-between group active:scale-95 min-h-[72px]">
+                        <svg class="w-4 h-4 text-amber-600 group-hover:scale-110 transition mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                        <span class="text-xs font-bold text-slate-800 group-hover:text-amber-700">Quotation Inbox</span>
+                    </a>
+                    {% endif %}
+
+                    {% if not user or user.role in ('purchase_person', 'management', 'admin') %}
+                    <a href="/decisions" class="p-3 rounded-xl border border-slate-200 hover:border-brand-300 hover:bg-brand-50/50 transition text-left flex flex-col justify-between group active:scale-95 min-h-[72px]">
+                        <svg class="w-4 h-4 text-purple-600 group-hover:scale-110 transition mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        <span class="text-xs font-bold text-slate-800 group-hover:text-purple-700">Decisions</span>
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- RECENT AUDIT LOG ACTIVITY -->
+            <div class="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-sm font-bold text-slate-900">Recent Activity</h2>
+                    {% if user and user.role in ('management', 'admin') %}
+                    <a href="/audit" class="text-xs font-bold text-brand-600 hover:text-brand-700 transition">View All Audit &rarr;</a>
+                    {% endif %}
+                </div>
+
+                {% if recent_audits %}
+                <div class="space-y-3 text-xs">
+                    {% for log in recent_audits %}
+                    <div class="p-3 rounded-xl bg-slate-50 border border-slate-100 flex items-start gap-2.5">
+                        <div class="w-2 h-2 rounded-full mt-1.5 shrink-0
+                            {% if 'APPROVED' in log.action %}bg-emerald-500
+                            {% elif 'REJECTED' in log.action %}bg-red-500
+                            {% elif 'QC' in log.action %}bg-purple-500
+                            {% else %}bg-brand-500{% endif %}"></div>
+                        <div class="min-w-0 flex-1">
+                            <div class="font-bold text-slate-900 leading-snug">{{ log.action | replace('_', ' ') }}</div>
+                            {% if log.entity_label %}
+                            <div class="text-[11px] text-slate-600 truncate">{{ log.entity_label }}</div>
+                            {% endif %}
+                            <div class="text-[10px] text-slate-400 mt-1 flex items-center justify-between">
+                                <span>{{ log.actor_name }}</span>
+                                <span>{{ log.created_at.strftime('%H:%M') }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-xs text-slate-400 text-center py-4">No recent activity recorded.</p>
+                {% endif %}
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- BOTTOM VALUE PROPOSITION BANNER -->
+    <div class="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs mb-6">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            <div class="flex items-center gap-3.5">
+                <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+                </div>
+                <div>
+                    <h3 class="text-xs font-bold text-slate-900">Transparent Process</h3>
+                    <p class="text-[11px] text-slate-500">End-to-end auditability</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3.5">
+                <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                </div>
+                <div>
+                    <h3 class="text-xs font-bold text-slate-900">Fast Procurement</h3>
+                    <p class="text-[11px] text-slate-500">Streamlined quotation comparison</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3.5">
+                <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                </div>
+                <div>
+                    <h3 class="text-xs font-bold text-slate-900">Audited Decisions</h3>
+                    <p class="text-[11px] text-slate-500">Role-based approval trail</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3.5">
+                <div class="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                </div>
+                <div>
+                    <h3 class="text-xs font-bold text-slate-900">Quality Assurance</h3>
+                    <p class="text-[11px] text-slate-500">Strict QC &amp; receiving check</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FOOTER -->
+    <footer class="pt-4 border-t border-slate-200/80 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-400 gap-2">
+        <div>&copy; 2026 Wener Group. All rights reserved.</div>
+        <div class="flex items-center gap-4">
+            <span>Wener Vendor Management Platform</span>
+        </div>
+    </footer>
+
+</div>
+{% endblock %}

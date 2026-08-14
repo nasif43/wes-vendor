@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+{% block title %}{{ req.title }} — WES Vendor Portal{% endblock %}
+{% block nav_desktop_req_cls %}text-brand-600 font-semibold bg-brand-50{% endblock %}
+{% block nav_requisitions %}tab-active{% endblock %}
+{% block nav_requisitions_icon %}text-brand-600{% endblock %}
+{% block nav_requisitions_label %}text-brand-600 font-semibold{% endblock %}
+{% block content %}
+<div class="slide-up max-w-lg mx-auto">
+
+    <!-- PAGE HEADER -->
+    <div class="flex items-center gap-3 mb-5">
+        <a href="/requisitions" class="w-9 h-9 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50 transition shadow-sm shrink-0">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+        </a>
+        <div class="min-w-0">
+            <h1 class="text-xl font-bold text-slate-900 truncate">{{ req.title }}</h1>
+            <p class="text-xs text-slate-400 mt-0.5">{{ req.created_at.strftime('%b %d, %Y') }}</p>
+        </div>
+    </div>
+
+    <!-- STATUS + DETAILS CARD -->
+    <div class="bg-white rounded-2xl border border-slate-200 p-5 mb-4 shadow-sm">
+        <div class="flex items-center justify-between mb-4">
+            <span class="text-[11px] font-bold px-3 py-1 rounded-full uppercase tracking-wide
+                {% if req.status.value == 'draft' %}bg-slate-100 text-slate-600
+                {% elif req.status.value == 'sent' %}bg-amber-100 text-amber-700
+                {% elif req.status.value == 'received' %}bg-blue-100 text-blue-700
+                {% elif req.status.value == 'decided' %}bg-emerald-100 text-emerald-700
+                {% else %}bg-slate-100 text-slate-600{% endif %}">
+                {{ req.status.value }}
+            </span>
+        </div>
+        <div class="space-y-4">
+            <div>
+                <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Description</p>
+                <p class="text-sm text-slate-800 leading-relaxed">{{ req.item_description }}</p>
+            </div>
+            <div class="grid grid-cols-2 gap-4 pt-3 border-t border-slate-100">
+                <div>
+                    <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Quantity</p>
+                    <p class="text-sm font-bold text-slate-900">{{ req.quantity }} {{ req.unit or '' }}</p>
+                </div>
+                <div>
+                    <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Created</p>
+                    <p class="text-sm text-slate-800">{{ req.created_at.strftime('%b %d, %Y') }}</p>
+                </div>
+            </div>
+            {% if req.notes %}
+            <div class="pt-3 border-t border-slate-100">
+                <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Notes</p>
+                <p class="text-sm text-slate-700 leading-relaxed">{{ req.notes }}</p>
+            </div>
+            {% endif %}
+
+            <!-- EXPLICIT QC DONE DATE STAMP & RECEIVING DETAILS -->
+            {% if req.qc_done %}
+            <div class="pt-3 border-t border-slate-100 bg-emerald-50/60 -mx-5 -mb-5 p-4 rounded-b-2xl border-emerald-100 border-t">
+                <div class="flex items-center gap-2 text-emerald-800 font-bold text-sm mb-1.5">
+                    <svg class="w-5 h-5 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    QC done on {{ req.qc_done_at.strftime('%b %d, %Y at %I:%M %p') if req.qc_done_at else 'Verified' }}
+                </div>
+                <p class="text-xs text-emerald-700 font-medium">
+                    Verified &amp; Accepted by: <span class="font-bold">{{ req.qc_receiver.full_name if req.qc_receiver else 'QC Inspector' }}</span>
+                </p>
+                {% if req.invoice_number %}
+                <div class="mt-2 text-xs text-slate-600 flex items-center justify-between pt-2 border-t border-emerald-200/50">
+                    <span>Invoice #: <strong class="text-slate-900">{{ req.invoice_number }}</strong></span>
+                    {% if req.invoice_url %}
+                    <a href="{{ req.invoice_url }}" target="_blank" class="text-brand-600 font-bold hover:underline inline-flex items-center gap-1">
+                        View Invoice &rarr;
+                    </a>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- ACTION BUTTON: Invite Vendors & Send RFQ (draft or new) -->
+    {% if req.status.value in ('draft', 'new') and user and user.role in ('purchase_person', 'admin') %}
+    <a href="/requisitions/{{ req.id }}/select-vendors" class="flex items-center justify-center gap-2 bg-brand-600 text-white py-3.5 rounded-xl text-sm font-semibold hover:bg-brand-700 transition shadow-sm mb-4 active:scale-[0.98]">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+        Invite Vendors &amp; Send RFQ
+    </a>
+    {% endif %}
+
+    <!-- ACTION BUTTON: Step 1 - Record Delivery Arrival (submitted) -->
+    {% if req.status.value == 'submitted' and user and user.can_perform_qc %}
+    <a href="/requisitions/{{ req.id }}/receive" class="flex items-center justify-center gap-2 bg-blue-600 text-white py-3.5 rounded-xl text-sm font-semibold hover:bg-blue-700 transition shadow-sm mb-4 active:scale-[0.98]">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+        🚚 Record Delivery Arrival
+    </a>
+    {% endif %}
+
+    <!-- ACTION BUTTON: Step 2 - Perform Quality Control Inspection (received) -->
+    {% if req.status.value == 'received' and user and user.can_perform_qc %}
+    <a href="/requisitions/{{ req.id }}/receive" class="flex items-center justify-center gap-2 bg-emerald-600 text-white py-3.5 rounded-xl text-sm font-semibold hover:bg-emerald-700 transition shadow-sm mb-4 active:scale-[0.98]">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        ✅ Perform Quality Control (QC) Inspection
+    </a>
+    {% endif %}
+
+    <!-- COMPARE LINK -->
+    {% if req.status.value != 'draft' and user and user.can_see_quotes %}
+    <a href="/quotations/compare/{{ req.id }}" class="flex items-center justify-between bg-white border border-slate-200 rounded-2xl p-4 hover:border-brand-300 hover:shadow-sm transition shadow-sm group mb-4 active:scale-[0.98]">
+        <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-xl bg-brand-50 flex items-center justify-center">
+                <svg class="w-4 h-4 text-brand-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+            </div>
+            <div>
+                <div class="text-sm font-semibold text-slate-900">Compare Quotations</div>
+                <div class="text-xs text-slate-400">Side-by-side vendor offers</div>
+            </div>
+        </div>
+        <svg class="w-4 h-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+    </a>
+    {% endif %}
+
+    <!-- VENDORS SECTION -->
+    <div>
+        <div class="flex items-center justify-between mb-3">
+            <h2 class="text-xs font-bold text-slate-400 uppercase tracking-widest">Vendors Contacted</h2>
+            {% if req.vendor_links %}
+            <span class="text-xs text-slate-400">{{ req.vendor_links|length }} total</span>
+            {% endif %}
+        </div>
+
+        {% if req.vendor_links %}
+        <div class="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100 overflow-hidden shadow-sm mb-4">
+            {% for link in req.vendor_links %}
+            <div class="flex items-center justify-between px-4 py-3.5 min-h-[56px]">
+                <div class="flex items-center gap-3 min-w-0">
+                    <div class="w-2 h-2 rounded-full shrink-0
+                        {% if link.status == 'submitted' %}bg-emerald-400
+                        {% elif link.status == 'pending' %}bg-amber-400
+                        {% elif link.status == 'flagged' %}bg-red-400
+                        {% else %}bg-slate-300{% endif %}"></div>
+                    <div class="min-w-0">
+                        <div class="font-semibold text-sm text-slate-900 truncate">{{ link.vendor.company_name }}</div>
+                        <div class="text-xs text-slate-400 truncate">{{ link.vendor.contact_email }}</div>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2 shrink-0 ml-3">
+                    <button type="button"
+                        onclick="navigator.clipboard.writeText('{{ request.base_url }}vendor-quote/{{ link.unique_link_token }}');const t=this;const o=t.innerHTML;t.innerHTML='Copied!';setTimeout(()=>t.innerHTML=o,2000)"
+                        class="text-xs text-brand-600 bg-brand-50 hover:bg-brand-100 px-2.5 py-1.5 rounded-lg border border-brand-100 transition active:scale-95 flex items-center gap-1 min-h-[36px]">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
+                        Link
+                    </button>
+                    <span class="text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wide
+                        {% if link.status == 'pending' %}bg-amber-100 text-amber-700
+                        {% elif link.status == 'submitted' %}bg-emerald-100 text-emerald-700
+                        {% elif link.status == 'flagged' %}bg-red-100 text-red-700
+                        {% else %}bg-slate-100 text-slate-600{% endif %}">
+                        {{ link.status }}
+                    </span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="bg-white rounded-2xl border border-slate-200 p-8 text-center shadow-sm mb-4">
+            <p class="text-sm text-slate-400">No vendors selected yet.</p>
+        </div>
+        {% endif %}
+
+        <!-- TEMPORARY VENDOR CARD -->
+        <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
+            <h3 class="text-sm font-bold text-slate-900 mb-1">Unlisted Vendor</h3>
+            <p class="text-xs text-slate-400 mb-3">Generate a quote link for an unlisted or temporary vendor.</p>
+            <form method="post" action="/requisitions/{{ req.id }}/add-temporary-vendor">
+                <button type="submit" class="w-full bg-slate-800 text-white py-3 rounded-xl text-sm font-semibold hover:bg-slate-900 transition shadow-sm active:scale-[0.98]">
+                    Generate Temporary Link
+                </button>
+            </form>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

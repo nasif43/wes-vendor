@@ -1,0 +1,202 @@
+<!-- Apple-Style Payment Loading Spinner Component -->
+<style>
+  /* Apple-Style iOS 12-Spoke Activity Indicator Animation */
+  @keyframes ios-spoke-fade {
+    0% { opacity: 1; }
+    100% { opacity: 0.15; }
+  }
+
+  .ios-spinner {
+    position: relative;
+    width: 44px;
+    height: 44px;
+    display: inline-block;
+  }
+
+  .ios-spinner div {
+    left: 20px;
+    top: 6px;
+    position: absolute;
+    width: 4px;
+    height: 10px;
+    background: #ffffff;
+    border-radius: 2px;
+    transform-origin: 2px 16px;
+    animation: ios-spoke-fade 0.9s linear infinite;
+  }
+
+  .ios-spinner div:nth-child(1)  { transform: rotate(0deg);   animation-delay: 0s; }
+  .ios-spinner div:nth-child(2)  { transform: rotate(30deg);  animation-delay: -0.825s; }
+  .ios-spinner div:nth-child(3)  { transform: rotate(60deg);  animation-delay: -0.75s; }
+  .ios-spinner div:nth-child(4)  { transform: rotate(90deg);  animation-delay: -0.675s; }
+  .ios-spinner div:nth-child(5)  { transform: rotate(120deg); animation-delay: -0.6s; }
+  .ios-spinner div:nth-child(6)  { transform: rotate(150deg); animation-delay: -0.525s; }
+  .ios-spinner div:nth-child(7)  { transform: rotate(180deg); animation-delay: -0.45s; }
+  .ios-spinner div:nth-child(8)  { transform: rotate(210deg); animation-delay: -0.375s; }
+  .ios-spinner div:nth-child(9)  { transform: rotate(240deg); animation-delay: -0.3s; }
+  .ios-spinner div:nth-child(10) { transform: rotate(270deg); animation-delay: -0.225s; }
+  .ios-spinner div:nth-child(11) { transform: rotate(300deg); animation-delay: -0.15s; }
+  .ios-spinner div:nth-child(12) { transform: rotate(330deg); animation-delay: -0.075s; }
+
+  #apple-pay-loader.active {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+  }
+
+  #apple-pay-loader.active #apple-pay-card {
+    transform: scale(1) !important;
+  }
+</style>
+
+<div id="apple-pay-loader" class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-md opacity-0 pointer-events-none transition-opacity duration-200 ease-out" aria-hidden="true" role="dialog">
+  <div id="apple-pay-card" class="relative bg-gray-900/90 backdrop-blur-2xl text-white rounded-[24px] p-6 shadow-2xl border border-white/15 flex flex-col items-center justify-center w-52 h-52 transform scale-90 transition-transform duration-200 ease-out select-none">
+    <div class="ios-spinner">
+      <div></div><div></div><div></div><div></div><div></div><div></div>
+      <div></div><div></div><div></div><div></div><div></div><div></div>
+    </div>
+    <div id="apple-pay-loader-text" class="mt-4 text-center font-medium text-sm text-white/95 tracking-wide font-sans">Processing...</div>
+    <div id="apple-pay-loader-subtext" class="mt-1 text-center text-[11px] text-white/50 tracking-wider uppercase font-semibold">WES Vendor</div>
+  </div>
+</div>
+
+<script>
+(function() {
+  var activeRequests = 0;
+  var safetyTimer = null;
+  var loaderEl = document.getElementById('apple-pay-loader');
+  var textEl = document.getElementById('apple-pay-loader-text');
+  var subtextEl = document.getElementById('apple-pay-loader-subtext');
+
+  function show(msg, submsg) {
+    activeRequests++;
+    if (textEl && msg) textEl.textContent = msg;
+    if (subtextEl && submsg) subtextEl.textContent = submsg;
+
+    if (loaderEl && !loaderEl.classList.contains('active')) {
+      loaderEl.classList.add('active');
+      loaderEl.setAttribute('aria-hidden', 'false');
+    }
+
+    if (safetyTimer) clearTimeout(safetyTimer);
+    safetyTimer = setTimeout(function() {
+      forceHide();
+    }, 15000);
+  }
+
+  function hide() {
+    activeRequests = Math.max(0, activeRequests - 1);
+    if (activeRequests === 0) {
+      forceHide();
+    }
+  }
+
+  function forceHide() {
+    activeRequests = 0;
+    if (safetyTimer) { clearTimeout(safetyTimer); safetyTimer = null; }
+    if (loaderEl) {
+      loaderEl.classList.remove('active');
+      loaderEl.setAttribute('aria-hidden', 'true');
+    }
+  }
+
+  window.AppleLoader = {
+    show: show,
+    hide: hide,
+    forceHide: forceHide
+  };
+
+  // 1. Intercept Fetch API
+  if (window.fetch) {
+    var origFetch = window.fetch;
+    window.fetch = function() {
+      show('Processing...', 'Network Request');
+      return origFetch.apply(this, arguments).then(function(res) {
+        hide();
+        return res;
+      }).catch(function(err) {
+        hide();
+        throw err;
+      });
+    };
+  }
+
+  // 2. Intercept XMLHttpRequest
+  if (window.XMLHttpRequest) {
+    var origOpen = XMLHttpRequest.prototype.open;
+    var origSend = XMLHttpRequest.prototype.send;
+    XMLHttpRequest.prototype.open = function() {
+      this._appleTracked = true;
+      return origOpen.apply(this, arguments);
+    };
+    XMLHttpRequest.prototype.send = function() {
+      if (this._appleTracked) {
+        show('Processing...', 'Syncing Data');
+        var onComplete = function() {
+          hide();
+          this.removeEventListener('loadend', onComplete);
+        }.bind(this);
+        this.addEventListener('loadend', onComplete);
+      }
+      return origSend.apply(this, arguments);
+    };
+  }
+
+  // 3. Intercept HTMX Lifecycle
+  document.addEventListener('htmx:beforeRequest', function(e) {
+    show('Updating...', 'HTMX');
+  });
+  document.addEventListener('htmx:afterRequest', function(e) {
+    hide();
+  });
+  document.addEventListener('htmx:responseError', function(e) {
+    hide();
+  });
+  document.addEventListener('htmx:sendError', function(e) {
+    hide();
+  });
+
+  // 4. Intercept Form Submissions
+  document.addEventListener('submit', function(e) {
+    var form = e.target;
+    if (form && form.tagName === 'FORM') {
+      show('Processing...', 'Submitting');
+    }
+  }, true);
+
+  // 5. Intercept Screen Switches (Page Link Navigation)
+  document.addEventListener('click', function(e) {
+    var anchor = e.target.closest('a');
+    if (!anchor) return;
+
+    var href = anchor.getAttribute('href');
+    var target = anchor.getAttribute('target');
+
+    // Skip if invalid link, external link, download, new tab, or javascript/anchor link
+    if (!href || href.startsWith('#') || href.startsWith('javascript:') || href.startsWith('mailto:') || href.startsWith('tel:')) return;
+    if (target && target !== '_self') return;
+    if (anchor.hasAttribute('download')) return;
+
+    // Check if same origin or relative path
+    var isRelative = href.startsWith('/');
+    var isSameOrigin = false;
+    try {
+      var url = new URL(href, window.location.href);
+      isSameOrigin = (url.origin === window.location.origin);
+    } catch(err) {}
+
+    // Show loading spinner on all internal page link navigations
+    if (isRelative || isSameOrigin) {
+      if (url && url.pathname === window.location.pathname && url.search === window.location.search && url.hash !== window.location.hash) return;
+      show('Loading page...', 'Screen Switch');
+    }
+  }, true);
+
+  // 6. Dismiss on Page Show / Back-Forward Cache / Navigation Complete
+  window.addEventListener('pageshow', function() {
+    forceHide();
+  });
+  window.addEventListener('DOMContentLoaded', function() {
+    forceHide();
+  });
+})();
+</script>

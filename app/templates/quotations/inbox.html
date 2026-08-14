@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Quotation Inbox — WES Vendor Portal{% endblock %}
+{% block nav_desktop_quo_cls %}text-brand-600 font-semibold bg-brand-50{% endblock %}
+{% block nav_quotations %}tab-active{% endblock %}
+{% block nav_quotations_icon %}text-brand-600{% endblock %}
+{% block nav_quotations_label %}text-brand-600 font-semibold{% endblock %}
+{% block content %}
+<div class="slide-up">
+
+    <div class="mb-4">
+        <h1 class="text-xl font-bold text-slate-900">Quotation Inbox</h1>
+        <p class="text-xs text-slate-400 mt-0.5">Track incoming vendor responses</p>
+    </div>
+
+    {% if requisitions %}
+    <div class="space-y-3">
+        {% for req in requisitions %}
+        <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+
+            <!-- REQ HEADER -->
+            <div class="px-4 py-3.5 border-b border-slate-100">
+                <div class="flex items-center justify-between gap-2">
+                    <a href="/requisitions/{{ req.id }}" class="font-bold text-sm text-slate-900 hover:text-brand-600 transition truncate min-w-0">{{ req.title }}</a>
+                    <span class="shrink-0 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wide
+                        {% if req.status.value == 'sent' %}bg-amber-100 text-amber-700
+                        {% elif req.status.value == 'received' %}bg-blue-100 text-blue-700
+                        {% elif req.status.value == 'decided' %}bg-emerald-100 text-emerald-700
+                        {% else %}bg-slate-100 text-slate-600{% endif %}">
+                        {{ req.status.value }}
+                    </span>
+                </div>
+                <p class="text-xs text-slate-400 mt-0.5">{{ req.quantity }} {{ req.unit or '' }}</p>
+            </div>
+
+            <!-- VENDOR ROWS -->
+            {% if req.vendor_links %}
+            <div class="divide-y divide-slate-50">
+                {% for link in req.vendor_links %}
+                <div class="flex items-center justify-between px-4 py-3 hover:bg-slate-50 transition min-h-[52px]">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <div class="w-2 h-2 rounded-full shrink-0 {% if link.quotation %}bg-emerald-400{% else %}bg-slate-300{% endif %}"></div>
+                        <span class="text-sm text-slate-800 font-medium truncate">{{ link.vendor.company_name }}</span>
+                    </div>
+                    {% if link.quotation %}
+                    <a href="/quotations/detail/{{ link.id }}" class="shrink-0 ml-2 text-xs font-semibold text-brand-600 bg-brand-50 hover:bg-brand-100 px-3 py-1.5 rounded-lg border border-brand-100 transition flex items-center gap-1 min-h-[36px]">
+                        View <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                    </a>
+                    {% else %}
+                    <span class="shrink-0 text-[11px] text-slate-400 font-medium ml-2">Pending</span>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- FOOTER -->
+            <div class="px-4 py-3 bg-slate-50 border-t border-slate-100">
+                <a href="/quotations/compare/{{ req.id }}" class="text-xs font-semibold text-brand-600 hover:text-brand-700 flex items-center gap-1">
+                    Compare All Quotations
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% else %}
+    <div class="bg-white rounded-2xl border border-slate-200 p-14 text-center shadow-sm">
+        <div class="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-4">
+            <svg class="w-7 h-7 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+        </div>
+        <p class="text-sm font-semibold text-slate-900 mb-1">No quotations yet</p>
+        <p class="text-xs text-slate-400">Quotations appear here once vendors respond</p>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}

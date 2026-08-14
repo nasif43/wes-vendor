@@ -1,0 +1,10 @@
+{% extends "public_base.html" %}
+{% block title %}Quotation Submitted{% endblock %}
+{% block content %}
+<div class="text-center py-12">
+    <svg class="w-16 h-16 mx-auto text-green-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+    <h1 class="text-xl font-bold text-gray-900 mb-2">Quotation Submitted</h1>
+    <p class="text-sm text-gray-500 mb-1">Thank you, {{ vendor.company_name }}</p>
+    <p class="text-sm text-gray-500">Your quotation for <strong>{{ req.title }}</strong> has been received.</p>
+</div>
+{% endblock %}

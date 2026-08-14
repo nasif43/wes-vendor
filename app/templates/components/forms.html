@@ -1,0 +1,64 @@
+{% macro field(label, name, type="text", value="", required=true, placeholder="", error="") %}
+<div class="mb-4">
+    <label for="{{ name }}" class="block text-sm font-medium text-gray-700 mb-1">{{ label }}</label>
+    <input
+        type="{{ type }}"
+        id="{{ name }}"
+        name="{{ name }}"
+        value="{{ value }}"
+        placeholder="{{ placeholder }}"
+        {% if required %}required{% endif %}
+        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500 {% if error %}border-red-300{% endif %}"
+    >
+    {% if error %}
+    <p class="mt-1 text-sm text-red-600">{{ error }}</p>
+    {% endif %}
+</div>
+{% endmacro %}
+
+{% macro textarea(label, name, value="", rows=3, placeholder="", error="") %}
+<div class="mb-4">
+    <label for="{{ name }}" class="block text-sm font-medium text-gray-700 mb-1">{{ label }}</label>
+    <textarea
+        id="{{ name }}"
+        name="{{ name }}"
+        rows="{{ rows }}"
+        placeholder="{{ placeholder }}"
+        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500 {% if error %}border-red-300{% endif %}"
+    >{{ value }}</textarea>
+    {% if error %}
+    <p class="mt-1 text-sm text-red-600">{{ error }}</p>
+    {% endif %}
+</div>
+{% endmacro %}
+
+{% macro select(label, name, options, selected="", error="") %}
+<div class="mb-4">
+    <label for="{{ name }}" class="block text-sm font-medium text-gray-700 mb-1">{{ label }}</label>
+    <select
+        id="{{ name }}"
+        name="{{ name }}"
+        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500 {% if error %}border-red-300{% endif %}"
+    >
+        {% for value, label in options %}
+        <option value="{{ value }}" {% if value == selected %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+    </select>
+    {% if error %}
+    <p class="mt-1 text-sm text-red-600">{{ error }}</p>
+    {% endif %}
+</div>
+{% endmacro %}
+
+{% macro button(text, type="submit", variant="primary", extra="") %}
+<button
+    type="{{ type }}"
+    class="px-4 py-2 rounded-lg text-sm font-medium transition
+        {% if variant == 'primary' %}bg-brand-600 text-white hover:bg-brand-700
+        {% elif variant == 'danger' %}bg-red-600 text-white hover:bg-red-700
+        {% else %}bg-white text-gray-700 border border-gray-300 hover:bg-gray-50{% endif %}
+        disabled:opacity-50 disabled:cursor-not-allowed {{ extra }}"
+>
+    {{ text }}
+</button>
+{% endmacro %}

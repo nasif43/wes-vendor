@@ -1,0 +1,349 @@
+{% extends "base.html" %}
+{% block title %}Requisitions &amp; Pipeline — WES Vendor Portal{% endblock %}
+{% block nav_desktop_req_cls %}text-brand-600 font-semibold bg-brand-50{% endblock %}
+{% block nav_requisitions %}tab-active{% endblock %}
+{% block nav_requisitions_icon %}text-brand-600{% endblock %}
+{% block nav_requisitions_label %}text-brand-600 font-semibold{% endblock %}
+{% block content %}
+<div class="slide-up max-w-7xl mx-auto pb-8">
+
+    <!-- HEADER & VIEW TOGGLE BAR -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div>
+            <h1 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                Requisitions &amp; Procurement Pipeline
+            </h1>
+            <p class="text-xs text-slate-500 font-medium mt-0.5">
+                Track requisitions from draft through quote review, order confirmation, and delivery QC.
+            </p>
+        </div>
+
+        <div class="flex items-center gap-3">
+            <!-- VIEW TOGGLE BUTTONS -->
+            <div class="inline-flex p-1 bg-slate-200/80 rounded-xl border border-slate-200">
+                <button type="button" onclick="switchView('table')" id="btn-view-table"
+                    class="px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-xs bg-white text-slate-900">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>
+                    Table
+                </button>
+                <button type="button" onclick="switchView('kanban')" id="btn-view-kanban"
+                    class="px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 text-slate-600 hover:text-slate-900">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"/></svg>
+                    Kanban Board
+                </button>
+            </div>
+
+            {% if not user or user.role in ('requester', 'purchase_person', 'admin') %}
+            <a href="/requisitions/new" class="bg-brand-600 text-white h-9 px-4 rounded-xl text-xs font-bold hover:bg-brand-700 transition shadow-xs flex items-center gap-1.5 active:scale-95 shrink-0">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+                New Requisition
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if items %}    <!-- 1. TABLE VIEW CONTAINER -->
+    <div id="view-container-table" class="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100 overflow-hidden shadow-xs">
+        {% for item in items %}
+        {% set req = item.req %}
+        <a href="/requisitions/{{ req.id }}" class="flex flex-col sm:flex-row sm:items-center justify-between p-4 hover:bg-slate-50/80 transition group gap-3">
+            <div class="flex items-center gap-3.5 min-w-0">
+                <div class="w-10 h-10 rounded-xl shrink-0 flex items-center justify-center
+                    {% if item.stage == 'draft' %}bg-slate-100 text-slate-500
+                    {% elif item.stage == 'new' %}bg-blue-50 text-blue-600
+                    {% elif item.stage == 'in_progress' %}bg-amber-50 text-amber-600
+                    {% elif item.stage == 'submitted' %}bg-purple-50 text-purple-600
+                    {% elif item.stage == 'received' %}bg-sky-50 text-sky-600
+                    {% elif item.stage == 'closed' %}bg-emerald-50 text-emerald-600{% endif %}">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                </div>
+                <div class="min-w-0">
+                    <div class="font-bold text-sm text-slate-900 group-hover:text-brand-600 transition truncate">{{ req.title }}</div>
+                    <div class="text-xs text-slate-500 truncate mt-0.5">
+                        {{ req.quantity }} {{ req.unit or 'units' }}
+                        {% if req.creator %} · By {{ req.creator.full_name }}{% endif %}
+                        {% if item.confirmed_at %} · Confirmed {{ item.confirmed_at.strftime('%b %d') }}{% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3 shrink-0 self-end sm:self-auto">
+                {% if item.qc_done_at %}
+                <span class="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200/60">
+                    QC done on {{ item.qc_done_at.strftime('%b %d, %Y') }}
+                </span>
+                {% elif item.confirmed_at %}
+                <span class="text-xs font-semibold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200/60">
+                    Confirmed on {{ item.confirmed_at.strftime('%b %d, %Y') }}
+                </span>
+                {% endif %}
+
+                {% if item.lead_time_days is not none %}
+                <span class="text-xs font-bold text-purple-700 bg-purple-50 px-2.5 py-1 rounded-lg border border-purple-200/60">
+                    ⏱️ {{ item.lead_time_days }}d lead time
+                </span>
+                {% endif %}
+
+                <span class="text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider
+                    {% if item.stage == 'draft' %}bg-slate-100 text-slate-600
+                    {% elif item.stage == 'new' %}bg-blue-100 text-blue-700
+                    {% elif item.stage == 'in_progress' %}bg-amber-100 text-amber-700
+                    {% elif item.stage == 'submitted' %}bg-purple-100 text-purple-700
+                    {% elif item.stage == 'received' %}bg-sky-100 text-sky-700
+                    {% elif item.stage == 'closed' %}bg-emerald-100 text-emerald-700{% endif %}">
+                    {% if item.stage == 'draft' %}Draft
+                    {% elif item.stage == 'new' %}New
+                    {% elif item.stage == 'in_progress' %}In Progress
+                    {% elif item.stage == 'submitted' %}Submitted
+                    {% elif item.stage == 'received' %}Received
+                    {% elif item.stage == 'closed' %}Closed{% endif %}
+                </span>
+                <svg class="w-4 h-4 text-slate-300 group-hover:translate-x-0.5 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+
+    <!-- 2. KANBAN BOARD CONTAINER -->
+    <div id="view-container-kanban" class="hidden overflow-x-auto pb-4">
+        <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-3.5 min-w-[1200px]">
+
+            <!-- COLUMN 1: DRAFT -->
+            <div class="bg-slate-100/70 rounded-2xl p-3 border border-slate-200/70 flex flex-col min-h-[500px]">
+                <div class="flex items-center justify-between px-2 py-1.5 mb-3">
+                    <span class="text-xs font-extrabold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-slate-400"></span> Draft
+                    </span>
+                    <span class="text-xs font-bold text-slate-500 bg-slate-200 px-2 py-0.5 rounded-full">
+                        {{ items | selectattr("stage", "equalto", "draft") | list | length }}
+                    </span>
+                </div>
+                <div class="space-y-3 flex-1 overflow-y-auto">
+                    {% for item in items if item.stage == 'draft' %}
+                    {% set req = item.req %}
+                    <a href="/requisitions/{{ req.id }}" class="block bg-white rounded-xl p-3.5 border border-slate-200/80 hover:border-brand-400 hover:shadow-md transition active:scale-[0.98]">
+                        <div class="text-xs font-extrabold text-slate-900 mb-1 truncate">{{ req.title }}</div>
+                        <div class="text-[11px] font-medium text-slate-500 mb-2.5 truncate">{{ req.quantity }} {{ req.unit or '' }} · {{ req.item_description[:30] }}</div>
+                        <div class="text-[10px] text-slate-400 font-medium border-t border-slate-100 pt-2 flex items-center justify-between">
+                            <span>Created (Unsent)</span>
+                            <span class="font-bold text-slate-500">{{ req.created_at.strftime('%b %d') if req.created_at else '' }}</span>
+                        </div>
+                    </a>
+                    {% else %}
+                    <div class="text-center py-8 text-xs text-slate-400 font-medium">No drafts</div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- COLUMN 2: NEW (RFQ SENT) -->
+            <div class="bg-blue-50/50 rounded-2xl p-3 border border-blue-200/50 flex flex-col min-h-[500px]">
+                <div class="flex items-center justify-between px-2 py-1.5 mb-3">
+                    <span class="text-xs font-extrabold text-blue-800 uppercase tracking-wider flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-blue-500"></span> New
+                    </span>
+                    <span class="text-xs font-bold text-blue-700 bg-blue-100/80 px-2 py-0.5 rounded-full">
+                        {{ items | selectattr("stage", "equalto", "new") | list | length }}
+                    </span>
+                </div>
+                <div class="space-y-3 flex-1 overflow-y-auto">
+                    {% for item in items if item.stage == 'new' %}
+                    {% set req = item.req %}
+                    <a href="/requisitions/{{ req.id }}" class="block bg-white rounded-xl p-3.5 border border-blue-200/80 hover:border-blue-400 hover:shadow-md transition active:scale-[0.98]">
+                        <div class="text-xs font-extrabold text-slate-900 mb-1 truncate">{{ req.title }}</div>
+                        <div class="text-[11px] font-medium text-slate-500 mb-2 truncate">{{ req.quantity }} {{ req.unit or '' }}</div>
+                        <div class="inline-block text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded mb-2 border border-blue-200/50">
+                            {{ req.vendor_links | length }} vendor(s) invited
+                        </div>
+                        <div class="text-[10px] text-slate-400 font-medium border-t border-slate-100 pt-2 flex items-center justify-between">
+                            <span>RFQ Invited</span>
+                            <span class="font-bold text-blue-600">Quoting</span>
+                        </div>
+                    </a>
+                    {% else %}
+                    <div class="text-center py-8 text-xs text-slate-400 font-medium">No new RFQs</div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- COLUMN 3: IN PROGRESS (QUOTES UNDER REVIEW) -->
+            <div class="bg-amber-50/50 rounded-2xl p-3 border border-amber-200/50 flex flex-col min-h-[500px]">
+                <div class="flex items-center justify-between px-2 py-1.5 mb-3">
+                    <span class="text-xs font-extrabold text-amber-800 uppercase tracking-wider flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-amber-500"></span> In Progress
+                    </span>
+                    <span class="text-xs font-bold text-amber-700 bg-amber-100/80 px-2 py-0.5 rounded-full">
+                        {{ items | selectattr("stage", "equalto", "in_progress") | list | length }}
+                    </span>
+                </div>
+                <div class="space-y-3 flex-1 overflow-y-auto">
+                    {% for item in items if item.stage == 'in_progress' %}
+                    {% set req = item.req %}
+                    <a href="/requisitions/{{ req.id }}" class="block bg-white rounded-xl p-3.5 border border-amber-200/80 hover:border-amber-400 hover:shadow-md transition active:scale-[0.98]">
+                        <div class="text-xs font-extrabold text-slate-900 mb-1 truncate">{{ req.title }}</div>
+                        <div class="text-[11px] font-medium text-slate-500 mb-2 truncate">{{ req.quantity }} {{ req.unit or '' }}</div>
+                        <div class="inline-block text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded mb-2 border border-amber-200/50">
+                            Quotes under review
+                        </div>
+                        <div class="text-[10px] text-slate-400 font-medium border-t border-slate-100 pt-2 flex items-center justify-between">
+                            <span>Vendor selection</span>
+                            <span class="font-bold text-amber-600">Pending</span>
+                        </div>
+                    </a>
+                    {% else %}
+                    <div class="text-center py-8 text-xs text-slate-400 font-medium">No orders in progress</div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- COLUMN 4: SUBMITTED (VENDOR SELECTED / DECISION APPROVED) -->
+            <div class="bg-purple-50/50 rounded-2xl p-3 border border-purple-200/50 flex flex-col min-h-[500px]">
+                <div class="flex items-center justify-between px-2 py-1.5 mb-3">
+                    <span class="text-xs font-extrabold text-purple-800 uppercase tracking-wider flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-purple-500"></span> Submitted
+                    </span>
+                    <span class="text-xs font-bold text-purple-700 bg-purple-100/80 px-2 py-0.5 rounded-full">
+                        {{ items | selectattr("stage", "equalto", "submitted") | list | length }}
+                    </span>
+                </div>
+                <div class="space-y-3 flex-1 overflow-y-auto">
+                    {% for item in items if item.stage == 'submitted' %}
+                    {% set req = item.req %}
+                    <a href="/requisitions/{{ req.id }}" class="block bg-white rounded-xl p-3.5 border border-purple-200/80 hover:border-purple-400 hover:shadow-md transition active:scale-[0.98]">
+                        <div class="text-xs font-extrabold text-slate-900 mb-1 truncate">{{ req.title }}</div>
+                        <div class="text-[11px] font-medium text-slate-500 mb-2 truncate">{{ req.quantity }} {{ req.unit or '' }}</div>
+                        {% if item.confirmed_at %}
+                        <div class="inline-block text-[10px] font-bold text-purple-800 bg-purple-50 px-2 py-0.5 rounded mb-2 border border-purple-200/60">
+                            Confirmed on {{ item.confirmed_at.strftime('%b %d, %Y') }}
+                        </div>
+                        {% endif %}
+                        <div class="text-[10px] text-slate-400 font-medium border-t border-slate-100 pt-2 flex items-center justify-between">
+                            <span>Vendor selected</span>
+                            <span class="font-bold text-purple-600">PO Placed</span>
+                        </div>
+                    </a>
+                    {% else %}
+                    <div class="text-center py-8 text-xs text-slate-400 font-medium">No submitted orders</div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- COLUMN 5: RECEIVED (DELIVERY RECEIVED, AWAITING QC) -->
+            <div class="bg-sky-50/50 rounded-2xl p-3 border border-sky-200/50 flex flex-col min-h-[500px]">
+                <div class="flex items-center justify-between px-2 py-1.5 mb-3">
+                    <span class="text-xs font-extrabold text-sky-800 uppercase tracking-wider flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-sky-500"></span> Received
+                    </span>
+                    <span class="text-xs font-bold text-sky-700 bg-sky-100/80 px-2 py-0.5 rounded-full">
+                        {{ items | selectattr("stage", "equalto", "received") | list | length }}
+                    </span>
+                </div>
+                <div class="space-y-3 flex-1 overflow-y-auto">
+                    {% for item in items if item.stage == 'received' %}
+                    {% set req = item.req %}
+                    <a href="/requisitions/{{ req.id }}" class="block bg-white rounded-xl p-3.5 border border-sky-200/80 hover:border-sky-400 hover:shadow-md transition active:scale-[0.98]">
+                        <div class="text-xs font-extrabold text-slate-900 mb-1 truncate">{{ req.title }}</div>
+                        <div class="text-[11px] font-medium text-slate-500 mb-2 truncate">{{ req.quantity }} {{ req.unit or '' }}</div>
+                        <div class="inline-block text-[10px] font-bold text-sky-800 bg-sky-50 px-2 py-0.5 rounded mb-2 border border-sky-200/60">
+                            Delivery Arrived
+                        </div>
+                        <div class="text-[10px] text-slate-400 font-medium border-t border-slate-100 pt-2 flex items-center justify-between">
+                            <span>Pending QC</span>
+                            <span class="font-bold text-sky-600">Inspection</span>
+                        </div>
+                    </a>
+                    {% else %}
+                    <div class="text-center py-8 text-xs text-slate-400 font-medium">No received items</div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- COLUMN 6: CLOSED (QC DONE) -->
+            <div class="bg-emerald-50/50 rounded-2xl p-3 border border-emerald-200/50 flex flex-col min-h-[500px]">
+                <div class="flex items-center justify-between px-2 py-1.5 mb-3">
+                    <span class="text-xs font-extrabold text-emerald-800 uppercase tracking-wider flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500"></span> Closed
+                    </span>
+                    <span class="text-xs font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-full">
+                        {{ items | selectattr("stage", "equalto", "closed") | list | length }}
+                    </span>
+                </div>
+                <div class="space-y-3 flex-1 overflow-y-auto">
+                    {% for item in items if item.stage == 'closed' %}
+                    {% set req = item.req %}
+                    <a href="/requisitions/{{ req.id }}" class="block bg-white rounded-xl p-3.5 border border-emerald-200/80 hover:border-emerald-400 hover:shadow-md transition active:scale-[0.98]">
+                        <div class="text-xs font-extrabold text-slate-900 mb-1 truncate">{{ req.title }}</div>
+                        <div class="text-[11px] font-medium text-slate-500 mb-2 truncate">{{ req.quantity }} {{ req.unit or '' }}</div>
+                        
+                        {% if item.qc_done_at %}
+                        <div class="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded mb-1.5 border border-emerald-200/60 block truncate">
+                            QC done on {{ item.qc_done_at.strftime('%b %d, %Y') }}
+                        </div>
+                        {% endif %}
+
+                        {% if item.lead_time_days is not none %}
+                        <div class="text-[10px] font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded mb-2 border border-purple-200/60 inline-block">
+                            ⏱️ Lead Time: {{ item.lead_time_days }} days
+                        </div>
+                        {% endif %}
+
+                        <div class="text-[10px] text-slate-400 font-medium border-t border-slate-100 pt-2 flex items-center justify-between">
+                            <span>QC Passed</span>
+                            <span class="font-bold text-emerald-600">✓ Closed</span>
+                        </div>
+                    </a>
+                    {% else %}
+                    <div class="text-center py-8 text-xs text-slate-400 font-medium">No closed orders</div>
+                    {% endfor %}
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    {% else %}
+    <div class="bg-white rounded-2xl border border-slate-200 p-14 text-center shadow-xs">
+        <div class="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-4">
+            <svg class="w-7 h-7 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        </div>
+        <p class="text-sm font-bold text-slate-900 mb-1">No requisitions created yet</p>
+        <p class="text-xs text-slate-400 mb-5">Start by creating your first procurement requisition.</p>
+        <a href="/requisitions/new" class="inline-flex items-center gap-2 bg-brand-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-brand-700 transition shadow-xs">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+            Create Requisition
+        </a>
+    </div>
+    {% endif %}
+
+</div>
+
+<script>
+function switchView(viewName) {
+    const tableContainer = document.getElementById('view-container-table');
+    const kanbanContainer = document.getElementById('view-container-kanban');
+    const btnTable = document.getElementById('btn-view-table');
+    const btnKanban = document.getElementById('btn-view-kanban');
+
+    if (viewName === 'kanban') {
+        tableContainer.classList.add('hidden');
+        kanbanContainer.classList.remove('hidden');
+
+        btnKanban.className = 'px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-xs bg-white text-slate-900';
+        btnTable.className = 'px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 text-slate-600 hover:text-slate-900';
+    } else {
+        kanbanContainer.classList.add('hidden');
+        tableContainer.classList.remove('hidden');
+
+        btnTable.className = 'px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-xs bg-white text-slate-900';
+        btnKanban.className = 'px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 text-slate-600 hover:text-slate-900';
+    }
+}
+
+// Support initial URL parameter view=kanban if provided
+document.addEventListener('DOMContentLoaded', function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('view') === 'kanban') {
+        switchView('kanban');
+    }
+});
+</script>
+{% endblock %}

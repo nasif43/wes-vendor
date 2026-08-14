@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>{% block title %}Wener Vendor Management Platform{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui'] },
+                    colors: {
+                        brand:  { 50:'#eff6ff',100:'#dbeafe',200:'#bfdbfe',300:'#93c5fd',400:'#60a5fa',500:'#3b82f6',600:'#2563eb',700:'#1d4ed8',800:'#1e40af',900:'#1e3a5a' },
+                        navy:   { 800:'#0b1728', 900:'#060e1a' },
+                        accent: { 50:'#f0fdf4',100:'#dcfce7',200:'#bbf7d0',500:'#22c55e',600:'#16a34a',700:'#15803d' },
+                        warn:   { 50:'#fffbeb',100:'#fef3c7',200:'#fde68a',500:'#f59e0b',600:'#d97706',700:'#b45309' },
+                        danger: { 50:'#fef2f2',100:'#fee2e2',200:'#fecaca',500:'#ef4444',600:'#dc2626',700:'#b91c1c' }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        * { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+        body { font-family: 'Inter', ui-sans-serif, system-ui; overscroll-behavior: none; }
+        .fade-in  { animation: fadeIn .2s ease-out; }
+        .slide-up { animation: slideUp .25s ease-out; }
+        @keyframes fadeIn  { from{opacity:0;transform:translateY(-6px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes slideUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+        .htmx-indicator { display:none }
+        .htmx-request .htmx-indicator { display:inline-block }
+        /* Custom scrollbar for dark sidebar */
+        .sidebar-scroll::-webkit-scrollbar { width: 4px; }
+        .sidebar-scroll::-webkit-scrollbar-track { background: transparent; }
+        .sidebar-scroll::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
+        /* Safe area for bottom nav */
+        .safe-pb { padding-bottom: calc(4rem + env(safe-area-inset-bottom)); }
+        .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+        /* Active nav tab */
+        .tab-active .tab-icon { color: #2563eb !important; }
+        .tab-active .tab-label { color: #2563eb !important; font-weight: 600; }
+        .tab-active .tab-pill { background: #eff6ff; border-radius: 12px; }
+        /* Input focus */
+        input:focus, textarea:focus, select:focus { outline: none; ring: 2px solid #3b82f6; }
+        /* Smooth scroll */
+        html { scroll-behavior: smooth; }
+    </style>
+</head>
+<body class="h-full {% block body_class %}bg-slate-100{% endblock %} font-sans text-slate-800 antialiased">
+
+{% if user is defined and user %}
+<div class="min-h-screen lg:flex bg-slate-50">
+
+    <!-- DESKTOP LEFT SIDEBAR (Dark Navy #0b1728) -->
+    <aside class="hidden lg:flex w-64 bg-[#0b1728] text-slate-300 flex-col border-r border-slate-800/80 shrink-0 sticky top-0 h-screen overflow-y-auto sidebar-scroll z-40">
+        
+        <!-- BRAND HEADER -->
+        <a href="/" class="px-6 py-5 flex items-center gap-3 border-b border-slate-800/60 group">
+            <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-brand-700 to-brand-500 flex items-center justify-center shadow-md shrink-0 group-hover:scale-105 transition">
+                <span class="text-white font-black tracking-wider text-xs">W</span>
+            </div>
+            <div>
+                <div class="flex items-center gap-1">
+                    <span class="text-base font-black text-white tracking-wide">WENER</span>
+                    <span class="text-[9px] font-bold text-slate-400 align-top">®</span>
+                </div>
+                <span class="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest block leading-none">VENDOR MANAGEMENT</span>
+            </div>
+        </a>
+
+        <!-- LOGGED-IN USER PROFILE BADGE CARD -->
+        <div class="mx-4 my-4 p-3.5 rounded-2xl bg-slate-800/50 border border-slate-700/50 flex items-center gap-3">
+            <div class="w-9 h-9 rounded-xl bg-brand-600/30 border border-brand-500/40 flex items-center justify-center shrink-0">
+                <span class="text-xs font-black text-white">{{ user.full_name[:2] | upper if user and user.full_name else 'US' }}</span>
+            </div>
+            <div class="min-w-0 flex-1">
+                <div class="text-xs font-bold text-white truncate">{{ user.full_name if user and user.full_name else 'User' }}</div>
+                <div class="text-[10px] font-semibold text-brand-400 flex items-center gap-1.5 mt-0.5 capitalize">
+                    <span class="w-1.5 h-1.5 rounded-full bg-brand-400"></span> {{ user.role | replace('_', ' ') if user else 'Role' }}
+                </div>
+            </div>
+        </div>
+
+        <!-- SIDEBAR NAVIGATION MENU (ROLE BASED VISIBILITY) -->
+        <nav class="px-3 space-y-1 flex-1 py-2">
+            <a href="/" class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition {% block nav_side_dash %}text-slate-400 hover:text-white hover:bg-slate-800/60{% endblock %}">
+                <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+                Dashboard
+            </a>
+
+            <a href="/requisitions" class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition {% block nav_side_po %}text-slate-400 hover:text-white hover:bg-slate-800/60{% endblock %}">
+                <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                Requisitions
+            </a>
+
+            {% if not user or user.role in ('purchase_person', 'management', 'admin') %}
+            <a href="/vendors" class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition {% block nav_side_ven %}text-slate-400 hover:text-white hover:bg-slate-800/60{% endblock %}">
+                <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+                Vendors Directory
+            </a>
+
+            <a href="/categories" class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition {% block nav_side_cat %}text-slate-400 hover:text-white hover:bg-slate-800/60{% endblock %}">
+                <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg>
+                Vendor Groups
+            </a>
+            {% endif %}
+
+            {% if not user or user.can_see_quotes %}
+            <a href="/quotations/inbox" class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition {% block nav_side_rfq %}text-slate-400 hover:text-white hover:bg-slate-800/60{% endblock %}">
+                <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                Quotation Inbox
+            </a>
+            {% endif %}
+
+            {% if not user or user.role in ('purchase_person', 'management', 'admin') %}
+            <a href="/decisions" class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition {% block nav_side_dec %}text-slate-400 hover:text-white hover:bg-slate-800/60{% endblock %}">
+                <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                Decisions &amp; Approvals
+            </a>
+            {% endif %}
+
+            {% if not user or user.role in ('management', 'admin') %}
+            <a href="/reports" class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition {% block nav_side_del %}text-slate-400 hover:text-white hover:bg-slate-800/60{% endblock %}">
+                <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                Reports &amp; Analytics
+            </a>
+
+            <a href="/audit" class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition {% block nav_side_audit %}text-slate-400 hover:text-white hover:bg-slate-800/60{% endblock %}">
+                <svg class="w-4 h-4 shrink-0 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                Activity Audit Log
+            </a>
+
+            <a href="/users" class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition {% block nav_side_users %}text-slate-400 hover:text-white hover:bg-slate-800/60{% endblock %}">
+                <svg class="w-4 h-4 shrink-0 text-brand-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+                Users &amp; Permissions
+            </a>
+            {% endif %}
+        </nav>
+
+        <!-- BOTTOM SYSTEM HELP BOX -->
+        <div class="p-4 m-3 rounded-2xl bg-gradient-to-b from-slate-800/80 to-slate-900 border border-slate-700/50 shrink-0">
+            <div class="flex items-center gap-2 text-xs font-bold text-white mb-1">
+                <div class="w-6 h-6 rounded-lg bg-brand-500/20 border border-brand-500/30 flex items-center justify-center shrink-0">
+                    <svg class="w-3.5 h-3.5 text-brand-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                </div>
+                Platform Support
+            </div>
+            <div class="text-[10px] text-slate-400 mb-2">Internal Procurement Desk</div>
+            <div class="text-xs font-bold text-white mb-0.5">Wener Group Portal</div>
+            <a href="mailto:support@wener.com" class="text-[10px] text-brand-400 hover:underline block truncate">procurement@wener.com</a>
+        </div>
+    </aside>
+
+    <!-- RIGHT MAIN CONTENT CONTAINER -->
+    <div class="flex-1 flex flex-col min-w-0">
+
+        <!-- DESKTOP TOP HEADER BAR -->
+        <header class="hidden lg:flex items-center justify-between h-16 bg-white border-b border-slate-200/80 px-8 sticky top-0 z-30 shadow-xs">
+            <div class="flex items-center gap-3">
+                <span class="text-xs font-extrabold text-slate-400 uppercase tracking-widest">WENER® Vendor Management Platform</span>
+            </div>
+
+            <!-- RIGHT TOP USER & ACTION WIDGETS -->
+            <div class="flex items-center gap-4">
+                <a href="/requisitions/new" class="inline-flex items-center gap-2 px-3.5 py-2 bg-brand-600 text-white rounded-xl text-xs font-bold hover:bg-brand-700 transition shadow-xs active:scale-95">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+                    New Requisition
+                </a>
+
+                <!-- User Profile Pill -->
+                <div class="flex items-center gap-3 pl-3 border-l border-slate-200">
+                    <div class="w-9 h-9 rounded-full bg-brand-600 text-white flex items-center justify-center font-black text-xs shadow-sm">
+                        {{ user.full_name[:2] | upper if user and user.full_name else 'US' }}
+                    </div>
+                    <div class="text-left hidden sm:block">
+                        <div class="text-xs font-bold text-slate-900 leading-tight">{{ user.full_name if user else 'User' }}</div>
+                        <div class="text-[10px] text-slate-400 font-medium capitalize">{{ user.role | replace('_', ' ') if user else 'Role' }}</div>
+                    </div>
+                    <a href="/auth/logout" class="ml-2 text-xs text-slate-400 hover:text-red-600 transition" title="Logout">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                    </a>
+                </div>
+            </div>
+        </header>
+
+        <!-- MOBILE TOP BAR (Hidden on desktop) -->
+        <nav class="lg:hidden bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
+            <div class="max-w-2xl mx-auto px-4 h-14 flex items-center justify-between">
+                <a href="/" class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-xl bg-brand-600 flex items-center justify-center shadow-sm">
+                        <span class="text-white text-xs font-bold tracking-tight">W</span>
+                    </div>
+                    <div>
+                        <span class="text-sm font-bold text-slate-900 tracking-tight">WENER</span>
+                        <span class="text-[9px] font-semibold text-slate-400 uppercase tracking-widest block leading-none">PORTAL</span>
+                    </div>
+                </a>
+                <div class="flex items-center gap-2">
+                    <span class="text-[10px] font-semibold text-brand-700 bg-brand-50 px-2 py-0.5 rounded-full border border-brand-100 capitalize">{{ user.role | replace('_', ' ') }}</span>
+                    <a href="/auth/logout" class="w-8 h-8 rounded-full bg-brand-600 text-white flex items-center justify-center text-xs font-bold">
+                        {{ user.full_name[:1] | upper if user and user.full_name else 'U' }}
+                    </a>
+                </div>
+            </div>
+        </nav>
+
+        <!-- FLASH MESSAGES -->
+        {% if request.query_params.get("success") %}
+        <div id="flash-success" class="fixed top-4 right-4 z-50 fade-in max-w-xs">
+            <div class="bg-white border border-accent-200 text-accent-700 px-4 py-3 rounded-2xl shadow-xl flex items-center gap-3">
+                <div class="w-7 h-7 rounded-full bg-accent-100 flex items-center justify-center shrink-0">
+                    <svg class="w-3.5 h-3.5 text-accent-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                </div>
+                <span class="text-sm font-medium">Operation Completed!</span>
+                <button onclick="this.closest('#flash-success').remove()" class="ml-auto text-slate-300 hover:text-slate-500 text-lg leading-none">&times;</button>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- MAIN PAGE BODY CANVAS -->
+        <main class="flex-1 {% block container_class %}max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6{% endblock %} {% if user is defined and user %}safe-pb lg:pb-8{% endif %}">
+            {% block content %}{% endblock %}
+        </main>
+
+    </div>
+</div>
+{% else %}
+<main class="max-w-2xl mx-auto px-4 py-5">
+    {% block unauth_content %}{% endblock %}
+    {% block content_unauth %}{% endblock %}
+</main>
+{% endif %}
+
+<!-- MOBILE BOTTOM TAB BAR -->
+{% if user is defined and user %}
+<nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-40 safe-bottom lg:hidden">
+    <div class="max-w-md mx-auto grid grid-cols-5 px-2">
+        <a href="/requisitions" class="flex flex-col items-center pt-2 pb-1 {% block nav_requisitions %}{% endblock %}">
+            <div class="tab-pill w-10 h-7 flex items-center justify-center mb-0.5">
+                <svg class="tab-icon w-5 h-5 {% block nav_requisitions_icon %}text-slate-400{% endblock %}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            </div>
+            <span class="tab-label text-[10px] {% block nav_requisitions_label %}text-slate-400{% endblock %}">Reqs</span>
+        </a>
+        <a href="/vendors" class="flex flex-col items-center pt-2 pb-1 {% block nav_vendors %}{% endblock %}">
+            <div class="tab-pill w-10 h-7 flex items-center justify-center mb-0.5">
+                <svg class="tab-icon w-5 h-5 {% block nav_vendors_icon %}text-slate-400{% endblock %}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+            </div>
+            <span class="tab-label text-[10px] {% block nav_vendors_label %}text-slate-400{% endblock %}">Vendors</span>
+        </a>
+        <a href="/quotations/inbox" class="flex flex-col items-center pt-2 pb-1 {% block nav_quotations %}{% endblock %}">
+            <div class="tab-pill w-10 h-7 flex items-center justify-center mb-0.5">
+                <svg class="tab-icon w-5 h-5 {% block nav_quotations_icon %}text-slate-400{% endblock %}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+            </div>
+            <span class="tab-label text-[10px] {% block nav_quotations_label %}text-slate-400{% endblock %}">Quotes</span>
+        </a>
+        <a href="/decisions" class="flex flex-col items-center pt-2 pb-1 {% block nav_decisions %}{% endblock %}">
+            <div class="tab-pill w-10 h-7 flex items-center justify-center mb-0.5">
+                <svg class="tab-icon w-5 h-5 {% block nav_decisions_icon %}text-slate-400{% endblock %}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            </div>
+            <span class="tab-label text-[10px] {% block nav_decisions_label %}text-slate-400{% endblock %}">Decide</span>
+        </a>
+        <a href="/categories" class="flex flex-col items-center pt-2 pb-1 {% block nav_categories %}{% endblock %}">
+            <div class="tab-pill w-10 h-7 flex items-center justify-center mb-0.5">
+                <svg class="tab-icon w-5 h-5 {% block nav_categories_icon %}text-slate-400{% endblock %}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg>
+            </div>
+            <span class="tab-label text-[10px] {% block nav_categories_label %}text-slate-400{% endblock %}">Groups</span>
+        </a>
+    </div>
+</nav>
+{% endif %}
+
+{% include "components/apple_spinner.html" %}
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-dismiss flash messages
+    setTimeout(function() {
+        ['flash-success','flash-error'].forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) { el.style.transition='opacity .3s'; el.style.opacity='0'; setTimeout(function(){ el.remove(); },300); }
+        });
+    }, 3500);
+});
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

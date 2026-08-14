@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block title %}Select Vendors — WES Vendor Portal{% endblock %}
+{% block nav_desktop_req_cls %}text-brand-600 font-semibold bg-brand-50{% endblock %}
+{% block nav_requisitions %}tab-active{% endblock %}
+{% block nav_requisitions_icon %}text-brand-600{% endblock %}
+{% block nav_requisitions_label %}text-brand-600 font-semibold{% endblock %}
+{% block content %}
+<div class="slide-up max-w-lg mx-auto">
+
+    <!-- HEADER -->
+    <div class="flex items-center gap-3 mb-5">
+        <a href="/requisitions/{{ req.id }}" class="w-9 h-9 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50 transition shadow-sm shrink-0">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+        </a>
+        <div>
+            <h1 class="text-xl font-bold text-slate-900">Select Vendors</h1>
+            <p class="text-xs text-slate-400 mt-0.5">{{ req.title }}</p>
+        </div>
+    </div>
+
+    <!-- REQ SUMMARY CHIP -->
+    <div class="bg-white rounded-2xl border border-slate-200 p-4 mb-4 shadow-sm flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl bg-brand-50 flex items-center justify-center shrink-0">
+            <svg class="w-4 h-4 text-brand-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        </div>
+        <div>
+            <p class="text-sm font-semibold text-slate-900">{{ req.title }}</p>
+            <p class="text-xs text-slate-400">{{ req.quantity }} {{ req.unit or '' }}</p>
+        </div>
+    </div>
+
+    {% if error %}
+    <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl mb-4 text-sm flex items-center gap-2">
+        <svg class="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+        {{ error }}
+    </div>
+    {% endif %}
+
+    <form method="post" action="/requisitions/{{ req.id }}/select-vendors">
+        <div class="bg-white rounded-2xl border border-slate-200 p-4 mb-4 shadow-sm">
+
+            <!-- SEARCH -->
+            <div class="relative mb-3">
+                <svg class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                <input type="text" id="vendor-search" placeholder="Search vendors…"
+                    class="w-full pl-9 pr-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition bg-slate-50 focus:bg-white"
+                    oninput="filterVendors(this.value)">
+            </div>
+
+            <!-- CATEGORY FILTERS -->
+            {% if categories %}
+            <div class="flex flex-wrap gap-1.5 mb-3">
+                <button type="button" onclick="filterByCategory('all')" class="cat-btn text-[11px] font-semibold px-3 py-1 rounded-full border border-brand-300 bg-brand-50 text-brand-700 transition" data-cat="all">All</button>
+                {% for cat in categories %}
+                <button type="button" onclick="filterByCategory('{{ cat.id }}')" class="cat-btn text-[11px] font-medium px-3 py-1 rounded-full border border-slate-200 text-slate-500 hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700 transition" data-cat="{{ cat.id }}">{{ cat.name }}</button>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- VENDOR LIST -->
+            <div class="space-y-1.5" id="vendor-list">
+                {% for vendor in vendors %}
+                <label class="vendor-item flex items-center gap-3 rounded-xl border border-slate-100 p-3.5 hover:bg-brand-50 hover:border-brand-200 cursor-pointer transition active:scale-[0.99] min-h-[56px]" data-categories="{{ vendor.categories | map(attribute='id') | list }}">
+                    <input type="checkbox" name="vendor_ids" value="{{ vendor.id }}" class="rounded text-brand-600 w-4 h-4 border-slate-300 shrink-0">
+                    <div class="flex-1 min-w-0">
+                        <div class="font-semibold text-slate-900 text-sm truncate">{{ vendor.company_name }}</div>
+                        <div class="text-xs text-slate-400 truncate">{{ vendor.contact_email }}</div>
+                    </div>
+                    {% if vendor.categories %}
+                    <div class="flex gap-1 shrink-0">
+                        {% for cat in vendor.categories[:2] %}
+                        <span class="text-[10px] font-semibold bg-brand-50 text-brand-700 px-1.5 py-0.5 rounded-full border border-brand-100">{{ cat.name[:8] }}</span>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="flex gap-3">
+            <button type="submit" class="flex-1 bg-brand-600 text-white py-3.5 rounded-xl text-sm font-semibold hover:bg-brand-700 transition shadow-sm flex items-center justify-center gap-2 active:scale-[0.98]">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                Send to Selected
+            </button>
+            <a href="/requisitions/{{ req.id }}" class="py-3.5 px-5 rounded-xl text-sm font-semibold text-slate-700 border border-slate-200 bg-white hover:bg-slate-50 transition">Cancel</a>
+        </div>
+    </form>
+
+</div>
+{% block scripts %}
+<script>
+function filterVendors(q) {
+    q = q.toLowerCase();
+    document.querySelectorAll('.vendor-item').forEach(item => {
+        const name  = item.querySelector('.font-semibold')?.textContent.toLowerCase() || '';
+        const email = item.querySelector('.text-xs')?.textContent.toLowerCase() || '';
+        item.style.display = (name.includes(q) || email.includes(q)) ? '' : 'none';
+    });
+}
+let activeCat = 'all';
+function filterByCategory(id) {
+    activeCat = id;
+    document.querySelectorAll('.cat-btn').forEach(b => {
+        const on = b.dataset.cat === id;
+        b.className = b.className
+            .replace('border-brand-300 bg-brand-50 text-brand-700', 'border-slate-200 text-slate-500')
+            .replace('border-slate-200 text-slate-500', on ? 'border-brand-300 bg-brand-50 text-brand-700' : 'border-slate-200 text-slate-500');
+    });
+    document.querySelectorAll('.vendor-item').forEach(item => {
+        if (id === 'all') { item.style.display = ''; return; }
+        const cats = JSON.parse(item.dataset.categories || '[]');
+        item.style.display = cats.includes(id) ? '' : 'none';
+    });
+}
+</script>
+{% endblock %}
+{% endblock %}

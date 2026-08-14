@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}User &amp; Permission Administration — WES Vendor Portal{% endblock %}
+{% block nav_side_users %}text-white bg-slate-800/80 font-bold{% endblock %}
+{% block content %}
+<div class="slide-up max-w-6xl mx-auto pb-10">
+
+    <!-- PAGE HEADER -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div>
+            <h1 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                👥 User &amp; Multi-Role Permission Management
+            </h1>
+            <p class="text-xs text-slate-500 font-medium mt-0.5">
+                Grant or revoke quotation visibility, QC receiver rights, and management privileges for platform users.
+            </p>
+        </div>
+    </div>
+
+    <!-- USERS TABLE -->
+    <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse min-w-[800px]">
+                <thead>
+                    <tr class="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                        <th class="py-3.5 px-4">User Details</th>
+                        <th class="py-3.5 px-4 text-center">👁️ Quotation Visibility</th>
+                        <th class="py-3.5 px-4 text-center">🚚 QC &amp; Delivery Rights</th>
+                        <th class="py-3.5 px-4 text-center">🔒 Management Authority</th>
+                        <th class="py-3.5 px-4 text-right">Action</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 text-xs">
+                    {% for target in users_list %}
+                    <form method="POST" action="/users/{{ target.id }}/permissions">
+                    <tr class="hover:bg-slate-50/80 transition">
+                        <!-- USER DETAILS -->
+                        <td class="py-4 px-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-9 h-9 rounded-xl bg-brand-50 border border-brand-200/60 flex items-center justify-center font-bold text-brand-700 shrink-0">
+                                    {{ target.full_name[:2] | upper }}
+                                </div>
+                                <div class="min-w-0">
+                                    <div class="font-bold text-slate-900 truncate">{{ target.full_name }}</div>
+                                    <div class="text-[11px] text-slate-500 truncate">{{ target.email }}</div>
+                                </div>
+                            </div>
+                        </td>
+
+                        <!-- QUOTATION VISIBILITY TOGGLE -->
+                        <td class="py-4 px-4 text-center">
+                            <label class="inline-flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" name="can_view_quotations" value="true"
+                                       {% if target.can_see_quotes %}checked{% endif %}
+                                       class="w-4 h-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500 cursor-pointer">
+                                <span class="text-[11px] font-semibold text-slate-700">Can View Quotes</span>
+                            </label>
+                        </td>
+
+                        <!-- QC & DELIVERY RIGHTS TOGGLE -->
+                        <td class="py-4 px-4 text-center">
+                            <label class="inline-flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" name="can_do_qc" value="true"
+                                       {% if target.can_perform_qc %}checked{% endif %}
+                                       class="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer">
+                                <span class="text-[11px] font-semibold text-slate-700">QC Receiver</span>
+                            </label>
+                        </td>
+
+                        <!-- MANAGEMENT AUTHORITY TOGGLE -->
+                        <td class="py-4 px-4 text-center">
+                            <label class="inline-flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" name="is_management" value="true"
+                                       {% if target.has_management_authority %}checked{% endif %}
+                                       class="w-4 h-4 rounded border-slate-300 text-purple-600 focus:ring-purple-500 cursor-pointer">
+                                <span class="text-[11px] font-semibold text-slate-700">Management</span>
+                            </label>
+                        </td>
+
+                        <!-- SAVE BUTTON -->
+                        <td class="py-4 px-4 text-right">
+                            <button type="submit" class="px-3.5 py-1.5 bg-brand-600 hover:bg-brand-700 text-white rounded-lg text-xs font-bold transition shadow-xs active:scale-95">
+                                Save Toggles
+                            </button>
+                        </td>
+                    </tr>
+                    </form>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

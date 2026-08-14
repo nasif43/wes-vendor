@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% block title %}Receive Order — {{ req.title }}{% endblock %}
+{% block content %}
+<div class="slide-up max-w-lg mx-auto pb-10">
+
+    <!-- HEADER -->
+    <div class="flex items-center gap-3 mb-6">
+        <a href="/requisitions/{{ req.id }}" class="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-50 transition shadow-sm active:scale-[0.97]">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+        </a>
+        <div>
+            <h1 class="text-lg font-bold text-slate-900 leading-tight">
+                {% if req.status.value == 'received' %}Step 2: Quality Control (QC) Inspection{% else %}Step 1: Record Physical Delivery Arrival{% endif %}
+            </h1>
+            <p class="text-xs text-slate-400 mt-0.5">{{ req.title }}</p>
+        </div>
+    </div>
+
+    <!-- QC ALREADY DONE BANNER -->
+    {% if req.qc_done or req.status.value == 'closed' %}
+    <div class="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 mb-5 flex items-center gap-3">
+        <div class="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
+            <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+        </div>
+        <div>
+            <p class="text-sm font-bold text-emerald-800">QC Inspection Completed</p>
+            {% if req.qc_receiver %}
+            <p class="text-xs text-emerald-600 mt-0.5">Verified &amp; Accepted by <strong>{{ req.qc_receiver.full_name }}</strong>
+                {% if req.qc_done_at %}on {{ req.qc_done_at.strftime('%b %d, %Y at %I:%M %p') }}{% endif %}
+            </p>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- DELIVERY RECEIVED BANNER (Step 1 complete, Step 2 QC pending) -->
+    {% if req.status.value == 'received' and not req.qc_done %}
+    <div class="bg-sky-50 border border-sky-200 rounded-2xl p-4 mb-5 flex items-center gap-3">
+        <div class="w-8 h-8 rounded-full bg-sky-100 flex items-center justify-center shrink-0">
+            <svg class="w-4 h-4 text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        </div>
+        <div>
+            <p class="text-sm font-bold text-sky-900">Delivery Arrival Recorded</p>
+            <p class="text-xs text-sky-700 mt-0.5">Physical items arrived at warehouse. Complete Quality Control (QC) inspection below to close ticket.</p>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- FORM -->
+    <form method="POST" action="/requisitions/{{ req.id }}/receive" class="space-y-5">
+
+        <!-- INVOICE & RECEIVING DETAILS -->
+        <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+            <h2 class="text-sm font-bold text-slate-900 mb-4 flex items-center gap-2">
+                <svg class="w-4 h-4 text-brand-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                Delivery Challan / Invoice Details
+            </h2>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1.5">Invoice / Challan Number *</label>
+                    <input type="text" name="invoice_number" required
+                           value="{{ req.invoice_number or '' }}"
+                           placeholder="e.g. CH-2026-90218"
+                        class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1.5">Invoice / Proof Document URL</label>
+                    <input type="url" name="invoice_url"
+                           value="{{ req.invoice_url or '' }}"
+                           placeholder="https://..."
+                        class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition">
+                    <p class="text-[10px] text-slate-400 mt-1.5">Attach optional digital invoice link.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- DELIVERY PHOTO & QC SECTION -->
+        <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+            <h2 class="text-sm font-bold text-slate-900 mb-4 flex items-center gap-2">
+                <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                Quality Control (QC) &amp; Physical Verification
+            </h2>
+
+            <div class="space-y-5">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1.5">Delivery Photo Proof URL</label>
+                    <input type="url" name="delivery_image_url"
+                           value="{{ req.delivery_image_url or '' }}"
+                           placeholder="https://..."
+                        class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition mb-2">
+
+                    <button type="button" onclick="alert('Native camera proof capture triggered.')" class="w-full py-3 bg-slate-100 border border-slate-200 text-slate-700 rounded-xl text-sm font-semibold hover:bg-slate-200 transition flex items-center justify-center gap-2 active:scale-[0.98]">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                        Take Delivery Photo (Camera)
+                    </button>
+                </div>
+
+                <!-- QC CHECKBOX -->
+                <div class="pt-2">
+                    <label class="flex items-start gap-3 cursor-pointer group p-3.5 border border-slate-200 rounded-xl hover:bg-slate-50 transition {% if req.status.value == 'received' %}bg-emerald-50/50 border-emerald-200{% endif %}">
+                        <div class="flex items-center h-5">
+                            <input type="checkbox" name="qc_done" value="true"
+                                   {% if req.qc_done or req.status.value == 'received' %}checked{% endif %}
+                                   class="w-5 h-5 rounded border-slate-300 text-brand-600 focus:ring-brand-500 transition cursor-pointer">
+                        </div>
+                        <div class="flex-1">
+                            <div class="text-sm font-bold text-slate-900 group-hover:text-brand-700 transition">Quality Check Passed</div>
+                            <div class="text-xs text-slate-500 mt-0.5">
+                                I, <strong>{{ user.full_name }}</strong> ({{ user.role | replace('_', ' ') | upper }}), confirm physical goods received match order specifications.
+                                <span class="block mt-1 text-amber-600 font-medium">⚠ Check this box to mark Quality Control as passed and close the requisition ticket.</span>
+                            </div>
+                        </div>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <button type="submit" class="w-full {% if req.status.value == 'received' %}bg-emerald-600 hover:bg-emerald-700{% else %}bg-brand-600 hover:bg-brand-700{% endif %} text-white font-semibold rounded-xl h-14 text-sm shadow-sm hover:shadow-md transition active:scale-[0.98] flex items-center justify-center gap-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+            {% if req.status.value == 'received' %}Complete QC Inspection &amp; Close Ticket{% else %}Record Delivery Arrival{% endif %}
+        </button>
+
+    </form>
+</div>
+{% endblock %}
