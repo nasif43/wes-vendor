@@ -15,10 +15,6 @@ class RequisitionStatus(enum.StrEnum):
     SUBMITTED = "submitted"
     RECEIVED = "received"
     CLOSED = "closed"
-    SENT = "sent"
-    DELIVERED = "delivered"
-    DECIDED = "decided"
-    REVIEWED = "reviewed"
 
     @classmethod
     def _missing_(cls, value):

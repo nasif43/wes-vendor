@@ -54,13 +54,13 @@ async def list_requisitions(
         # 6. 'draft': Created but not forwarded to any vendors yet
         if req.qc_done or req.status == RequisitionStatus.CLOSED:
             stage = "closed"
-        elif req.status == RequisitionStatus.DELIVERED:
+        elif req.status == RequisitionStatus.RECEIVED:
             stage = "received"
         elif decision and decision.management_approved is True:
             stage = "submitted"
-        elif req.status in [RequisitionStatus.REVIEWED, RequisitionStatus.DECIDED] or (decision and decision.management_approved is None and req.vendor_links):
+        elif req.status == RequisitionStatus.IN_PROGRESS or (decision and decision.management_approved is None and req.vendor_links):
             stage = "in_progress"
-        elif req.status == RequisitionStatus.SENT or (req.vendor_links and len(req.vendor_links) > 0):
+        elif req.status == RequisitionStatus.NEW or (req.vendor_links and len(req.vendor_links) > 0):
             stage = "new"
         else:
             stage = "draft"
@@ -306,7 +306,7 @@ async def add_temporary_vendor(
     db.add(link)
 
     if req.status == RequisitionStatus.DRAFT:
-        req.status = RequisitionStatus.SENT
+        req.status = RequisitionStatus.NEW
 
     # ── Audit log ──────────────────────────────────────────────────────────────
     await log_action(

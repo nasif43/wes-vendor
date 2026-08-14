@@ -50,7 +50,7 @@ async def receive_requisition_submit(
         req.qc_done_at = datetime.now(UTC)
         req.status = RequisitionStatus.CLOSED
     else:
-        req.status = RequisitionStatus.DELIVERED
+        req.status = RequisitionStatus.RECEIVED
         
     await db.flush()
     return RedirectResponse(url=f"/requisitions/{req_id}?success=Order+marked+as+received", status_code=303)
