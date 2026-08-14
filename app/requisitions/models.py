@@ -15,13 +15,17 @@ class RequisitionStatus(enum.StrEnum):
     SUBMITTED = "submitted"
     RECEIVED = "received"
     CLOSED = "closed"
+    SENT = "sent"
+    DELIVERED = "delivered"
+    DECIDED = "decided"
+    REVIEWED = "reviewed"
 
     @classmethod
     def _missing_(cls, value):
         if isinstance(value, str):
             val_lower = value.lower()
             for member in cls:
-                if member.value.lower() == val_lower:
+                if member.value.lower() == val_lower or member.name.lower() == val_lower:
                     return member
         return cls.DRAFT
 
