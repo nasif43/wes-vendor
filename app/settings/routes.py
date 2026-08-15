@@ -10,8 +10,9 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.auth.models import UserProfile
 from app.database import get_db
-from app.dependencies import CurrentUser, require_role
+from app.dependencies import require_role
 from app.settings.models import SystemSettings
 
 logger = logging.getLogger(__name__)
@@ -24,7 +25,7 @@ _MANAGEMENT_ROLES = ("management", "admin")
 @router.get("")
 async def settings_page(
     request: Request,
-    user: CurrentUser = Depends(require_role(*_MANAGEMENT_ROLES)),
+    user: UserProfile = Depends(require_role(*_MANAGEMENT_ROLES)),
     db: AsyncSession = Depends(get_db),
 ):
     cc_row = await db.get(SystemSettings, SystemSettings.cc_emails_key())
@@ -45,7 +46,7 @@ async def settings_page(
 async def add_cc_email(
     request: Request,
     email: str = Form(...),
-    user: CurrentUser = Depends(require_role(*_MANAGEMENT_ROLES)),
+    user: UserProfile = Depends(require_role(*_MANAGEMENT_ROLES)),
     db: AsyncSession = Depends(get_db),
 ):
     email = email.strip().lower()
@@ -71,7 +72,7 @@ async def add_cc_email(
 async def remove_cc_email(
     request: Request,
     email: str = Form(...),
-    user: CurrentUser = Depends(require_role(*_MANAGEMENT_ROLES)),
+    user: UserProfile = Depends(require_role(*_MANAGEMENT_ROLES)),
     db: AsyncSession = Depends(get_db),
 ):
     email = email.strip().lower()
