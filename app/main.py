@@ -99,16 +99,6 @@ async def health():
     return {"status": "ok"}
 
 
-@app.get("/system/init-db")
-async def system_init_db():
-    from app.database import init_db
-    try:
-        await init_db()
-        return {"status": "Database initialized"}
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
-
-
 @app.get("/")
 async def index(request: Request):
     from sqlalchemy import select as sa_select, func
