@@ -148,7 +148,7 @@ async def submit_quotation(
         if link.requisition and link.requisition.creator and link.requisition.creator.email:
             view_url = f"{str(request.base_url).rstrip('/')}/quotations/detail/{link.id}"
             email_params.append(
-                build_submission_notification(
+                await build_submission_notification(
                     to=link.requisition.creator.email,
                     vendor_name=link.vendor.company_name,
                     requisition_title=link.requisition.title,
@@ -158,7 +158,7 @@ async def submit_quotation(
             
         if link.vendor and link.vendor.contact_email:
             email_params.append(
-                build_submission_confirmation(
+                await build_submission_confirmation(
                     to=link.vendor.contact_email,
                     vendor_name=link.vendor.contact_person or link.vendor.company_name,
                     requisition_title=link.requisition.title,

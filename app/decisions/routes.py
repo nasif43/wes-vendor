@@ -150,7 +150,7 @@ async def approve_decision(
             vendor = result.scalar_one_or_none()
             if vendor and vendor.contact_email:
                 is_winner = vl.vendor_id == decision.winning_vendor_id
-                param = build_decision_notification(
+                param = await build_decision_notification(
                     to=vendor.contact_email,
                     vendor_name=vendor.contact_person or vendor.company_name,
                     requisition_title=req.title if req else "",

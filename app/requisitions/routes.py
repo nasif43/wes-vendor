@@ -244,7 +244,7 @@ async def send_requisition(
         if vendor and vendor.contact_email:
             quote_url = f"{str(request.base_url).rstrip('/')}/vendor-quote/{link.unique_link_token}"
             email_params.append(
-                build_vendor_invitation(
+                await build_vendor_invitation(
                     to=vendor.contact_email,
                     vendor_name=vendor.contact_person or vendor.company_name,
                     requisition_title=req.title,

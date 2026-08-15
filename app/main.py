@@ -76,6 +76,7 @@ from app.decisions.routes import router as decisions_router
 from app.quotations.routes_internal import router as quotations_internal_router
 from app.quotations.routes_vendor import router as quotations_vendor_router
 from app.requisitions.routes import router as requisitions_router
+from app.settings.routes import router as settings_router
 from app.vendors.routes import router as vendors_router
 from app.reports.routes import router as reports_router
 from app.users.routes import router as users_router
@@ -90,6 +91,7 @@ app.include_router(quotations_internal_router, prefix="/quotations", tags=["quot
 app.include_router(decisions_router, prefix="/decisions", tags=["decisions"])
 app.include_router(reports_router, prefix="/reports", tags=["reports"])
 app.include_router(users_router, prefix="/users", tags=["users"])
+app.include_router(settings_router, prefix="/settings", tags=["settings"])
 
 
 @app.get("/health")

@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+
+{% block title %}System Settings — WES Vendor Portal{% endblock %}
+{% block nav_side_settings %}text-white bg-slate-800/80{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto py-10 px-4 sm:px-6">
+
+    <!-- Header -->
+    <div class="mb-8">
+        <div class="flex items-center gap-3 mb-1">
+            <div class="w-9 h-9 rounded-xl bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center">
+                <svg class="w-4.5 h-4.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                </svg>
+            </div>
+            <h1 class="text-xl font-bold text-white tracking-tight">System Settings</h1>
+        </div>
+        <p class="text-sm text-slate-400 ml-12">Configure portal-wide settings. Changes take effect immediately for all outbound emails.</p>
+    </div>
+
+    <!-- Success banner -->
+    {% if saved %}
+    <div class="mb-6 flex items-center gap-3 px-4 py-3 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-300 text-sm font-medium">
+        <svg class="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 00-1.414 0L8 12.586 4.707 9.293a1 1 0 00-1.414 1.414l4 4a1 1 0 001.414 0l8-8a1 1 0 000-1.414z" clip-rule="evenodd"/></svg>
+        Settings saved successfully.
+    </div>
+    {% endif %}
+
+    <!-- CC Emails Card -->
+    <div class="rounded-2xl bg-slate-900/70 border border-slate-700/60 overflow-hidden">
+
+        <!-- Card header -->
+        <div class="px-6 py-4 border-b border-slate-700/60 flex items-center gap-3">
+            <svg class="w-4 h-4 text-brand-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+            </svg>
+            <div>
+                <h2 class="text-sm font-semibold text-white">Email CC Recipients</h2>
+                <p class="text-xs text-slate-400 mt-0.5">These addresses are CC'd on every outbound email — vendor invitations, quotation notifications, and decision emails.</p>
+            </div>
+        </div>
+
+        <!-- Current CC list -->
+        <div class="px-6 py-4">
+            {% if cc_emails %}
+            <ul class="space-y-2 mb-5" id="cc-list">
+                {% for email in cc_emails %}
+                <li class="flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-xl bg-slate-800/60 border border-slate-700/50 group">
+                    <div class="flex items-center gap-2.5 min-w-0">
+                        <div class="w-7 h-7 rounded-lg bg-brand-500/15 border border-brand-500/20 flex items-center justify-center shrink-0">
+                            <svg class="w-3.5 h-3.5 text-brand-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                            </svg>
+                        </div>
+                        <span class="text-sm text-slate-200 truncate font-mono">{{ email }}</span>
+                    </div>
+                    <form method="post" action="/settings/cc-emails/remove" class="shrink-0">
+                        <input type="hidden" name="email" value="{{ email }}">
+                        <button type="submit"
+                            class="opacity-0 group-hover:opacity-100 transition-opacity w-7 h-7 rounded-lg bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 flex items-center justify-center"
+                            title="Remove {{ email }}"
+                            onclick="return confirm('Remove {{ email }} from CC list?')">
+                            <svg class="w-3.5 h-3.5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </form>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <div class="mb-5 flex items-center gap-2.5 px-4 py-3 rounded-xl bg-amber-500/8 border border-amber-500/20 text-amber-300 text-xs">
+                <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                No CC recipients configured. Emails will be sent without a CC.
+            </div>
+            {% endif %}
+
+            <!-- Add email form -->
+            <form method="post" action="/settings/cc-emails/add" class="flex gap-2" id="add-cc-form">
+                <input
+                    type="email"
+                    name="email"
+                    id="new-cc-email"
+                    required
+                    placeholder="name@company.com"
+                    class="flex-1 min-w-0 bg-slate-800/70 border border-slate-600/60 text-sm text-white placeholder-slate-500 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:border-brand-500/50 transition"
+                >
+                <button
+                    type="submit"
+                    id="add-cc-btn"
+                    class="shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-brand-500/50"
+                >
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/>
+                    </svg>
+                    Add
+                </button>
+            </form>
+            <p class="mt-2 text-[11px] text-slate-500">You can add multiple addresses. Each is CC'd on every automated portal email.</p>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

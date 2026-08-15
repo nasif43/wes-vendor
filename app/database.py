@@ -59,6 +59,7 @@ async def init_db() -> None:
     from app.decisions.models import Decision  # noqa: F401
     from app.quotations.models import Quotation  # noqa: F401
     from app.requisitions.models import Requisition, RequisitionVendor  # noqa: F401
+    from app.settings.models import SystemSettings  # noqa: F401
     from app.vendors.models import Vendor, vendor_categories  # noqa: F401
 
     from sqlalchemy import text
