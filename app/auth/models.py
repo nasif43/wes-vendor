@@ -23,8 +23,7 @@ class UserProfile(Base):
     email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
     full_name: Mapped[str] = mapped_column(String(255), nullable=False)
     role: Mapped[UserRole] = mapped_column(
-        Enum(UserRole, values_callable=lambda x: [e.value for e in x]),
-        nullable=False, default=UserRole.REQUESTER
+        String(50), nullable=False, default=UserRole.REQUESTER
     )
 
     can_view_quotations: Mapped[bool] = mapped_column(Boolean, default=False)
