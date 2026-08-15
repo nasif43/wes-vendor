@@ -98,7 +98,7 @@
                 Requisitions
             </a>
 
-            {% if not user or user.role in ('purchase_person', 'management', 'admin') %}
+            {% if not user or user.role in ('procurement', 'management', 'admin') %}
             <a href="/vendors" class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition {% block nav_side_ven %}text-slate-400 hover:text-white hover:bg-slate-800/60{% endblock %}">
                 <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
                 Vendors Directory
@@ -117,7 +117,7 @@
             </a>
             {% endif %}
 
-            {% if not user or user.role in ('purchase_person', 'management', 'admin') %}
+            {% if not user or user.role in ('procurement', 'management', 'admin') %}
             <a href="/decisions" class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition {% block nav_side_dec %}text-slate-400 hover:text-white hover:bg-slate-800/60{% endblock %}">
                 <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                 Decisions &amp; Approvals

@@ -78,7 +78,7 @@
     </div>
 
     <!-- ACTION BUTTON: Invite Vendors & Send RFQ (draft or new) -->
-    {% if req.status.value in ('draft', 'new') and user and user.role in ('purchase_person', 'admin') %}
+    {% if req.status.value in ('draft', 'new') and user and user.role in ('procurement', 'admin') %}
     <a href="/requisitions/{{ req.id }}/select-vendors" class="flex items-center justify-center gap-2 bg-brand-600 text-white py-3.5 rounded-xl text-sm font-semibold hover:bg-brand-700 transition shadow-sm mb-4 active:scale-[0.98]">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
         Invite Vendors &amp; Send RFQ

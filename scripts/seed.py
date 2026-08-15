@@ -52,7 +52,7 @@ USERS = [
     dict(
         email="tanjila.akter@wenerbd.com",
         full_name="Tanjila Akter",
-        role=UserRole.PURCHASE_PERSON,
+        role=UserRole.PROCUREMENT,
         can_view_quotations=True,
         can_do_qc=False,
         is_management=False,
@@ -168,7 +168,7 @@ async def main():
         users_by_role = {u.role: u for u in user_objs}
         requester, purchaser, manager, qc, admin = (
             users_by_role[UserRole.REQUESTER],
-            users_by_role[UserRole.PURCHASE_PERSON],
+            users_by_role[UserRole.PROCUREMENT],
             users_by_role[UserRole.MANAGEMENT],
             users_by_role[UserRole.QC_RECEIVER],
             users_by_role[UserRole.ADMIN],

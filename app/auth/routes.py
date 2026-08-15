@@ -39,9 +39,9 @@ async def login(
         full_name = clean_email.split("@")[0].replace(".", " ").title()
         is_admin_or_mgmt = "admin" in clean_email or "manage" in clean_email or "mizanur" in clean_email
         is_qc = "qc" in clean_email or "kamrul" in clean_email
-        is_purchaser = "purchase" in clean_email or "tanjila" in clean_email
+        is_purchaser = "procurement" in clean_email or "tanjila" in clean_email
 
-        role = UserRole.ADMIN if is_admin_or_mgmt else (UserRole.QC_RECEIVER if is_qc else (UserRole.PURCHASE_PERSON if is_purchaser else UserRole.REQUESTER))
+        role = UserRole.ADMIN if is_admin_or_mgmt else (UserRole.QC_RECEIVER if is_qc else (UserRole.PROCUREMENT if is_purchaser else UserRole.REQUESTER))
         user = UserProfile(
             email=clean_email,
             full_name=full_name,

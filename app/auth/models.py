@@ -10,7 +10,7 @@ from app.database import Base
 
 class UserRole(enum.StrEnum):
     REQUESTER = "requester"
-    PURCHASE_PERSON = "purchase_person"
+    PROCUREMENT = "procurement"
     MANAGEMENT = "management"
     QC_RECEIVER = "qc_receiver"
     ADMIN = "admin"
@@ -41,7 +41,7 @@ class UserProfile(Base):
     @property
     def can_see_quotes(self) -> bool:
         role_str = str(self.role.value) if hasattr(self.role, "value") else str(self.role or "")
-        return bool(self.can_view_quotations or self.is_management or role_str in ("management", "admin", "purchase_person"))
+        return bool(self.can_view_quotations or self.is_management or role_str in ("management", "admin", "procurement"))
 
     @property
     def can_perform_qc(self) -> bool:

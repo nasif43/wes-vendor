@@ -201,7 +201,7 @@ async def send_requisition(
     db: AsyncSession = Depends(get_db),
 ):
     from app.main import templates
-    if user.role not in [UserRole.PURCHASE_PERSON, UserRole.ADMIN]:
+    if user.role not in [UserRole.PROCUREMENT, UserRole.ADMIN]:
         return RedirectResponse(url=f"/requisitions/{req_id}?error=Permission+denied", status_code=303)
 
     result = await db.execute(select(Requisition).where(Requisition.id == req_id))

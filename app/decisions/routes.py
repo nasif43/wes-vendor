@@ -40,7 +40,7 @@ async def create_decision(
     db: AsyncSession = Depends(get_db),
 ):
     from app.auth.models import UserRole
-    if user.role not in [UserRole.PURCHASE_PERSON, UserRole.ADMIN]:
+    if user.role not in [UserRole.PROCUREMENT, UserRole.ADMIN]:
         return RedirectResponse(url=f"/quotations/compare/{req_id}?error=Permission+denied", status_code=303)
 
     existing = await db.execute(
