@@ -19,7 +19,11 @@ class RequisitionStatus(enum.StrEnum):
     @classmethod
     def _missing_(cls, value):
         if isinstance(value, str):
-            val_lower = value.lower()
+            val_lower = value.lower().replace("-", "_")
+            if val_lower in ("sent", "decided", "reviewed"):
+                return cls.IN_PROGRESS
+            if val_lower == "delivered":
+                return cls.RECEIVED
             for member in cls:
                 if member.value.lower() == val_lower or member.name.lower() == val_lower:
                     return member

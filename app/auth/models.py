@@ -15,6 +15,17 @@ class UserRole(enum.StrEnum):
     QC_RECEIVER = "qc_receiver"
     ADMIN = "admin"
 
+    @classmethod
+    def _missing_(cls, value):
+        if isinstance(value, str):
+            val_lower = value.lower().replace("-", "_")
+            if val_lower in ("purchase_person", "purchaser", "purchase"):
+                return cls.PROCUREMENT
+            for member in cls:
+                if member.value.lower() == val_lower or member.name.lower() == val_lower:
+                    return member
+        return cls.REQUESTER
+
 
 class UserProfile(Base):
     __tablename__ = "user_profiles"
