@@ -24,10 +24,14 @@ _connect_args: dict = {}
 if "asyncpg" in db_url:
     _connect_args = {"prepared_statement_cache_size": 0}
 
+from sqlalchemy.pool import NullPool
+
+# NullPool is required for serverless environments (Vercel) and PgBouncer.
+# It prevents stale connection caches and InvalidCachedStatementError.
 engine = create_async_engine(
     db_url,
     echo=settings.debug,
-    pool_pre_ping=True,
+    poolclass=NullPool,
     connect_args=_connect_args,
 )
 
