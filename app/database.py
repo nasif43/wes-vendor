@@ -18,10 +18,17 @@ if db_url.startswith("postgresql://"):
 elif db_url.startswith("postgres://"):
     db_url = db_url.replace("postgres://", "postgresql+asyncpg://", 1)
 
+# prepared_statement_cache_size=0 prevents asyncpg from caching query plans
+# across connection pool reuse — avoids InvalidCachedStatementError after schema changes.
+_connect_args: dict = {}
+if "asyncpg" in db_url:
+    _connect_args = {"prepared_statement_cache_size": 0}
+
 engine = create_async_engine(
     db_url,
     echo=settings.debug,
     pool_pre_ping=True,
+    connect_args=_connect_args,
 )
 
 AsyncSessionLocal = async_sessionmaker(
@@ -150,9 +157,4 @@ async def init_db() -> None:
                 await conn.execute(text("ALTER TABLE requisitions ADD COLUMN invoice_number VARCHAR(255)"))
                 await conn.execute(text("ALTER TABLE requisitions ADD COLUMN payment_status VARCHAR(50) DEFAULT 'pending'"))
 
-        if dialect_name == "postgresql":
-            for enum_val in ['draft', 'new', 'in_progress', 'submitted', 'received', 'closed']:
-                try:
-                    await conn.execute(text(f"ALTER TYPE requisitionstatus ADD VALUE IF NOT EXISTS '{enum_val}'"))
-                except Exception:
-                    pass
+        # status and role columns are String(50) — no Postgres native enum to migrate
