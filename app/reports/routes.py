@@ -1,6 +1,5 @@
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy import select as sa_select
 from sqlalchemy.orm import selectinload
 
@@ -10,11 +9,11 @@ from app.database import get_db
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.requisitions.models import Requisition
 from app.decisions.models import Decision
+from app.main import templates
 import logging
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
-templates = Jinja2Templates(directory="app/templates")
 
 @router.get("/", response_class=HTMLResponse)
 async def list_reports(

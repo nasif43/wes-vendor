@@ -6,18 +6,17 @@ import logging
 
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import RedirectResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.models import UserProfile
 from app.database import get_db
 from app.dependencies import require_role
+from app.main import templates
 from app.settings.models import SystemSettings
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
-templates = Jinja2Templates(directory="app/templates")
 
 _MANAGEMENT_ROLES = ("management", "admin")
 
@@ -64,6 +63,8 @@ async def add_cc_email(
         cc_row.value = SystemSettings.encode_list(emails)
 
     await db.commit()
+    from app.email.resend import invalidate_cc_cache
+    invalidate_cc_cache()
     logger.info("CC email added by %s: %s", user.email, email)
     return RedirectResponse("/settings?saved=1", status_code=303)
 
@@ -81,6 +82,8 @@ async def remove_cc_email(
         emails = [e for e in cc_row.get_list() if e != email]
         cc_row.value = SystemSettings.encode_list(emails)
         await db.commit()
+        from app.email.resend import invalidate_cc_cache
+        invalidate_cc_cache()
         logger.info("CC email removed by %s: %s", user.email, email)
 
     return RedirectResponse("/settings?saved=1", status_code=303)

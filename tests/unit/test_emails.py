@@ -1,19 +1,18 @@
+import pytest
+from unittest.mock import patch
 from app.config import get_settings
 from app.email.resend import (
     build_vendor_invitation,
     build_decision_notification,
     build_submission_notification,
     build_submission_confirmation,
+    invalidate_cc_cache,
 )
 
-def test_email_payloads_with_default_cc():
-    settings = get_settings()
-    original_cc = settings.default_cc
-    try:
-        # Set a default CC email
-        settings.default_cc = "test_cc@example.com"
-        
-        invitation = build_vendor_invitation(
+@pytest.mark.anyio
+async def test_email_payloads_with_default_cc():
+    with patch("app.email.resend.get_cc_emails", return_value=["test_cc@example.com"]):
+        invitation = await build_vendor_invitation(
             to="vendor@example.com",
             vendor_name="Vendor A",
             requisition_title="Req A",
@@ -21,7 +20,7 @@ def test_email_payloads_with_default_cc():
         )
         assert invitation["cc"] == ["test_cc@example.com"]
         
-        decision = build_decision_notification(
+        decision = await build_decision_notification(
             to="vendor@example.com",
             vendor_name="Vendor A",
             requisition_title="Req A",
@@ -29,7 +28,7 @@ def test_email_payloads_with_default_cc():
         )
         assert decision["cc"] == ["test_cc@example.com"]
         
-        submission_notif = build_submission_notification(
+        submission_notif = await build_submission_notification(
             to="creator@example.com",
             vendor_name="Vendor A",
             requisition_title="Req A",
@@ -37,25 +36,18 @@ def test_email_payloads_with_default_cc():
         )
         assert submission_notif["cc"] == ["test_cc@example.com"]
         
-        submission_conf = build_submission_confirmation(
+        submission_conf = await build_submission_confirmation(
             to="vendor@example.com",
             vendor_name="Vendor A",
             requisition_title="Req A",
         )
         assert submission_conf["cc"] == ["test_cc@example.com"]
-        
-    finally:
-        settings.default_cc = original_cc
 
 
-def test_email_payloads_without_default_cc():
-    settings = get_settings()
-    original_cc = settings.default_cc
-    try:
-        # Clear default CC email
-        settings.default_cc = ""
-        
-        invitation = build_vendor_invitation(
+@pytest.mark.anyio
+async def test_email_payloads_without_default_cc():
+    with patch("app.email.resend.get_cc_emails", return_value=[]):
+        invitation = await build_vendor_invitation(
             to="vendor@example.com",
             vendor_name="Vendor A",
             requisition_title="Req A",
@@ -63,7 +55,7 @@ def test_email_payloads_without_default_cc():
         )
         assert "cc" not in invitation
         
-        decision = build_decision_notification(
+        decision = await build_decision_notification(
             to="vendor@example.com",
             vendor_name="Vendor A",
             requisition_title="Req A",
@@ -71,7 +63,7 @@ def test_email_payloads_without_default_cc():
         )
         assert "cc" not in decision
         
-        submission_notif = build_submission_notification(
+        submission_notif = await build_submission_notification(
             to="creator@example.com",
             vendor_name="Vendor A",
             requisition_title="Req A",
@@ -79,12 +71,9 @@ def test_email_payloads_without_default_cc():
         )
         assert "cc" not in submission_notif
         
-        submission_conf = build_submission_confirmation(
+        submission_conf = await build_submission_confirmation(
             to="vendor@example.com",
             vendor_name="Vendor A",
             requisition_title="Req A",
         )
         assert "cc" not in submission_conf
-        
-    finally:
-        settings.default_cc = original_cc

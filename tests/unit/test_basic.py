@@ -25,4 +25,4 @@ def test_redirect_to_login(client):
 
 def test_index_redirects_without_auth(client):
     response = client.get("/", follow_redirects=False)
-    assert response.status_code in (307, 303) or response.status_code == 200
+    assert response.status_code in (302, 303, 307) or response.status_code == 200

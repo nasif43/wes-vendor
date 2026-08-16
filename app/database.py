@@ -30,7 +30,7 @@ from sqlalchemy.pool import NullPool
 # It prevents stale connection caches and InvalidCachedStatementError.
 engine = create_async_engine(
     db_url,
-    echo=settings.debug,
+    echo=False,
     poolclass=NullPool,
     connect_args=_connect_args,
 )

@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     default_cc: str = "muhtasimhossain43@gmail.com"
     secret_key: str = "dev-secret-change-in-production"
     debug: bool = True
+    enable_seed_endpoint: bool = False
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 

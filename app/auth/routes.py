@@ -39,7 +39,7 @@ async def login(
         full_name = clean_email.split("@")[0].replace(".", " ").title()
         is_admin_or_mgmt = "admin" in clean_email or "manage" in clean_email or "mizanur" in clean_email
         is_qc = "qc" in clean_email or "kamrul" in clean_email
-        is_purchaser = "procurement" in clean_email or "tanjila" in clean_email
+        is_purchaser = "procurement" in clean_email or "purchase" in clean_email or "tanjila" in clean_email
 
         role = UserRole.ADMIN if is_admin_or_mgmt else (UserRole.QC_RECEIVER if is_qc else (UserRole.PROCUREMENT if is_purchaser else UserRole.REQUESTER))
         user = UserProfile(
@@ -57,11 +57,15 @@ async def login(
     return RedirectResponse(url="/", status_code=303)
 
 
+from fastapi import HTTPException
+
 @router.get("/seed-db")
 async def trigger_db_seed(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
+    if not settings.enable_seed_endpoint:
+        raise HTTPException(status_code=404, detail="Seed endpoint is disabled")
     try:
         from scripts.seed import main as seed_main
         await seed_main()

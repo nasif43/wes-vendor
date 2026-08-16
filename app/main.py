@@ -22,21 +22,22 @@ templates = Jinja2Templates(directory="app/templates")
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     logger.info("Starting up — DEBUG=%s", settings.debug)
-
     try:
-        await init_db()
-        logger.info("Database tables created/verified")
+        from sqlalchemy import text
+        from app.database import engine
+        async with engine.connect() as conn:
+            await conn.execute(text("SELECT 1"))
+        logger.info("Database connection verified")
     except Exception as e:
-        logger.exception("init_db error during startup: %s", e)
-
-    try:
-        from app.storage import ensure_bucket_exists
-        await ensure_bucket_exists()
-        logger.info("Storage bucket ready")
-    except Exception as e:
-        logger.exception("ensure_bucket_exists error during startup: %s", e)
+        logger.exception("Database connectivity check failed: %s", e)
 
     yield
+
+    try:
+        from app.storage import close_storage_client
+        await close_storage_client()
+    except Exception as e:
+        logger.warning("Error closing storage client: %s", e)
 
 
 
@@ -99,149 +100,145 @@ async def health():
     return {"status": "ok"}
 
 
+from fastapi import Depends
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.dependencies import get_current_user
+from app.auth.models import UserProfile
+from app.database import get_db
+
 @app.get("/")
-async def index(request: Request):
-    from sqlalchemy import select as sa_select, func
-    from app.database import AsyncSessionLocal
-    from app.auth.models import UserProfile
-
-    user_id = request.session.get("user_id")
-    user = None
-    stats = {
-        "open_requisitions": 0,
-        "delivered_requisitions": 0,
-        "pending_payments": 0,
-        "total_vendors": 0,
-        "pending_decisions": 0,
-    }
-    recent_requisitions = []
-    recent_audits = []
-
-    if user_id:
-        async with AsyncSessionLocal() as db:
-            result = await db.execute(
-                sa_select(UserProfile).where(UserProfile.id == user_id)
-            )
-            user = result.scalar_one_or_none()
-
-    if not user:
-        return RedirectResponse(url="/auth/login", status_code=303)
+async def index(
+    request: Request,
+    user: UserProfile = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    import asyncio
+    from sqlalchemy import select as sa_select, func, case
+    from app.vendors.models import Vendor
+    from app.requisitions.models import Requisition, RequisitionStatus
+    from app.decisions.models import Decision
+    from app.audit.models import AuditLog
 
     try:
-        from app.vendors.models import Vendor
-        from app.quotations.models import Quotation
-        from app.requisitions.models import Requisition, RequisitionStatus
-        from app.decisions.models import Decision
-
-        async with AsyncSessionLocal() as db:
-            # 1. Active / In-Progress Requisitions (qc_done=False & status != CLOSED)
-            open_req_r = await db.execute(
-                sa_select(func.count(Requisition.id)).where(
-                    Requisition.qc_done == False,
-                    Requisition.status != RequisitionStatus.CLOSED
+        # 1. Aggregate requisition counts in a single query compatible with both SQLite and Postgres
+        req_stats_stmt = sa_select(
+            func.sum(
+                case(
+                    (
+                        (Requisition.qc_done == False) & (Requisition.status != RequisitionStatus.CLOSED),
+                        1
+                    ),
+                    else_=0
                 )
-            )
-            open_requisitions = open_req_r.scalar_one() or 0
-
-            # 2. Delivered & QC Completed Requisitions
-            delivered_r = await db.execute(
-                sa_select(func.count(Requisition.id)).where(
-                    Requisition.qc_done == True
+            ).label("open_req"),
+            func.sum(
+                case(
+                    (Requisition.qc_done == True, 1),
+                    else_=0
                 )
-            )
-            delivered_requisitions = delivered_r.scalar_one() or 0
-
-            # 3. Pending Payments
-            pending_pay_r = await db.execute(
-                sa_select(func.count(Requisition.id)).where(
-                    Requisition.qc_done == True,
-                    Requisition.payment_status != "paid"
+            ).label("delivered_req"),
+            func.sum(
+                case(
+                    ((Requisition.qc_done == True) & (Requisition.payment_status != "paid"), 1),
+                    else_=0
                 )
+            ).label("pending_pay"),
+        )
+
+        req_stats_r = await db.execute(req_stats_stmt)
+        row = req_stats_r.one()
+        open_requisitions = row.open_req or 0
+        delivered_requisitions = row.delivered_req or 0
+        pending_payments = row.pending_pay or 0
+
+        vendors_r = await db.execute(
+            sa_select(func.count(Vendor.id)).where(
+                Vendor.is_active == True,
+                Vendor.is_temporary == False
             )
-            pending_payments = pending_pay_r.scalar_one() or 0
+        )
+        total_vendors = vendors_r.scalar_one() or 0
 
-            # 4. Total Active Vendors
-            vendors_r = await db.execute(
-                sa_select(func.count(Vendor.id)).where(
-                    Vendor.is_active == True,
-                    Vendor.is_temporary == False
-                )
+        pending_dec_r = await db.execute(
+            sa_select(func.count(Decision.id)).where(
+                Decision.management_approved.is_(None)
             )
-            total_vendors = vendors_r.scalar_one() or 0
+        )
+        pending_decisions = pending_dec_r.scalar_one() or 0
 
-            # 5. Pending Management Decisions
-            pending_dec_r = await db.execute(
-                sa_select(func.count(Decision.id)).where(
-                    Decision.management_approved == None
-                )
+        confirmed_r = await db.execute(
+            sa_select(func.count(Decision.id))
+            .join(Requisition, Decision.requisition_id == Requisition.id)
+            .where(
+                Decision.management_approved == True,
+                Requisition.qc_done == False
             )
-            pending_decisions = pending_dec_r.scalar_one() or 0
+        )
+        confirmed_orders = confirmed_r.scalar_one() or 0
 
-            # 6. Confirmed Active Orders (Management approved, awaiting QC delivery)
-            confirmed_r = await db.execute(
-                sa_select(func.count(Decision.id))
-                .join(Requisition, Decision.requisition_id == Requisition.id)
-                .where(
-                    Decision.management_approved == True,
-                    Requisition.qc_done == False
-                )
+        completed_reqs_r = await db.execute(
+            sa_select(Requisition, Decision)
+            .join(Decision, Requisition.id == Decision.requisition_id)
+            .where(
+                Requisition.qc_done == True,
+                Requisition.qc_done_at.isnot(None),
+                Decision.approved_at.isnot(None)
             )
-            confirmed_orders = confirmed_r.scalar_one() or 0
+        )
 
-            # 7. Calculate Real Average Lead Time (Time from Decision Approval to QC Received)
-            completed_reqs_r = await db.execute(
-                sa_select(Requisition, Decision)
-                .join(Decision, Requisition.id == Decision.requisition_id)
-                .where(
-                    Requisition.qc_done == True,
-                    Requisition.qc_done_at.isnot(None),
-                    Decision.approved_at.isnot(None)
-                )
-            )
-            completed_pairs = completed_reqs_r.all()
-            lead_times = []
-            for req, dec in completed_pairs:
-                if req.qc_done_at and dec.approved_at:
-                    dur_days = (req.qc_done_at - dec.approved_at).total_seconds() / 86400.0
-                    if dur_days >= 0:
-                        lead_times.append(dur_days)
+        recent_req_r = await db.execute(
+            sa_select(Requisition)
+            .order_by(Requisition.created_at.desc())
+            .limit(5)
+        )
 
-            avg_lead_time_days = round(sum(lead_times) / len(lead_times), 1) if lead_times else None
+        audit_r = await db.execute(
+            sa_select(AuditLog)
+            .order_by(AuditLog.created_at.desc())
+            .limit(5)
+        )
 
-            total_reqs = open_requisitions + delivered_requisitions
-            qc_rate = round((delivered_requisitions / total_reqs * 100.0), 1) if total_reqs > 0 else 0.0
+        lead_times = []
+        for req, dec in completed_reqs_r.all():
+            if req.qc_done_at and dec.approved_at:
+                dur_days = (req.qc_done_at - dec.approved_at).total_seconds() / 86400.0
+                if dur_days >= 0:
+                    lead_times.append(dur_days)
 
-            stats = {
-                "open_requisitions": open_requisitions,
-                "delivered_requisitions": delivered_requisitions,
-                "pending_payments": pending_payments,
-                "total_vendors": total_vendors,
-                "pending_decisions": pending_decisions,
-                "confirmed_orders": confirmed_orders,
-                "avg_lead_time_days": avg_lead_time_days,
-                "total_requisitions": total_reqs,
-                "qc_completion_rate": qc_rate,
-            }
+        avg_lead_time_days = round(sum(lead_times) / len(lead_times), 1) if lead_times else None
+        total_reqs = open_requisitions + delivered_requisitions
+        qc_rate = round((delivered_requisitions / total_reqs * 100.0), 1) if total_reqs > 0 else 0.0
 
-            recent_r = await db.execute(
-                sa_select(Requisition)
-                .order_by(Requisition.created_at.desc())
-                .limit(5)
-            )
-            recent_requisitions = list(recent_r.scalars().all())
+        stats = {
+            "open_requisitions": open_requisitions,
+            "delivered_requisitions": delivered_requisitions,
+            "pending_payments": pending_payments,
+            "total_vendors": total_vendors,
+            "pending_decisions": pending_decisions,
+            "confirmed_orders": confirmed_orders,
+            "avg_lead_time_days": avg_lead_time_days,
+            "total_requisitions": total_reqs,
+            "qc_completion_rate": qc_rate,
+        }
 
-            try:
-                from app.audit.models import AuditLog
-                audit_r = await db.execute(
-                    sa_select(AuditLog)
-                    .order_by(AuditLog.created_at.desc())
-                    .limit(5)
-                )
-                recent_audits = list(audit_r.scalars().all())
-            except Exception as audit_err:
-                logger.warning("Failed to fetch recent audit logs: %s", audit_err)
+        recent_requisitions = [] if isinstance(recent_req_r, Exception) else list(recent_req_r.scalars().all())
+        recent_audits = [] if isinstance(audit_r, Exception) else list(audit_r.scalars().all())
+
     except Exception as err:
         logger.exception("Failed to load dashboard stats: %s", err)
+        stats = {
+            "open_requisitions": 0,
+            "delivered_requisitions": 0,
+            "pending_payments": 0,
+            "total_vendors": 0,
+            "pending_decisions": 0,
+            "confirmed_orders": 0,
+            "avg_lead_time_days": None,
+            "total_requisitions": 0,
+            "qc_completion_rate": 0.0,
+        }
+        recent_requisitions = []
+        recent_audits = []
 
     return templates.TemplateResponse(request, "index.html", {
         "user": user,

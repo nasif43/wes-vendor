@@ -124,7 +124,7 @@ async def approve_decision(
             req.status = RequisitionStatus.SUBMITTED
 
         # ── Audit log ──────────────────────────────────────────────────────────
-        _req_title = decision.requisition.title if decision.requisition else decision.requisition_id
+        _req_title = req.title if req else (decision.requisition.title if decision.requisition else decision.requisition_id)
         await log_action(
             db,
             actor=user,
@@ -137,17 +137,13 @@ async def approve_decision(
                   else f"Rejected by {user.full_name} ({user.email})",
         )
 
-        result = await db.execute(select(Requisition).where(Requisition.id == decision.requisition_id))
-        req = result.scalar_one_or_none()
-
         result = await db.execute(
             select(RequisitionVendor).where(RequisitionVendor.requisition_id == decision.requisition_id)
         )
         vendor_links = result.scalars().all()
 
         for vl in vendor_links:
-            result = await db.execute(select(Vendor).where(Vendor.id == vl.vendor_id))
-            vendor = result.scalar_one_or_none()
+            vendor = vl.vendor
             if vendor and vendor.contact_email:
                 is_winner = vl.vendor_id == decision.winning_vendor_id
                 param = await build_decision_notification(

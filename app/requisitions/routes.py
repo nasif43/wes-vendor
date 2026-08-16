@@ -201,13 +201,14 @@ async def send_requisition(
     db: AsyncSession = Depends(get_db),
 ):
     from app.main import templates
-    if user.role not in [UserRole.PROCUREMENT, UserRole.ADMIN]:
-        return RedirectResponse(url=f"/requisitions/{req_id}?error=Permission+denied", status_code=303)
 
     result = await db.execute(select(Requisition).where(Requisition.id == req_id))
     req = result.scalar_one_or_none()
     if not req:
         return RedirectResponse(url="/requisitions", status_code=303)
+
+    if user.role not in [UserRole.PROCUREMENT, UserRole.ADMIN] and req.created_by != user.id:
+        return RedirectResponse(url=f"/requisitions/{req_id}?error=Permission+denied", status_code=303)
 
     if not vendor_ids:
         result = await db.execute(
@@ -228,7 +229,11 @@ async def send_requisition(
             },
         )
 
-    email_params = []
+    # Batch fetch selected vendors
+    vendors_res = await db.execute(select(Vendor).where(Vendor.id.in_(vendor_ids)))
+    vendors_map = {v.id: v for v in vendors_res.scalars().all()}
+
+    links = []
     for vendor_id in vendor_ids:
         link = RequisitionVendor(
             requisition_id=req_id,
@@ -237,10 +242,13 @@ async def send_requisition(
             status="pending",
         )
         db.add(link)
-        await db.flush()
+        links.append(link)
 
-        result = await db.execute(select(Vendor).where(Vendor.id == vendor_id))
-        vendor = result.scalar_one_or_none()
+    await db.flush()
+
+    email_params = []
+    for link in links:
+        vendor = vendors_map.get(link.vendor_id)
         if vendor and vendor.contact_email:
             quote_url = f"{str(request.base_url).rstrip('/')}/vendor-quote/{link.unique_link_token}"
             email_params.append(

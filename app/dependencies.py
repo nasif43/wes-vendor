@@ -17,6 +17,8 @@ async def get_current_user(
     user_id: str | None = Depends(_get_user_id),
     db: AsyncSession = Depends(get_db),
 ) -> UserProfile:
+    if cached := getattr(request.state, "_current_user", None):
+        return cached
     if not user_id:
         raise HTTPException(
             status_code=status.HTTP_302_FOUND,
@@ -29,6 +31,7 @@ async def get_current_user(
             status_code=status.HTTP_302_FOUND,
             headers={"Location": "/auth/login"},
         )
+    request.state._current_user = user
     return user
 
 

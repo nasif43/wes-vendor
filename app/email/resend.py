@@ -24,16 +24,39 @@ if settings.resend_api_key:
     resend.api_key = settings.resend_api_key
 
 
+import time
+
+_cc_cache: list[str] | None = None
+_cc_cache_ts: float = 0.0
+_CC_TTL: float = 300.0  # cache for 5 minutes
+
+
+def invalidate_cc_cache() -> None:
+    global _cc_cache, _cc_cache_ts
+    _cc_cache = None
+    _cc_cache_ts = 0.0
+
+
+def _seed_from_env() -> list[str]:
+    env_cc = settings.default_cc.strip() if settings.default_cc else ""
+    return [e.strip() for e in env_cc.split(",") if e.strip()] if env_cc else []
+
+
 # ──────────────────────────────────────────────────────────────────────────────
 # CC helpers
 # ──────────────────────────────────────────────────────────────────────────────
 
 async def get_cc_emails() -> list[str]:
     """
-    Return the current CC list from the DB.
+    Return the current CC list from the DB with in-memory TTL caching.
     Falls back to DEFAULT_CC env var if no DB row exists yet.
     Never raises — returns [] on any error.
     """
+    global _cc_cache, _cc_cache_ts
+    now = time.monotonic()
+    if _cc_cache is not None and (now - _cc_cache_ts) < _CC_TTL:
+        return _cc_cache
+
     try:
         from app.database import AsyncSessionLocal
         from app.settings.models import SystemSettings
@@ -41,11 +64,12 @@ async def get_cc_emails() -> list[str]:
         async with AsyncSessionLocal() as db:
             row = await db.get(SystemSettings, SystemSettings.cc_emails_key())
             if row is not None:
-                return row.get_list()
+                _cc_cache = row.get_list()
+                _cc_cache_ts = now
+                return _cc_cache
 
             # No DB row yet — seed from env var and persist
-            env_cc = settings.default_cc.strip() if settings.default_cc else ""
-            seeded: list[str] = [e.strip() for e in env_cc.split(",") if e.strip()] if env_cc else []
+            seeded = _seed_from_env()
             if seeded:
                 new_row = SystemSettings(
                     key=SystemSettings.cc_emails_key(),
@@ -54,12 +78,14 @@ async def get_cc_emails() -> list[str]:
                 db.add(new_row)
                 await db.commit()
                 logger.info("Seeded CC emails from env: %s", seeded)
-            return seeded
+            _cc_cache = seeded
+            _cc_cache_ts = now
+            return _cc_cache
     except Exception as exc:
         logger.warning("Could not load CC emails from DB: %s", exc)
-        # Hard fallback — env var
-        env_cc = settings.default_cc.strip() if settings.default_cc else ""
-        return [e.strip() for e in env_cc.split(",") if e.strip()] if env_cc else []
+        if _cc_cache is not None:
+            return _cc_cache
+        return _seed_from_env()
 
 
 def _apply_cc(payload: dict, cc: list[str]) -> dict:
