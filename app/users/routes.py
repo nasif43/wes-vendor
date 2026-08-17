@@ -223,7 +223,7 @@ async def delete_user(
         return RedirectResponse(url="/users?error=Permission+denied", status_code=303)
 
     if user.id == target_user_id:
-        return RedirectResponse(url="/users?error=You+cannot+delete+your+own+account", status_code=303)
+        return RedirectResponse(url="/users?error=You+cannot+deactivate+your+own+account", status_code=303)
 
     result = await db.execute(select(UserProfile).where(UserProfile.id == target_user_id))
     target_user = result.scalar_one_or_none()
@@ -233,37 +233,21 @@ async def delete_user(
     user_name = target_user.full_name
     user_email = target_user.email
 
-    try:
-        await db.delete(target_user)
-        await db.flush()
-        await log_action(
-            db,
-            actor=user,
-            action="USER_DELETED",
-            entity_type="user_profile",
-            entity_id=target_user_id,
-            entity_label=user_name,
-            notes=f"User {user_name} ({user_email}) permanently removed by {user.full_name}.",
-        )
-        return RedirectResponse(url=f"/users?success=User+{user_name.replace(' ', '+')}+deleted", status_code=303)
-    except Exception:
-        await db.rollback()
-        # Fallback to safe deactivation if foreign key constraints exist (e.g. user created requisitions or performed QC)
-        result = await db.execute(select(UserProfile).where(UserProfile.id == target_user_id))
-        target_user = result.scalar_one_or_none()
-        if target_user:
-            target_user.is_active = False
-            await log_action(
-                db,
-                actor=user,
-                action="USER_DEACTIVATED_SAFE",
-                entity_type="user_profile",
-                entity_id=target_user.id,
-                entity_label=user_name,
-                notes=f"User {user_name} has linked history (requisitions/QC); account safely deactivated instead of deleted to protect audit logs.",
-            )
-            await db.flush()
-        return RedirectResponse(
-            url=f"/users?warning=User+{user_name.replace(' ', '+')}+has+linked+order+history.+Account+was+deactivated+to+preserve+audit+trail.",
-            status_code=303,
-        )
+    # Pure soft delete: mark as inactive to preserve historical audit logs and foreign keys
+    target_user.is_active = False
+
+    await log_action(
+        db,
+        actor=user,
+        action="USER_SOFT_DELETED",
+        entity_type="user_profile",
+        entity_id=target_user.id,
+        entity_label=user_name,
+        notes=f"User {user_name} ({user_email}) soft-deleted (deactivated) by {user.full_name}.",
+    )
+    await db.flush()
+
+    return RedirectResponse(
+        url=f"/users?success=User+{user_name.replace(' ', '+')}+has+been+deactivated+(soft-deleted)",
+        status_code=303,
+    )
