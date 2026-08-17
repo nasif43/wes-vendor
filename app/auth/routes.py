@@ -76,34 +76,20 @@ async def trigger_db_seed(
         return RedirectResponse(url=f"/auth/login?error=Seed+failed:+{str(e)[:100]}", status_code=303)
 
 
-@router.get("/signup", response_class=HTMLResponse)
+@router.get("/signup")
 async def signup_page(request: Request):
-    from app.main import templates
-    return templates.TemplateResponse(request, "auth/signup.html")
+    return RedirectResponse(
+        url="/auth/login?error=Self-registration+is+disabled.+User+accounts+are+provisioned+by+System+Administrator.",
+        status_code=303,
+    )
 
 
 @router.post("/signup")
-async def signup(
-    request: Request,
-    email: str = Form(...),
-    password: str = Form(...),
-    full_name: str = Form(...),
-    db: AsyncSession = Depends(get_db),
-):
-    from app.main import templates
-    result = await db.execute(select(UserProfile).where(UserProfile.email == email))
-    existing = result.scalar_one_or_none()
-    if existing:
-        return templates.TemplateResponse(
-            request, "auth/signup.html", {"error": "Email already registered"}
-        )
-
-    user = UserProfile(email=email, full_name=full_name, role=UserRole.PROCUREMENT)
-    db.add(user)
-    await db.flush()
-
-    request.session["user_id"] = user.id
-    return RedirectResponse(url="/", status_code=303)
+async def signup(request: Request):
+    return RedirectResponse(
+        url="/auth/login?error=Self-registration+is+disabled.+User+accounts+are+provisioned+by+System+Administrator.",
+        status_code=303,
+    )
 
 
 @router.get("/logout")
