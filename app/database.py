@@ -124,11 +124,32 @@ async def init_db() -> None:
             if dialect_name == "postgresql":
                 await conn.execute(text("ALTER TABLE user_profiles ADD COLUMN can_view_quotations BOOLEAN DEFAULT FALSE"))
                 await conn.execute(text("ALTER TABLE user_profiles ADD COLUMN can_do_qc BOOLEAN DEFAULT FALSE"))
+                await conn.execute(text("ALTER TABLE user_profiles ADD COLUMN can_view_all_requisitions BOOLEAN DEFAULT FALSE"))
                 await conn.execute(text("ALTER TABLE user_profiles ADD COLUMN is_management BOOLEAN DEFAULT FALSE"))
             else:
                 await conn.execute(text("ALTER TABLE user_profiles ADD COLUMN can_view_quotations BOOLEAN DEFAULT 0"))
                 await conn.execute(text("ALTER TABLE user_profiles ADD COLUMN can_do_qc BOOLEAN DEFAULT 0"))
+                await conn.execute(text("ALTER TABLE user_profiles ADD COLUMN can_view_all_requisitions BOOLEAN DEFAULT 0"))
                 await conn.execute(text("ALTER TABLE user_profiles ADD COLUMN is_management BOOLEAN DEFAULT 0"))
+        else:
+            # Check individual column can_view_all_requisitions
+            view_all_exists = False
+            if dialect_name == "postgresql":
+                res = await conn.execute(text(
+                    "SELECT 1 FROM information_schema.columns "
+                    "WHERE table_name='user_profiles' AND column_name='can_view_all_requisitions'"
+                ))
+                view_all_exists = res.scalar() is not None
+            else:
+                res = await conn.execute(text("PRAGMA table_info(user_profiles)"))
+                columns = res.fetchall()
+                view_all_exists = any(col[1] == "can_view_all_requisitions" for col in columns)
+            if not view_all_exists:
+                if dialect_name == "postgresql":
+                    await conn.execute(text("ALTER TABLE user_profiles ADD COLUMN can_view_all_requisitions BOOLEAN DEFAULT FALSE"))
+                else:
+                    await conn.execute(text("ALTER TABLE user_profiles ADD COLUMN can_view_all_requisitions BOOLEAN DEFAULT 0"))
+
 
 
         # Requisition new columns for QC and Delivery

@@ -62,14 +62,26 @@ def test_vendor_is_temporary_true(db_session):
 
 
 def test_user_permission_properties(db_session):
-    u = UserProfile(id="u1", email="req@test.com", full_name="Requester User", role=UserRole.REQUESTER)
-    assert u.can_see_quotes is False
+    u = UserProfile(id="u1", email="proc@test.com", full_name="Procurement User", role=UserRole.PROCUREMENT)
+    assert u.is_procurement is True
+    assert u.can_create_requisitions is True
     assert u.can_perform_qc is False
     assert u.has_management_authority is False
 
-    # Grant QC and Quote visibility
-    u.can_view_quotations = True
+    # Grant QC receiver rights to procurement user
     u.can_do_qc = True
-    assert u.can_see_quotes is True
     assert u.can_perform_qc is True
-    assert u.has_management_authority is False
+
+    # QC Receiver user
+    qc_user = UserProfile(id="u2", email="qc@test.com", full_name="QC Receiver", role=UserRole.QC_RECEIVER)
+    assert qc_user.can_perform_qc is True
+    assert qc_user.can_create_requisitions is False
+    assert qc_user.has_management_authority is False
+
+    # Management user
+    mgmt_user = UserProfile(id="u3", email="mgmt@test.com", full_name="Management User", role=UserRole.MANAGEMENT)
+    assert mgmt_user.has_management_authority is True
+    assert mgmt_user.can_create_requisitions is True
+    assert mgmt_user.can_perform_qc is True
+    assert mgmt_user.can_see_quotes is True
+

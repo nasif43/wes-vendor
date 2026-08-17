@@ -23,7 +23,8 @@
                 <thead>
                     <tr class="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                         <th class="py-3.5 px-4">User Details</th>
-                        <th class="py-3.5 px-4 text-center">👁️ Quotation Visibility</th>
+                        <th class="py-3.5 px-4 text-center">👁️ All Requisitions Access</th>
+                        <th class="py-3.5 px-4 text-center">📄 Quotation Visibility</th>
                         <th class="py-3.5 px-4 text-center">🚚 QC &amp; Delivery Rights</th>
                         <th class="py-3.5 px-4 text-center">🔒 Management Authority</th>
                         <th class="py-3.5 px-4 text-right">Action</th>
@@ -41,9 +42,19 @@
                                 </div>
                                 <div class="min-w-0">
                                     <div class="font-bold text-slate-900 truncate">{{ target.full_name }}</div>
-                                    <div class="text-[11px] text-slate-500 truncate">{{ target.email }}</div>
+                                    <div class="text-[11px] text-slate-500 truncate">{{ target.email }} · <span class="capitalize font-semibold text-brand-600">{{ target.role | replace('_', ' ') }}</span></div>
                                 </div>
                             </div>
+                        </td>
+
+                        <!-- ALL REQUISITIONS VISIBILITY TOGGLE -->
+                        <td class="py-4 px-4 text-center">
+                            <label class="inline-flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" name="can_view_all_requisitions" value="true"
+                                       {% if target.can_see_all_requisitions %}checked{% endif %}
+                                       class="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer">
+                                <span class="text-[11px] font-semibold text-slate-700">See All Orders</span>
+                            </label>
                         </td>
 
                         <!-- QUOTATION VISIBILITY TOGGLE -->
@@ -52,7 +63,7 @@
                                 <input type="checkbox" name="can_view_quotations" value="true"
                                        {% if target.can_see_quotes %}checked{% endif %}
                                        class="w-4 h-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500 cursor-pointer">
-                                <span class="text-[11px] font-semibold text-slate-700">Can View Quotes</span>
+                                <span class="text-[11px] font-semibold text-slate-700">View Quotes</span>
                             </label>
                         </td>
 
@@ -75,6 +86,7 @@
                                 <span class="text-[11px] font-semibold text-slate-700">Management</span>
                             </label>
                         </td>
+
 
                         <!-- SAVE BUTTON -->
                         <td class="py-4 px-4 text-right">

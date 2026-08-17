@@ -27,10 +27,14 @@ async def list_requisitions(
     from app.main import templates
     from app.decisions.models import Decision
 
-    result = await db.execute(
-        select(Requisition).order_by(Requisition.created_at.desc())
-    )
+    stmt = select(Requisition).order_by(Requisition.created_at.desc())
+    if not user.can_see_all_requisitions:
+        # Procurement officers only see requisitions they created unless given access to see all
+        stmt = stmt.where(Requisition.created_by == user.id)
+
+    result = await db.execute(stmt)
     requisitions = list(result.scalars().all())
+
 
     req_ids = [r.id for r in requisitions]
     decisions_map = {}
@@ -45,10 +49,10 @@ async def list_requisitions(
     for req in requisitions:
         decision = decisions_map.get(req.id)
         
-        # Determine Kanban stage per exact user specification:
+        # Determine Kanban stage:
         # 1. 'closed': QC done
         # 2. 'received': Delivery received (pending QC)
-        # 3. 'submitted': Vendors selected / decision approved
+        # 3. 'submitted': Vendor selected (Decision made / awaiting delivery)
         # 4. 'in_progress': Quotes under review / vendors yet to be selected
         # 5. 'new': Vendors invited to send quotations
         # 6. 'draft': Created but not forwarded to any vendors yet
@@ -56,14 +60,15 @@ async def list_requisitions(
             stage = "closed"
         elif req.status == RequisitionStatus.RECEIVED:
             stage = "received"
-        elif decision and decision.management_approved is True:
+        elif req.status == RequisitionStatus.SUBMITTED or decision:
             stage = "submitted"
-        elif req.status == RequisitionStatus.IN_PROGRESS or (decision and decision.management_approved is None and req.vendor_links):
+        elif req.status == RequisitionStatus.IN_PROGRESS:
             stage = "in_progress"
         elif req.status == RequisitionStatus.NEW or (req.vendor_links and len(req.vendor_links) > 0):
             stage = "new"
         else:
             stage = "draft"
+
 
         confirmed_at = decision.approved_at or decision.decided_at if decision else None
         lead_time_days = None

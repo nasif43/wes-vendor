@@ -38,8 +38,9 @@ async def update_user_permissions(
     request: Request,
     can_view_quotations: bool = Form(False),
     can_do_qc: bool = Form(False),
+    can_view_all_requisitions: bool = Form(False),
     is_management: bool = Form(False),
-    role: str = Form("requester"),
+    role: str = Form("procurement"),
     user: UserProfile = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -53,10 +54,12 @@ async def update_user_permissions(
 
     old_view_quotes = target_user.can_view_quotations
     old_do_qc = target_user.can_do_qc
+    old_view_all = target_user.can_view_all_requisitions
     old_is_mgmt = target_user.is_management
 
     target_user.can_view_quotations = can_view_quotations
     target_user.can_do_qc = can_do_qc
+    target_user.can_view_all_requisitions = can_view_all_requisitions
     target_user.is_management = is_management
     
     if role in [r.value for r in UserRole]:
@@ -68,10 +71,13 @@ async def update_user_permissions(
         changes.append(f"Quotation Visibility: {'Granted' if can_view_quotations else 'Revoked'}")
     if old_do_qc != can_do_qc:
         changes.append(f"QC Receiver Rights: {'Granted' if can_do_qc else 'Revoked'}")
+    if old_view_all != can_view_all_requisitions:
+        changes.append(f"All Requisitions Visibility: {'Granted' if can_view_all_requisitions else 'Revoked'}")
     if old_is_mgmt != is_management:
         changes.append(f"Management Authority: {'Granted' if is_management else 'Revoked'}")
 
     change_summary = ", ".join(changes) if changes else "Permissions updated"
+
 
     await log_action(
         db,

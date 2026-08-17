@@ -98,7 +98,7 @@
                 Requisitions
             </a>
 
-            {% if not user or user.role in ('procurement', 'management', 'admin') %}
+            {% if not user or user.is_procurement or user.has_management_authority %}
             <a href="/vendors" class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition {% block nav_side_ven %}text-slate-400 hover:text-white hover:bg-slate-800/60{% endblock %}">
                 <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
                 Vendors Directory
@@ -117,14 +117,12 @@
             </a>
             {% endif %}
 
-            {% if not user or user.role in ('procurement', 'management', 'admin') %}
+            {% if not user or user.has_management_authority %}
             <a href="/decisions" class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition {% block nav_side_dec %}text-slate-400 hover:text-white hover:bg-slate-800/60{% endblock %}">
                 <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                 Decisions &amp; Approvals
             </a>
-            {% endif %}
 
-            {% if not user or user.role in ('management', 'admin') %}
             <a href="/reports" class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition {% block nav_side_del %}text-slate-400 hover:text-white hover:bg-slate-800/60{% endblock %}">
                 <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
                 Reports &amp; Analytics
@@ -146,6 +144,7 @@
             </a>
             {% endif %}
         </nav>
+
 
         <!-- BOTTOM SYSTEM HELP BOX -->
         <div class="p-4 m-3 rounded-2xl bg-gradient-to-b from-slate-800/80 to-slate-900 border border-slate-700/50 shrink-0">
@@ -172,10 +171,12 @@
 
             <!-- RIGHT TOP USER & ACTION WIDGETS -->
             <div class="flex items-center gap-4">
+                {% if user and user.can_create_requisitions %}
                 <a href="/requisitions/new" class="inline-flex items-center gap-2 px-3.5 py-2 bg-brand-600 text-white rounded-xl text-xs font-bold hover:bg-brand-700 transition shadow-xs active:scale-95">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
                     New Requisition
                 </a>
+                {% endif %}
 
                 <!-- User Profile Pill -->
                 <div class="flex items-center gap-3 pl-3 border-l border-slate-200">
@@ -244,40 +245,41 @@
 <!-- MOBILE BOTTOM TAB BAR -->
 {% if user is defined and user %}
 <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-40 safe-bottom lg:hidden">
-    <div class="max-w-md mx-auto grid grid-cols-5 px-2">
+    <div class="max-w-md mx-auto grid {% if user.can_see_quotes or user.has_management_authority %}grid-cols-4{% else %}grid-cols-2{% endif %} px-2">
         <a href="/requisitions" class="flex flex-col items-center pt-2 pb-1 {% block nav_requisitions %}{% endblock %}">
             <div class="tab-pill w-10 h-7 flex items-center justify-center mb-0.5">
                 <svg class="tab-icon w-5 h-5 {% block nav_requisitions_icon %}text-slate-400{% endblock %}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
             </div>
             <span class="tab-label text-[10px] {% block nav_requisitions_label %}text-slate-400{% endblock %}">Reqs</span>
         </a>
+        {% if user.is_procurement or user.has_management_authority %}
         <a href="/vendors" class="flex flex-col items-center pt-2 pb-1 {% block nav_vendors %}{% endblock %}">
             <div class="tab-pill w-10 h-7 flex items-center justify-center mb-0.5">
                 <svg class="tab-icon w-5 h-5 {% block nav_vendors_icon %}text-slate-400{% endblock %}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
             </div>
             <span class="tab-label text-[10px] {% block nav_vendors_label %}text-slate-400{% endblock %}">Vendors</span>
         </a>
+        {% endif %}
+        {% if user.can_see_quotes %}
         <a href="/quotations/inbox" class="flex flex-col items-center pt-2 pb-1 {% block nav_quotations %}{% endblock %}">
             <div class="tab-pill w-10 h-7 flex items-center justify-center mb-0.5">
                 <svg class="tab-icon w-5 h-5 {% block nav_quotations_icon %}text-slate-400{% endblock %}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
             </div>
             <span class="tab-label text-[10px] {% block nav_quotations_label %}text-slate-400{% endblock %}">Quotes</span>
         </a>
+        {% endif %}
+        {% if user.has_management_authority %}
         <a href="/decisions" class="flex flex-col items-center pt-2 pb-1 {% block nav_decisions %}{% endblock %}">
             <div class="tab-pill w-10 h-7 flex items-center justify-center mb-0.5">
                 <svg class="tab-icon w-5 h-5 {% block nav_decisions_icon %}text-slate-400{% endblock %}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
             </div>
             <span class="tab-label text-[10px] {% block nav_decisions_label %}text-slate-400{% endblock %}">Decide</span>
         </a>
-        <a href="/categories" class="flex flex-col items-center pt-2 pb-1 {% block nav_categories %}{% endblock %}">
-            <div class="tab-pill w-10 h-7 flex items-center justify-center mb-0.5">
-                <svg class="tab-icon w-5 h-5 {% block nav_categories_icon %}text-slate-400{% endblock %}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg>
-            </div>
-            <span class="tab-label text-[10px] {% block nav_categories_label %}text-slate-400{% endblock %}">Groups</span>
-        </a>
+        {% endif %}
     </div>
 </nav>
 {% endif %}
+
 
 {% include "components/apple_spinner.html" %}
 

@@ -215,32 +215,35 @@
                 <h2 class="text-sm font-bold text-slate-900 mb-4">Quick Actions</h2>
 
                 <div class="grid grid-cols-2 gap-2.5">
-                    {% if not user or user.role in ('requester', 'procurement', 'admin') %}
+                    {% if not user or user.can_create_requisitions %}
                     <a href="/requisitions/new" class="p-3 rounded-xl border border-slate-200 hover:border-brand-300 hover:bg-brand-50/50 transition text-left flex flex-col justify-between group active:scale-95 min-h-[72px]">
                         <svg class="w-4 h-4 text-brand-600 group-hover:scale-110 transition mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                         <span class="text-xs font-bold text-slate-800 group-hover:text-brand-700">New Requisition</span>
                     </a>
                     {% endif %}
 
-                    {% if not user or user.role in ('procurement', 'admin') %}
+                    {% if not user or user.is_procurement or user.has_management_authority %}
                     <a href="/vendors/new" class="p-3 rounded-xl border border-slate-200 hover:border-brand-300 hover:bg-brand-50/50 transition text-left flex flex-col justify-between group active:scale-95 min-h-[72px]">
                         <svg class="w-4 h-4 text-emerald-600 group-hover:scale-110 transition mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
                         <span class="text-xs font-bold text-slate-800 group-hover:text-emerald-700">Enlist Vendor</span>
                     </a>
+                    {% endif %}
 
+                    {% if not user or user.can_see_quotes %}
                     <a href="/quotations/inbox" class="p-3 rounded-xl border border-slate-200 hover:border-brand-300 hover:bg-brand-50/50 transition text-left flex flex-col justify-between group active:scale-95 min-h-[72px]">
                         <svg class="w-4 h-4 text-amber-600 group-hover:scale-110 transition mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
                         <span class="text-xs font-bold text-slate-800 group-hover:text-amber-700">Quotation Inbox</span>
                     </a>
                     {% endif %}
 
-                    {% if not user or user.role in ('procurement', 'management', 'admin') %}
+                    {% if not user or user.has_management_authority %}
                     <a href="/decisions" class="p-3 rounded-xl border border-slate-200 hover:border-brand-300 hover:bg-brand-50/50 transition text-left flex flex-col justify-between group active:scale-95 min-h-[72px]">
                         <svg class="w-4 h-4 text-purple-600 group-hover:scale-110 transition mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                         <span class="text-xs font-bold text-slate-800 group-hover:text-purple-700">Decisions</span>
                     </a>
                     {% endif %}
                 </div>
+
             </div>
 
             <!-- RECENT AUDIT LOG ACTIVITY -->
