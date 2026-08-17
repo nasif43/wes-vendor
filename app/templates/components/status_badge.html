@@ -1,5 +1,5 @@
 {% macro render_status_badge(status, size="sm") %}
-{% set val = status.value if status is defined and status and hasattr(status, 'value') else (status|string if status else 'draft') %}
+{% set val = status.value if (status is defined and status and status.value is defined) else (status|string if (status is defined and status) else 'draft') %}
 {% set clean_val = val.lower().replace('-', '_') %}
 {% if clean_val == 'draft' %}
     <span class="text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wide bg-slate-100 text-slate-600 border border-slate-200">
