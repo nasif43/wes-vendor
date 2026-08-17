@@ -52,12 +52,15 @@
             </div>
         </div>
 
-        <div class="flex gap-3">
-            <button type="submit" class="flex-1 bg-brand-600 text-white py-3.5 rounded-xl text-sm font-semibold hover:bg-brand-700 transition shadow-sm flex items-center justify-center gap-2 active:scale-[0.98]">
+        <div class="flex flex-col sm:flex-row gap-3">
+            <button type="submit" name="action" value="continue" class="flex-1 bg-brand-600 text-white py-3.5 rounded-xl text-sm font-semibold hover:bg-brand-700 transition shadow-sm flex items-center justify-center gap-2 active:scale-[0.98]">
                 Continue — Select Vendors
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
             </button>
-            <a href="/requisitions" class="py-3.5 px-5 rounded-xl text-sm font-semibold text-slate-700 border border-slate-200 bg-white hover:bg-slate-50 transition">Cancel</a>
+            <button type="submit" name="action" value="draft" class="py-3.5 px-5 rounded-xl text-sm font-semibold text-slate-700 border border-slate-200 bg-slate-50 hover:bg-slate-100 transition shadow-sm">
+                Save as Draft
+            </button>
+            <a href="/requisitions" class="py-3.5 px-5 rounded-xl text-sm font-semibold text-slate-500 hover:text-slate-700 text-center transition">Cancel</a>
         </div>
     </form>
 

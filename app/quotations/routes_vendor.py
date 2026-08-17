@@ -138,8 +138,37 @@ async def submit_quotation(
     link.status = "submitted"
     if link.requisition:
         from app.requisitions.models import RequisitionStatus
-        link.requisition.status = RequisitionStatus.IN_PROGRESS
+        if link.requisition.status in (RequisitionStatus.DRAFT, RequisitionStatus.NEW):
+            from app.requisitions.service import transition_requisition_status
+            await transition_requisition_status(
+                db,
+                requisition=link.requisition,
+                target_status=RequisitionStatus.IN_PROGRESS,
+                actor=None,
+                action_name="QUOTATION_RECEIVED",
+                notes=f"Quotation submitted by vendor {link.vendor.company_name if link.vendor else 'Vendor'}",
+            )
     await db.flush()
+
+    # ── Audit log for Quotation Submission ─────────────────────────────────────
+    from app.audit.models import AuditLog
+    vendor_display = link.vendor.company_name if link.vendor else "Vendor"
+    vendor_email = link.vendor.contact_email if link.vendor else "vendor@external"
+    db.add(
+        AuditLog(
+            actor_name=vendor_display,
+            actor_email=vendor_email,
+            actor_role="vendor",
+            action="QUOTATION_SUBMITTED",
+            entity_type="quotation",
+            entity_id=quotation.id,
+            entity_label=link.requisition.title if link.requisition else "Quotation",
+            notes=f"Quotation ({submission_type}) submitted by {vendor_display} for Requisition #{link.requisition_id}",
+        )
+    )
+    await db.flush()
+
+
 
     try:
         from app.email.resend import build_submission_notification, build_submission_confirmation, send_batch

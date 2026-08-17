@@ -144,17 +144,9 @@
                                     <td class="py-3.5 pr-3 font-bold text-slate-900 truncate max-w-[200px]">{{ req.title }}</td>
                                     <td class="py-3.5 px-3 text-slate-600 font-medium">{{ req.quantity }} {{ req.unit or '' }}</td>
                                     <td class="py-3.5 px-3 text-slate-500 whitespace-nowrap">{{ req.created_at.strftime('%d %b %Y') }}</td>
+{% from "components/status_badge.html" import render_status_badge %}
                                     <td class="py-3.5 px-3">
-                                        <span class="text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wide
-                                            {% if req.status.value == 'draft' %}bg-slate-100 text-slate-600
-                                            {% elif req.status.value == 'sent' %}bg-amber-100 text-amber-700
-                                            {% elif req.status.value == 'received' %}bg-blue-100 text-blue-700
-                                            {% elif req.status.value == 'decided' %}bg-emerald-100 text-emerald-700
-                                            {% elif req.status.value == 'delivered' %}bg-amber-100 text-amber-800
-                                            {% elif req.status.value == 'closed' %}bg-purple-100 text-purple-700
-                                            {% else %}bg-slate-100 text-slate-600{% endif %}">
-                                            {{ req.status.value }}
-                                        </span>
+                                        {{ render_status_badge(req.status) }}
                                     </td>
                                     <td class="py-3.5 pl-3 text-right">
                                         <a href="/requisitions/{{ req.id }}" class="inline-block px-3 py-1.5 bg-slate-100 hover:bg-brand-50 hover:text-brand-600 text-slate-700 rounded-lg text-[11px] font-bold transition active:scale-95">

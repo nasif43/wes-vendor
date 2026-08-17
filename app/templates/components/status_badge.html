@@ -1,0 +1,33 @@
+{% macro render_status_badge(status, size="sm") %}
+{% set val = status.value if status is defined and status and hasattr(status, 'value') else (status|string if status else 'draft') %}
+{% set clean_val = val.lower().replace('-', '_') %}
+{% if clean_val == 'draft' %}
+    <span class="text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wide bg-slate-100 text-slate-600 border border-slate-200">
+        Draft
+    </span>
+{% elif clean_val == 'new' %}
+    <span class="text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wide bg-blue-100 text-blue-700 border border-blue-200">
+        New RFQ
+    </span>
+{% elif clean_val == 'in_progress' %}
+    <span class="text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wide bg-amber-100 text-amber-700 border border-amber-200">
+        In Progress
+    </span>
+{% elif clean_val == 'submitted' %}
+    <span class="text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wide bg-purple-100 text-purple-700 border border-purple-200">
+        Submitted
+    </span>
+{% elif clean_val == 'received' %}
+    <span class="text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wide bg-sky-100 text-sky-700 border border-sky-200">
+        Received
+    </span>
+{% elif clean_val == 'closed' %}
+    <span class="text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wide bg-emerald-100 text-emerald-700 border border-emerald-200">
+        Closed
+    </span>
+{% else %}
+    <span class="text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wide bg-slate-100 text-slate-600 border border-slate-200">
+        {{ clean_val | replace('_', ' ') | title }}
+    </span>
+{% endif %}
+{% endmacro %}

@@ -100,6 +100,14 @@ async def health():
     return {"status": "ok"}
 
 
+@app.get("/resend-health")
+async def resend_health(request: Request):
+    from app.email.resend import get_resend_health_data
+    health_data = await get_resend_health_data()
+    return templates.TemplateResponse(request, "resend_health.html", {"data": health_data})
+
+
+
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.dependencies import get_current_user

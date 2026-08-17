@@ -116,6 +116,7 @@ async def create_requisition(
     quantity: float = Form(...),
     unit: str = Form(""),
     notes: str = Form(""),
+    action: str = Form("continue"),
     user: UserProfile = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -125,6 +126,7 @@ async def create_requisition(
         quantity=quantity,
         unit=unit or None,
         notes=notes or None,
+        status=RequisitionStatus.DRAFT,
         created_by=user.id,
     )
     db.add(req)
@@ -138,10 +140,14 @@ async def create_requisition(
         entity_type="requisition",
         entity_id=req.id,
         entity_label=req.title,
-        notes=f"Qty: {req.quantity} {req.unit or ''}",
+        notes=f"Qty: {req.quantity} {req.unit or ''} (Draft)",
     )
 
+    if action == "draft":
+        return RedirectResponse(url=f"/requisitions/{req.id}?success=Draft+requisition+saved", status_code=303)
+
     return RedirectResponse(url=f"/requisitions/{req.id}/select-vendors", status_code=303)
+
 
 
 @router.get("/{req_id}", response_class=HTMLResponse)
@@ -264,16 +270,14 @@ async def send_requisition(
     if email_params:
         email_sent = await send_batch(email_params)
 
-    req.status = RequisitionStatus.NEW
-
-    # ── Audit log ──────────────────────────────────────────────────────────────
-    await log_action(
+    req_target_status = RequisitionStatus.NEW
+    from app.requisitions.service import transition_requisition_status
+    await transition_requisition_status(
         db,
+        requisition=req,
+        target_status=req_target_status,
         actor=user,
-        action="VENDORS_INVITED",
-        entity_type="requisition",
-        entity_id=req_id,
-        entity_label=req.title,
+        action_name="VENDORS_INVITED",
         notes=f"{len(vendor_ids)} vendor(s) invited via quote link",
     )
 
@@ -313,19 +317,27 @@ async def add_temporary_vendor(
     )
     db.add(link)
 
-    if req.status == RequisitionStatus.DRAFT:
-        req.status = RequisitionStatus.NEW
-
-    # ── Audit log ──────────────────────────────────────────────────────────────
+    # ── Audit log for Vendor ───────────────────────────────────────────────────
     await log_action(
         db,
         actor=user,
-        action="VENDOR_CREATED",
+        action="TEMPORARY_VENDOR_CREATED",
         entity_type="vendor",
         entity_id=temp_vendor.id,
         entity_label=f"Unlisted Vendor ({req.title})",
         notes=f"Unlisted/Temporary vendor link created for Requisition #{req_id} by {user.full_name} ({user.email}).",
     )
+
+    if req.status == RequisitionStatus.DRAFT:
+        from app.requisitions.service import transition_requisition_status
+        await transition_requisition_status(
+            db,
+            requisition=req,
+            target_status=RequisitionStatus.NEW,
+            actor=user,
+            action_name="VENDORS_INVITED",
+            notes="Temporary/Unlisted vendor link created",
+        )
 
     await db.flush()
 
@@ -383,34 +395,28 @@ async def receive_requisition_submit(
     req.delivery_image_url = delivery_image_url
     req.qc_done = qc_done
 
+    from app.requisitions.service import transition_requisition_status
     if qc_done:
         req.qc_done_by = user.id
         req.qc_done_at = datetime.now(UTC)
-        req.status = RequisitionStatus.CLOSED
-    else:
-        req.status = RequisitionStatus.RECEIVED
-
-    # ── Audit log ──────────────────────────────────────────────────────────────
-    if qc_done:
-        await log_action(
+        await transition_requisition_status(
             db,
+            requisition=req,
+            target_status=RequisitionStatus.CLOSED,
             actor=user,
-            action="QC_COMPLETED",
-            entity_type="requisition",
-            entity_id=req_id,
-            entity_label=req.title,
+            action_name="QC_COMPLETED",
             notes=f"Invoice: {invoice_number}. QC passed by {user.full_name} ({user.email}). Requisition closed.",
         )
     else:
-        await log_action(
+        await transition_requisition_status(
             db,
+            requisition=req,
+            target_status=RequisitionStatus.RECEIVED,
             actor=user,
-            action="DELIVERY_RECEIVED",
-            entity_type="requisition",
-            entity_id=req_id,
-            entity_label=req.title,
+            action_name="DELIVERY_RECEIVED",
             notes=f"Invoice: {invoice_number}. Delivery received by {user.full_name} ({user.email}). QC pending.",
         )
 
     await db.flush()
     return RedirectResponse(url=f"/requisitions/{req_id}?success=Order+marked+as+received", status_code=303)
+

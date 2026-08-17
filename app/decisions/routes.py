@@ -62,20 +62,44 @@ async def create_decision(
     result = await db.execute(select(Requisition).where(Requisition.id == req_id))
     req = result.scalar_one_or_none()
     if req:
-        req.status = RequisitionStatus.IN_PROGRESS
+        from app.requisitions.service import transition_requisition_status
+        await transition_requisition_status(
+            db,
+            requisition=req,
+            target_status=RequisitionStatus.SUBMITTED,
+            actor=user,
+            action_name="DECISION_CREATED",
+            notes=f"Winning vendor ID: {vendor_id}",
+        )
 
-    # ── Audit log ──────────────────────────────────────────────────────────────
-    await log_action(
-        db,
-        actor=user,
-        action="DECISION_CREATED",
-        entity_type="decision",
-        entity_id=decision.id,
-        entity_label=req.title if req else req_id,
-        notes=f"Winning vendor ID: {vendor_id}",
+    # ── Send Vendor Selection Notification Email ───────────────────────────────
+    email_params = []
+    result = await db.execute(
+        select(RequisitionVendor).where(RequisitionVendor.requisition_id == req_id)
     )
+    vendor_links = result.scalars().all()
 
-    return RedirectResponse(url="/decisions?success=1", status_code=303)
+    for vl in vendor_links:
+        vendor = vl.vendor
+        if vendor and vendor.contact_email:
+            is_winner = vl.vendor_id == vendor_id
+            param = await build_decision_notification(
+                to=vendor.contact_email,
+                vendor_name=vendor.contact_person or vendor.company_name,
+                requisition_title=req.title if req else "",
+                approved=True if is_winner else False,
+            )
+            if param:
+                email_params.append(param)
+
+    if email_params:
+        try:
+            await send_batch(email_params)
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning("Failed to send vendor selection email: %s", e)
+
+    return RedirectResponse(url=f"/quotations/compare/{req_id}?success=Vendor+selected+successfully", status_code=303)
 
 
 @router.get("/{decision_id}", response_class=HTMLResponse)
@@ -105,62 +129,62 @@ async def approve_decision(
     db: AsyncSession = Depends(get_db),
 ):
     from app.auth.models import UserRole
-    if user.role not in [UserRole.MANAGEMENT, UserRole.ADMIN]:
+    if user.role not in [UserRole.MANAGEMENT, UserRole.ADMIN] and not user.is_management:
         return RedirectResponse(url=f"/decisions/{decision_id}?error=Permission+denied", status_code=303)
 
     result = await db.execute(select(Decision).where(Decision.id == decision_id))
     decision = result.scalar_one_or_none()
-    email_params = []
-    if decision:
-        is_approved = approved == "true"
-        decision.management_approved = is_approved
-        decision.approved_by = user.id
-        decision.approved_at = datetime.now(UTC)
-        await db.flush()
+    if not decision:
+        return RedirectResponse(url="/decisions?error=Decision+not+found", status_code=303)
 
-        result = await db.execute(select(Requisition).where(Requisition.id == decision.requisition_id))
-        req = result.scalar_one_or_none()
-        if req and is_approved:
-            req.status = RequisitionStatus.SUBMITTED
+    is_approved = approved == "true"
+    decision.management_approved = is_approved
+    decision.approved_by = user.id
+    decision.approved_at = datetime.now(UTC)
 
-        # ── Audit log ──────────────────────────────────────────────────────────
-        _req_title = req.title if req else (decision.requisition.title if decision.requisition else decision.requisition_id)
-        await log_action(
+    result = await db.execute(select(Requisition).where(Requisition.id == decision.requisition_id))
+    req = result.scalar_one_or_none()
+    if req:
+        from app.requisitions.service import transition_requisition_status
+        target_st = RequisitionStatus.SUBMITTED if is_approved else RequisitionStatus.IN_PROGRESS
+        action_st = "DECISION_APPROVED" if is_approved else "DECISION_REJECTED"
+        await transition_requisition_status(
             db,
+            requisition=req,
+            target_status=target_st,
             actor=user,
-            action="DECISION_APPROVED" if is_approved else "DECISION_REJECTED",
-            entity_type="decision",
-            entity_id=decision.id,
-            entity_label=_req_title,
-            notes=f"Approved by {user.full_name} ({user.email})"
-                  if is_approved
-                  else f"Rejected by {user.full_name} ({user.email})",
+            action_name=action_st,
+            notes=f"Management Decision {'Approved' if is_approved else 'Rejected'} by {user.full_name}",
         )
 
-        result = await db.execute(
-            select(RequisitionVendor).where(RequisitionVendor.requisition_id == decision.requisition_id)
-        )
-        vendor_links = result.scalars().all()
+    email_params = []
+    # Send decision emails to vendors once management approves/rejects
+    result = await db.execute(
+        select(RequisitionVendor).where(RequisitionVendor.requisition_id == decision.requisition_id)
+    )
+    vendor_links = result.scalars().all()
 
-        for vl in vendor_links:
-            vendor = vl.vendor
-            if vendor and vendor.contact_email:
-                is_winner = vl.vendor_id == decision.winning_vendor_id
-                param = await build_decision_notification(
-                    to=vendor.contact_email,
-                    vendor_name=vendor.contact_person or vendor.company_name,
-                    requisition_title=req.title if req else "",
-                    approved=is_approved and is_winner,
-                )
-                if param:
-                    email_params.append(param)
+    for vl in vendor_links:
+        vendor = vl.vendor
+        if vendor and vendor.contact_email:
+            is_winner = vl.vendor_id == decision.winning_vendor_id
+            param = await build_decision_notification(
+                to=vendor.contact_email,
+                vendor_name=vendor.contact_person or vendor.company_name,
+                requisition_title=req.title if req else "",
+                approved=is_approved and is_winner,
+            )
+            if param:
+                email_params.append(param)
 
-    if not email_params:
-        return RedirectResponse(url=f"/decisions/{decision_id}?success=1", status_code=303)
-    email_sent = await send_batch(email_params)
-    if not email_sent:
-        return RedirectResponse(
-            url=f"/decisions/{decision_id}?error=Decision+saved+but+email+notification+failed.",
-            status_code=303,
-        )
+    if email_params:
+        email_sent = await send_batch(email_params)
+        if not email_sent:
+            return RedirectResponse(
+                url=f"/decisions/{decision_id}?warning=Decision+saved+but+vendor+notification+email+could+not+be+sent.",
+                status_code=303,
+            )
+
     return RedirectResponse(url=f"/decisions/{decision_id}?success=1", status_code=303)
+
+

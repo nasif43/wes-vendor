@@ -74,18 +74,37 @@
                     </div>
                     {% endif %}
                 </label>
+                {% else %}
+                <div class="p-4 text-center text-slate-400 text-xs">
+                    No active registered vendors found.
+                </div>
                 {% endfor %}
             </div>
         </div>
 
-        <div class="flex gap-3">
+        <div class="flex flex-col sm:flex-row gap-3 mb-4">
             <button type="submit" class="flex-1 bg-brand-600 text-white py-3.5 rounded-xl text-sm font-semibold hover:bg-brand-700 transition shadow-sm flex items-center justify-center gap-2 active:scale-[0.98]">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-                Send to Selected
+                Send to Selected Vendors
             </button>
-            <a href="/requisitions/{{ req.id }}" class="py-3.5 px-5 rounded-xl text-sm font-semibold text-slate-700 border border-slate-200 bg-white hover:bg-slate-50 transition">Cancel</a>
+            <a href="/requisitions/{{ req.id }}" class="py-3.5 px-5 rounded-xl text-sm font-semibold text-slate-700 border border-slate-200 bg-white hover:bg-slate-50 text-center transition">Skip / Save as Draft</a>
         </div>
     </form>
+
+    <!-- UNLISTED / EXTERNAL SHARE OPTION -->
+    <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
+        <h3 class="text-xs font-bold text-slate-900 mb-1 flex items-center gap-1.5">
+            <svg class="w-4 h-4 text-brand-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+            Invite Unlisted Vendor (WhatsApp / Direct Link)
+        </h3>
+        <p class="text-xs text-slate-500 mb-3">If the vendor is not in the system, generate a shareable link they can use to submit their quote directly.</p>
+        <form method="post" action="/requisitions/{{ req.id }}/add-temporary-vendor">
+            <button type="submit" class="w-full bg-slate-800 text-white py-3 rounded-xl text-xs font-bold hover:bg-slate-900 transition shadow-sm active:scale-[0.98]">
+                + Generate Shareable Quote Link
+            </button>
+        </form>
+    </div>
+
 
 </div>
 {% block scripts %}

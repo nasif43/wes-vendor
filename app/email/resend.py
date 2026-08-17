@@ -205,3 +205,129 @@ async def build_submission_confirmation(
         "subject": f"Quotation Received: {requisition_title}",
         "html": html,
     }, cc)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Resend Health & Quota Checker
+# ──────────────────────────────────────────────────────────────────────────────
+
+async def get_resend_health_data() -> dict:
+    """
+    Query the Resend API dynamically to compute live quota usage and health metrics.
+    Free tier limits: 100 emails/day, 3,000 emails/month.
+    """
+    import httpx
+    from datetime import datetime, timezone
+
+    MONTHLY_LIMIT = 3000
+    DAILY_LIMIT = 100
+
+    api_key = settings.resend_api_key
+    if not api_key or api_key == "re_xxxxxxxxx":
+        return {
+            "status": "unconfigured",
+            "error": "Resend API key is not configured.",
+            "monthly_limit": MONTHLY_LIMIT,
+            "daily_limit": DAILY_LIMIT,
+            "monthly_used": 0,
+            "monthly_remaining": MONTHLY_LIMIT,
+            "daily_used": 0,
+            "daily_remaining": DAILY_LIMIT,
+            "recent_emails": [],
+            "domains": [],
+            "rate_limit": None,
+            "checked_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
+        }
+
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "User-Agent": "wes-vendor-portal",
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            emails_resp, domains_resp = await asyncio.gather(
+                client.get("https://api.resend.com/emails", headers=headers),
+                client.get("https://api.resend.com/domains", headers=headers),
+                return_exceptions=True,
+            )
+
+        if isinstance(emails_resp, Exception):
+            raise emails_resp
+        if emails_resp.status_code != 200:
+            return {
+                "status": "error",
+                "error": f"Resend API error ({emails_resp.status_code}): {emails_resp.text}",
+                "monthly_limit": MONTHLY_LIMIT,
+                "daily_limit": DAILY_LIMIT,
+                "monthly_used": 0,
+                "monthly_remaining": MONTHLY_LIMIT,
+                "daily_used": 0,
+                "daily_remaining": DAILY_LIMIT,
+                "recent_emails": [],
+                "domains": [],
+                "rate_limit": None,
+                "checked_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
+            }
+
+        emails_data = emails_resp.json().get("data", [])
+        domains_data = []
+        if not isinstance(domains_resp, Exception) and domains_resp.status_code == 200:
+            domains_data = domains_resp.json().get("data", [])
+
+        now = datetime.now(timezone.utc)
+        current_month_str = now.strftime("%Y-%m")
+        today_str = now.strftime("%Y-%m-%d")
+
+        monthly_used = 0
+        daily_used = 0
+
+        for e in emails_data:
+            created_at = e.get("created_at", "")
+            if created_at.startswith(current_month_str):
+                monthly_used += 1
+            if created_at.startswith(today_str):
+                daily_used += 1
+
+        monthly_remaining = max(0, MONTHLY_LIMIT - monthly_used)
+        daily_remaining = max(0, DAILY_LIMIT - daily_used)
+
+        rate_limit = {
+            "limit": emails_resp.headers.get("ratelimit-limit"),
+            "remaining": emails_resp.headers.get("ratelimit-remaining"),
+            "reset": emails_resp.headers.get("ratelimit-reset"),
+        }
+
+        return {
+            "status": "healthy",
+            "error": None,
+            "monthly_limit": MONTHLY_LIMIT,
+            "daily_limit": DAILY_LIMIT,
+            "monthly_used": monthly_used,
+            "monthly_remaining": monthly_remaining,
+            "monthly_pct": round((monthly_used / MONTHLY_LIMIT) * 100, 2),
+            "daily_used": daily_used,
+            "daily_remaining": daily_remaining,
+            "daily_pct": round((daily_used / DAILY_LIMIT) * 100, 2),
+            "recent_emails": emails_data[:20],
+            "domains": domains_data,
+            "rate_limit": rate_limit,
+            "checked_at": now.strftime("%Y-%m-%d %H:%M:%S UTC"),
+        }
+    except Exception as exc:
+        logger.exception("Failed to fetch Resend health: %s", exc)
+        return {
+            "status": "error",
+            "error": str(exc),
+            "monthly_limit": MONTHLY_LIMIT,
+            "daily_limit": DAILY_LIMIT,
+            "monthly_used": 0,
+            "monthly_remaining": MONTHLY_LIMIT,
+            "daily_used": 0,
+            "daily_remaining": DAILY_LIMIT,
+            "recent_emails": [],
+            "domains": [],
+            "rate_limit": None,
+            "checked_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
+        }
+

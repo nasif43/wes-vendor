@@ -17,20 +17,16 @@
         {% for req in requisitions %}
         <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
 
+{% from "components/status_badge.html" import render_status_badge %}
             <!-- REQ HEADER -->
             <div class="px-4 py-3.5 border-b border-slate-100">
                 <div class="flex items-center justify-between gap-2">
                     <a href="/requisitions/{{ req.id }}" class="font-bold text-sm text-slate-900 hover:text-brand-600 transition truncate min-w-0">{{ req.title }}</a>
-                    <span class="shrink-0 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wide
-                        {% if req.status.value == 'sent' %}bg-amber-100 text-amber-700
-                        {% elif req.status.value == 'received' %}bg-blue-100 text-blue-700
-                        {% elif req.status.value == 'decided' %}bg-emerald-100 text-emerald-700
-                        {% else %}bg-slate-100 text-slate-600{% endif %}">
-                        {{ req.status.value }}
-                    </span>
+                    {{ render_status_badge(req.status) }}
                 </div>
                 <p class="text-xs text-slate-400 mt-0.5">{{ req.quantity }} {{ req.unit or '' }}</p>
             </div>
+
 
             <!-- VENDOR ROWS -->
             {% if req.vendor_links %}

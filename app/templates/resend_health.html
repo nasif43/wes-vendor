@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resend Mail Service Health & Quotas</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui'] },
+                    colors: {
+                        brand: { 50:'#eff6ff', 100:'#dbeafe', 500:'#3b82f6', 600:'#2563eb', 700:'#1d4ed8' }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen py-10 px-4 sm:px-6 lg:px-8 font-sans antialiased">
+    <div class="max-w-5xl mx-auto space-y-6">
+        
+        <!-- Header -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900/80 border border-slate-800 rounded-2xl p-6 backdrop-blur shadow-xl">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
+                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold text-white flex items-center gap-2">
+                        Resend Health & Quota
+                        {% if data.status == 'healthy' %}
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                Operational
+                            </span>
+                        {% elif data.status == 'unconfigured' %}
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                                Unconfigured
+                            </span>
+                        {% else %}
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-500/10 text-rose-400 border border-rose-500/20">
+                                Error
+                            </span>
+                        {% endif %}
+                    </h1>
+                    <p class="text-xs text-slate-400 mt-0.5">Live tracking for Resend Free Tier limits (Updated on reload)</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <span class="text-xs text-slate-400">Checked: <strong class="text-slate-200 font-mono">{{ data.checked_at }}</strong></span>
+                <button onclick="window.location.reload()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-200 transition border border-slate-700 active:scale-95">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    Refresh
+                </button>
+            </div>
+        </div>
+
+        {% if data.error %}
+        <div class="bg-rose-950/40 border border-rose-800/60 rounded-xl p-4 text-sm text-rose-300">
+            <strong>Error checking Resend:</strong> {{ data.error }}
+        </div>
+        {% endif %}
+
+        <!-- Quota Metric Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <!-- Monthly Quota Card -->
+            <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 relative overflow-hidden">
+                <div class="flex items-center justify-between mb-3">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Monthly Usage (Free Tier)</span>
+                    <span class="text-xs font-medium px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">3,000 / mo</span>
+                </div>
+                <div class="flex items-baseline gap-2 mb-2">
+                    <span class="text-4xl font-extrabold text-white">{{ data.monthly_remaining }}</span>
+                    <span class="text-sm font-medium text-slate-400">emails left</span>
+                </div>
+                <p class="text-xs text-slate-400 mb-4">
+                    <strong class="text-slate-200">{{ data.monthly_used }}</strong> used this month • <strong class="text-slate-200">{{ data.monthly_limit }}</strong> total monthly limit
+                </p>
+
+                <!-- Progress Bar -->
+                <div class="w-full bg-slate-800 rounded-full h-2.5 overflow-hidden">
+                    <div class="bg-gradient-to-r from-blue-500 to-indigo-500 h-2.5 rounded-full transition-all duration-500" style="width: {{ data.monthly_pct }}%"></div>
+                </div>
+                <div class="flex justify-between text-[11px] text-slate-500 mt-1.5">
+                    <span>{{ data.monthly_pct }}% consumed</span>
+                    <span>{{ 100 - data.monthly_pct }}% remaining</span>
+                </div>
+            </div>
+
+            <!-- Daily Quota Card -->
+            <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 relative overflow-hidden">
+                <div class="flex items-center justify-between mb-3">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Daily Usage (Free Tier)</span>
+                    <span class="text-xs font-medium px-2 py-0.5 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20">100 / day</span>
+                </div>
+                <div class="flex items-baseline gap-2 mb-2">
+                    <span class="text-4xl font-extrabold text-white">{{ data.daily_remaining }}</span>
+                    <span class="text-sm font-medium text-slate-400">emails left today</span>
+                </div>
+                <p class="text-xs text-slate-400 mb-4">
+                    <strong class="text-slate-200">{{ data.daily_used }}</strong> used today • <strong class="text-slate-200">{{ data.daily_limit }}</strong> total daily limit
+                </p>
+
+                <!-- Progress Bar -->
+                <div class="w-full bg-slate-800 rounded-full h-2.5 overflow-hidden">
+                    <div class="bg-gradient-to-r from-purple-500 to-pink-500 h-2.5 rounded-full transition-all duration-500" style="width: {{ data.daily_pct }}%"></div>
+                </div>
+                <div class="flex justify-between text-[11px] text-slate-500 mt-1.5">
+                    <span>{{ data.daily_pct }}% consumed</span>
+                    <span>{{ 100 - data.daily_pct }}% remaining</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Domains and Rate Limits -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+            <!-- Domains -->
+            <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-5 md:col-span-2">
+                <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">Sending Domains</h2>
+                {% if data.domains %}
+                    <div class="space-y-2">
+                        {% for dom in data.domains %}
+                        <div class="flex items-center justify-between p-3 rounded-xl bg-slate-800/50 border border-slate-700/50">
+                            <div>
+                                <span class="font-medium text-sm text-slate-200">{{ dom.name }}</span>
+                                <span class="text-xs text-slate-400 block">Region: {{ dom.region }}</span>
+                            </div>
+                            <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 capitalize">
+                                {{ dom.status }}
+                            </span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="text-xs text-slate-500">No domains retrieved.</p>
+                {% endif %}
+            </div>
+
+            <!-- Rate Limit Info -->
+            <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-5">
+                <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">API Rate Limits</h2>
+                <div class="space-y-2 text-xs">
+                    <div class="flex justify-between py-1.5 border-b border-slate-800">
+                        <span class="text-slate-400">Limit</span>
+                        <span class="font-mono text-slate-200">{{ data.rate_limit.limit or '10 req/s' }}</span>
+                    </div>
+                    <div class="flex justify-between py-1.5 border-b border-slate-800">
+                        <span class="text-slate-400">Remaining</span>
+                        <span class="font-mono text-slate-200">{{ data.rate_limit.remaining or 'N/A' }}</span>
+                    </div>
+                    <div class="flex justify-between py-1.5">
+                        <span class="text-slate-400">Reset</span>
+                        <span class="font-mono text-slate-200">{{ data.rate_limit.reset or 'N/A' }}s</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Sent Emails -->
+        <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-6">
+            <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-4">Recent Email Deliveries (Latest {{ data.recent_emails|length }})</h2>
+            {% if data.recent_emails %}
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs text-slate-300">
+                    <thead class="text-[11px] uppercase bg-slate-800/40 text-slate-400 border-b border-slate-800">
+                        <tr>
+                            <th class="px-4 py-3 font-semibold">Recipient</th>
+                            <th class="px-4 py-3 font-semibold">Sender</th>
+                            <th class="px-4 py-3 font-semibold">Created At (UTC)</th>
+                            <th class="px-4 py-3 font-semibold">Message ID</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-800/60 font-mono">
+                        {% for email in data.recent_emails %}
+                        <tr class="hover:bg-slate-800/30 transition">
+                            <td class="px-4 py-2.5 font-sans font-medium text-slate-200">
+                                {% if email.to is iterable and email.to is not string %}
+                                    {{ email.to | join(', ') }}
+                                {% else %}
+                                    {{ email.to }}
+                                {% endif %}
+                            </td>
+                            <td class="px-4 py-2.5 font-sans text-slate-400">{{ email.from }}</td>
+                            <td class="px-4 py-2.5 text-slate-400">{{ email.created_at }}</td>
+                            <td class="px-4 py-2.5 text-[11px] text-slate-500">{{ email.id }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-xs text-slate-500">No recent email logs found.</p>
+            {% endif %}
+        </div>
+
+    </div>
+</body>
+</html>
