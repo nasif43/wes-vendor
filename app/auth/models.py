@@ -54,7 +54,8 @@ class UserProfile(Base):
     @property
     def is_procurement(self) -> bool:
         role_str = str(self.role.value) if hasattr(self.role, "value") else str(self.role or "")
-        return bool(role_str in ("procurement", "management", "admin") or self.is_management or self.can_view_quotations)
+        return bool(role_str in ("procurement", "admin") or self.is_management)
+
 
     @property
     def can_create_requisitions(self) -> bool:

@@ -41,17 +41,19 @@ async def login(
         is_qc = "qc" in clean_email or "kamrul" in clean_email
         is_purchaser = "procurement" in clean_email or "purchase" in clean_email or "tanjila" in clean_email
 
-        role = UserRole.ADMIN if is_admin_or_mgmt else (UserRole.QC_RECEIVER if is_qc else (UserRole.PROCUREMENT if is_purchaser else UserRole.REQUESTER))
+        role = UserRole.ADMIN if is_admin_or_mgmt else (UserRole.QC_RECEIVER if is_qc else UserRole.PROCUREMENT)
         user = UserProfile(
             email=clean_email,
             full_name=full_name,
             role=role,
-            can_view_quotations=is_admin_or_mgmt or is_purchaser,
+            can_view_quotations=is_admin_or_mgmt,
             can_do_qc=is_admin_or_mgmt or is_qc,
+            can_view_all_requisitions=is_admin_or_mgmt or is_qc,
             is_management=is_admin_or_mgmt,
         )
         db.add(user)
         await db.flush()
+
 
     request.session["user_id"] = user.id
     return RedirectResponse(url="/", status_code=303)

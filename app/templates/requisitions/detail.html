@@ -110,7 +110,8 @@
     </a>
     {% endif %}
 
-    <!-- VENDORS SECTION -->
+    <!-- VENDORS SECTION (Hidden for QC Receiver) -->
+    {% if not user or not user.role or user.role.value != 'qc_receiver' %}
     <div>
         <div class="flex items-center justify-between mb-3">
             <h2 class="text-xs font-bold text-slate-400 uppercase tracking-widest">Vendors Contacted</h2>
@@ -170,6 +171,8 @@
             </form>
         </div>
     </div>
+    {% endif %}
+
 
 </div>
 {% endblock %}
