@@ -40,7 +40,7 @@ async def create_decision(
     db: AsyncSession = Depends(get_db),
 ):
     from app.auth.models import UserRole
-    if user.role not in [UserRole.PROCUREMENT, UserRole.ADMIN]:
+    if not (user.is_procurement or user.is_management or user.role == UserRole.ADMIN):
         return RedirectResponse(url=f"/quotations/compare/{req_id}?error=Permission+denied", status_code=303)
 
     existing = await db.execute(
@@ -56,6 +56,9 @@ async def create_decision(
         requisition_id=req_id,
         winning_vendor_id=vendor_id,
         decided_by=user.id,
+        management_approved=True,
+        approved_by=user.id,
+        approved_at=datetime.now(UTC),
     )
     db.add(decision)
 
@@ -68,8 +71,8 @@ async def create_decision(
             requisition=req,
             target_status=RequisitionStatus.SUBMITTED,
             actor=user,
-            action_name="DECISION_CREATED",
-            notes=f"Winning vendor ID: {vendor_id}",
+            action_name="DECISION_CREATED_AND_APPROVED",
+            notes=f"Winning vendor ID: {vendor_id}. Selected and approved by {user.full_name}",
         )
 
     # ── Send Vendor Selection Notification Email ───────────────────────────────

@@ -99,11 +99,23 @@
                     {% elif item.stage == 'closed' %}Closed{% endif %}
                 </span>
                 {% if user and user.can_perform_qc and item.stage in ('submitted', 'received') %}
-                <a href="/requisitions/{{ req.id }}/receive" onclick="event.stopPropagation()"
-                   class="text-xs font-bold px-3 py-1.5 rounded-xl shadow-xs transition active:scale-95 flex items-center gap-1.5
-                   {% if item.stage == 'submitted' %}bg-blue-600 hover:bg-blue-700 text-white{% else %}bg-emerald-600 hover:bg-emerald-700 text-white{% endif %}">
-                    {% if item.stage == 'submitted' %}🚚 Receive{% else %}✅ Do QC{% endif %}
-                </a>
+                <div class="flex items-center gap-1.5" onclick="event.stopPropagation()">
+                    {% if item.stage == 'submitted' %}
+                    <a href="/requisitions/{{ req.id }}/receive"
+                       class="text-xs font-bold px-2.5 py-1.5 rounded-xl shadow-xs transition active:scale-95 flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white">
+                        🚚 Receive
+                    </a>
+                    <a href="/requisitions/{{ req.id }}/receive?qc=1"
+                       class="text-xs font-bold px-2.5 py-1.5 rounded-xl shadow-xs transition active:scale-95 flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white">
+                        ✅ Do QC
+                    </a>
+                    {% else %}
+                    <a href="/requisitions/{{ req.id }}/receive?qc=1"
+                       class="text-xs font-bold px-3 py-1.5 rounded-xl shadow-xs transition active:scale-95 flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white">
+                        ✅ Do QC
+                    </a>
+                    {% endif %}
+                </div>
                 {% endif %}
                 <svg class="w-4 h-4 text-slate-300 group-hover:translate-x-0.5 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
             </div>
@@ -216,19 +228,33 @@
                 <div class="space-y-3 flex-1 overflow-y-auto">
                     {% for item in items if item.stage == 'submitted' %}
                     {% set req = item.req %}
-                    <a href="/requisitions/{{ req.id }}" class="block bg-white rounded-xl p-3.5 border border-purple-200/80 hover:border-purple-400 hover:shadow-md transition active:scale-[0.98]">
-                        <div class="text-xs font-extrabold text-slate-900 mb-1 truncate">{{ req.title }}</div>
-                        <div class="text-[11px] font-medium text-slate-500 mb-2 truncate">{{ req.quantity }} {{ req.unit or '' }}</div>
-                        {% if item.confirmed_at %}
-                        <div class="inline-block text-[10px] font-bold text-purple-800 bg-purple-50 px-2 py-0.5 rounded mb-2 border border-purple-200/60">
-                            Confirmed on {{ item.confirmed_at.strftime('%b %d, %Y') }}
+                    <div class="bg-white rounded-xl p-3.5 border border-purple-200/80 hover:border-purple-400 hover:shadow-md transition">
+                        <a href="/requisitions/{{ req.id }}" class="block active:scale-[0.98]">
+                            <div class="text-xs font-extrabold text-slate-900 mb-1 truncate">{{ req.title }}</div>
+                            <div class="text-[11px] font-medium text-slate-500 mb-2 truncate">{{ req.quantity }} {{ req.unit or '' }}</div>
+                            {% if item.confirmed_at %}
+                            <div class="inline-block text-[10px] font-bold text-purple-800 bg-purple-50 px-2 py-0.5 rounded mb-2 border border-purple-200/60">
+                                Confirmed on {{ item.confirmed_at.strftime('%b %d, %Y') }}
+                            </div>
+                            {% endif %}
+                            <div class="text-[10px] text-slate-400 font-medium border-t border-slate-100 pt-2 flex items-center justify-between">
+                                <span>Vendor selected</span>
+                                <span class="font-bold text-purple-600">PO Placed</span>
+                            </div>
+                        </a>
+                        {% if user and user.can_perform_qc %}
+                        <div class="grid grid-cols-2 gap-1.5 mt-2.5 pt-2 border-t border-slate-100">
+                            <a href="/requisitions/{{ req.id }}/receive"
+                               class="text-[11px] font-bold py-1 px-2 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-600 hover:text-white transition text-center flex items-center justify-center gap-1 shadow-2xs">
+                                🚚 Receive
+                            </a>
+                            <a href="/requisitions/{{ req.id }}/receive?qc=1"
+                               class="text-[11px] font-bold py-1 px-2 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white transition text-center flex items-center justify-center gap-1 shadow-2xs">
+                                ✅ Do QC
+                            </a>
                         </div>
                         {% endif %}
-                        <div class="text-[10px] text-slate-400 font-medium border-t border-slate-100 pt-2 flex items-center justify-between">
-                            <span>Vendor selected</span>
-                            <span class="font-bold text-purple-600">PO Placed</span>
-                        </div>
-                    </a>
+                    </div>
                     {% else %}
                     <div class="text-center py-8 text-xs text-slate-400 font-medium">No submitted orders</div>
                     {% endfor %}
@@ -248,17 +274,27 @@
                 <div class="space-y-3 flex-1 overflow-y-auto">
                     {% for item in items if item.stage == 'received' %}
                     {% set req = item.req %}
-                    <a href="/requisitions/{{ req.id }}" class="block bg-white rounded-xl p-3.5 border border-sky-200/80 hover:border-sky-400 hover:shadow-md transition active:scale-[0.98]">
-                        <div class="text-xs font-extrabold text-slate-900 mb-1 truncate">{{ req.title }}</div>
-                        <div class="text-[11px] font-medium text-slate-500 mb-2 truncate">{{ req.quantity }} {{ req.unit or '' }}</div>
-                        <div class="inline-block text-[10px] font-bold text-sky-800 bg-sky-50 px-2 py-0.5 rounded mb-2 border border-sky-200/60">
-                            Delivery Arrived
+                    <div class="bg-white rounded-xl p-3.5 border border-sky-200/80 hover:border-sky-400 hover:shadow-md transition">
+                        <a href="/requisitions/{{ req.id }}" class="block active:scale-[0.98]">
+                            <div class="text-xs font-extrabold text-slate-900 mb-1 truncate">{{ req.title }}</div>
+                            <div class="text-[11px] font-medium text-slate-500 mb-2 truncate">{{ req.quantity }} {{ req.unit or '' }}</div>
+                            <div class="inline-block text-[10px] font-bold text-sky-800 bg-sky-50 px-2 py-0.5 rounded mb-2 border border-sky-200/60">
+                                Delivery Arrived
+                            </div>
+                            <div class="text-[10px] text-slate-400 font-medium border-t border-slate-100 pt-2 flex items-center justify-between">
+                                <span>Pending QC</span>
+                                <span class="font-bold text-sky-600">Inspection</span>
+                            </div>
+                        </a>
+                        {% if user and user.can_perform_qc %}
+                        <div class="mt-2.5 pt-2 border-t border-slate-100">
+                            <a href="/requisitions/{{ req.id }}/receive?qc=1"
+                               class="w-full text-[11px] font-bold py-1 px-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition text-center flex items-center justify-center gap-1 shadow-2xs">
+                                ✅ Perform QC Inspection
+                            </a>
                         </div>
-                        <div class="text-[10px] text-slate-400 font-medium border-t border-slate-100 pt-2 flex items-center justify-between">
-                            <span>Pending QC</span>
-                            <span class="font-bold text-sky-600">Inspection</span>
-                        </div>
-                    </a>
+                        {% endif %}
+                    </div>
                     {% else %}
                     <div class="text-center py-8 text-xs text-slate-400 font-medium">No received items</div>
                     {% endfor %}

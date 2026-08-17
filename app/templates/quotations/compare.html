@@ -90,7 +90,7 @@
                     <span class="text-xs font-medium text-slate-400">Not selected</span>
                     {% endif %}
                 {% else %}
-                    {% if user and user.role in ('procurement', 'admin') %}
+                    {% if user and (user.is_procurement or user.is_management or user.role == 'admin') %}
                     <form method="post" action="/decisions/new/{{ req.id }}/{{ link.vendor_id }}" class="inline">
                         <button type="submit" class="bg-emerald-600 text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-emerald-700 transition shadow-sm active:scale-[0.97] min-h-[36px]">
                             ✓ Select Winner

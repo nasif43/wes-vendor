@@ -163,13 +163,11 @@ async def main():
         session.add_all(user_objs)
         await session.flush()
         users_by_role = {u.role: u for u in user_objs}
-        requester, purchaser, manager, qc, admin = (
-            users_by_role[UserRole.REQUESTER],
-            users_by_role[UserRole.PROCUREMENT],
-            users_by_role[UserRole.MANAGEMENT],
-            users_by_role[UserRole.QC_RECEIVER],
-            users_by_role[UserRole.ADMIN],
-        )
+        purchaser = users_by_role[UserRole.PROCUREMENT]
+        requester = purchaser
+        manager = users_by_role[UserRole.MANAGEMENT]
+        qc = users_by_role[UserRole.QC_RECEIVER]
+        admin = users_by_role.get(UserRole.ADMIN, manager)
 
         # Categories
         cat_objs = {name: Category(name=name, description=desc) for name, desc in CATEGORIES}

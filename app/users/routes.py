@@ -40,7 +40,6 @@ async def update_user_permissions(
     can_do_qc: bool = Form(False),
     can_view_all_requisitions: bool = Form(False),
     is_management: bool = Form(False),
-    role: str = Form("procurement"),
     user: UserProfile = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -62,9 +61,6 @@ async def update_user_permissions(
     target_user.can_view_all_requisitions = can_view_all_requisitions
     target_user.is_management = is_management
     
-    if role in [r.value for r in UserRole]:
-        target_user.role = UserRole(role)
-
     # ── Audit log ──────────────────────────────────────────────────────────────
     changes = []
     if old_view_quotes != can_view_quotations:

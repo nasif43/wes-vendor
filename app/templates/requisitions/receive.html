@@ -1,6 +1,8 @@
 {% extends "base.html" %}
 {% block title %}Receive Order — {{ req.title }}{% endblock %}
 {% block content %}
+{% set status_str = (req.status.value if req.status.value is defined else req.status|string)|lower %}
+{% set is_qc_mode = (status_str == 'received' or request.query_params.get('qc') == '1') %}
 <div class="slide-up max-w-lg mx-auto pb-10">
 
     <!-- HEADER -->
@@ -10,14 +12,14 @@
         </a>
         <div>
             <h1 class="text-lg font-bold text-slate-900 leading-tight">
-                {% if req.status.value == 'received' %}Step 2: Quality Control (QC) Inspection{% else %}Step 1: Record Physical Delivery Arrival{% endif %}
+                {% if is_qc_mode %}Quality Control (QC) &amp; Delivery Verification{% else %}Record Physical Delivery Arrival{% endif %}
             </h1>
             <p class="text-xs text-slate-400 mt-0.5">{{ req.title }}</p>
         </div>
     </div>
 
     <!-- QC ALREADY DONE BANNER -->
-    {% if req.qc_done or req.status.value == 'closed' %}
+    {% if req.qc_done or status_str == 'closed' %}
     <div class="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 mb-5 flex items-center gap-3">
         <div class="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
             <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
@@ -34,7 +36,7 @@
     {% endif %}
 
     <!-- DELIVERY RECEIVED BANNER (Step 1 complete, Step 2 QC pending) -->
-    {% if req.status.value == 'received' and not req.qc_done %}
+    {% if status_str == 'received' and not req.qc_done %}
     <div class="bg-sky-50 border border-sky-200 rounded-2xl p-4 mb-5 flex items-center gap-3">
         <div class="w-8 h-8 rounded-full bg-sky-100 flex items-center justify-center shrink-0">
             <svg class="w-4 h-4 text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
@@ -98,10 +100,10 @@
 
                 <!-- QC CHECKBOX -->
                 <div class="pt-2">
-                    <label class="flex items-start gap-3 cursor-pointer group p-3.5 border border-slate-200 rounded-xl hover:bg-slate-50 transition {% if req.status.value == 'received' %}bg-emerald-50/50 border-emerald-200{% endif %}">
+                    <label class="flex items-start gap-3 cursor-pointer group p-3.5 border border-slate-200 rounded-xl hover:bg-slate-50 transition {% if is_qc_mode %}bg-emerald-50/50 border-emerald-200{% endif %}">
                         <div class="flex items-center h-5">
                             <input type="checkbox" name="qc_done" value="true"
-                                   {% if req.qc_done or req.status.value == 'received' %}checked{% endif %}
+                                   {% if req.qc_done or is_qc_mode %}checked{% endif %}
                                    class="w-5 h-5 rounded border-slate-300 text-brand-600 focus:ring-brand-500 transition cursor-pointer">
                         </div>
                         <div class="flex-1">
@@ -116,9 +118,9 @@
             </div>
         </div>
 
-        <button type="submit" class="w-full {% if req.status.value == 'received' %}bg-emerald-600 hover:bg-emerald-700{% else %}bg-brand-600 hover:bg-brand-700{% endif %} text-white font-semibold rounded-xl h-14 text-sm shadow-sm hover:shadow-md transition active:scale-[0.98] flex items-center justify-center gap-2">
+        <button type="submit" class="w-full {% if is_qc_mode %}bg-emerald-600 hover:bg-emerald-700{% else %}bg-brand-600 hover:bg-brand-700{% endif %} text-white font-semibold rounded-xl h-14 text-sm shadow-sm hover:shadow-md transition active:scale-[0.98] flex items-center justify-center gap-2">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-            {% if req.status.value == 'received' %}Complete QC Inspection &amp; Close Ticket{% else %}Record Delivery Arrival{% endif %}
+            {% if is_qc_mode %}Complete QC Inspection &amp; Close Ticket{% else %}Record Delivery Arrival{% endif %}
         </button>
 
     </form>

@@ -149,9 +149,24 @@
                                         {{ render_status_badge(req.status) }}
                                     </td>
                                     <td class="py-3.5 pl-3 text-right">
-                                        <a href="/requisitions/{{ req.id }}" class="inline-block px-3 py-1.5 bg-slate-100 hover:bg-brand-50 hover:text-brand-600 text-slate-700 rounded-lg text-[11px] font-bold transition active:scale-95">
-                                            View Details
-                                        </a>
+                                        {% set st = (req.status.value if req.status.value is defined else req.status|string)|lower %}
+                                        <div class="inline-flex items-center gap-1.5 justify-end">
+                                            {% if user and user.can_perform_qc and st == 'submitted' %}
+                                            <a href="/requisitions/{{ req.id }}/receive" class="inline-block px-2.5 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-600 hover:text-white rounded-lg text-[11px] font-bold transition active:scale-95">
+                                                🚚 Receive
+                                            </a>
+                                            <a href="/requisitions/{{ req.id }}/receive?qc=1" class="inline-block px-2.5 py-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white rounded-lg text-[11px] font-bold transition active:scale-95">
+                                                ✅ Do QC
+                                            </a>
+                                            {% elif user and user.can_perform_qc and st == 'received' %}
+                                            <a href="/requisitions/{{ req.id }}/receive?qc=1" class="inline-block px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-bold transition active:scale-95">
+                                                ✅ Do QC
+                                            </a>
+                                            {% endif %}
+                                            <a href="/requisitions/{{ req.id }}" class="inline-block px-3 py-1.5 bg-slate-100 hover:bg-brand-50 hover:text-brand-600 text-slate-700 rounded-lg text-[11px] font-bold transition active:scale-95">
+                                                Details
+                                            </a>
+                                        </div>
                                     </td>
                                 </tr>
                                 {% endfor %}
