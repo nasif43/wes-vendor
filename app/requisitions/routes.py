@@ -28,12 +28,20 @@ async def list_requisitions(
     from app.decisions.models import Decision
 
     stmt = select(Requisition).order_by(Requisition.created_at.desc())
-    if not user.can_see_all_requisitions:
+    if user.role == UserRole.QC_RECEIVER and not user.can_view_all_requisitions:
+        # QC receiver by default focuses on orders that are placed/awaiting delivery (SUBMITTED), arrived (RECEIVED), or completed (CLOSED)
+        stmt = stmt.where(Requisition.status.in_([
+            RequisitionStatus.SUBMITTED,
+            RequisitionStatus.RECEIVED,
+            RequisitionStatus.CLOSED,
+        ]))
+    elif not user.can_see_all_requisitions:
         # Procurement officers only see requisitions they created unless given access to see all
         stmt = stmt.where(Requisition.created_by == user.id)
 
     result = await db.execute(stmt)
     requisitions = list(result.scalars().all())
+
 
 
     req_ids = [r.id for r in requisitions]
