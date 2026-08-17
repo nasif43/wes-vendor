@@ -1,6 +1,7 @@
+import uuid
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends, Form, Request
+from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -389,11 +390,14 @@ async def receive_requisition_submit(
     invoice_number: str = Form(...),
     invoice_url: str = Form(""),
     delivery_image_url: str = Form(""),
+    delivery_photo: UploadFile = File(None),
+    invoice_file: UploadFile = File(None),
     qc_done: bool = Form(False),
     user: UserProfile = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     from app.main import templates  # noqa: F401
+    from app.storage import BUCKET_NAME, upload_file
 
     result = await db.execute(select(Requisition).where(Requisition.id == req_id))
     req = result.scalar_one_or_none()
@@ -403,9 +407,33 @@ async def receive_requisition_submit(
     if not user.can_perform_qc:
         return RedirectResponse(url=f"/requisitions/{req_id}?error=Permission+denied", status_code=303)
 
+    # Handle native camera / delivery photo upload
+    final_delivery_image_url = delivery_image_url
+    if delivery_photo and delivery_photo.filename:
+        photo_bytes = await delivery_photo.read()
+        if len(photo_bytes) > 0:
+            ext = delivery_photo.filename.split(".")[-1].lower() if "." in delivery_photo.filename else "jpg"
+            remote_path = f"deliveries/{req.id}/{uuid.uuid4()}.{ext}"
+            content_type = delivery_photo.content_type or "image/jpeg"
+            uploaded_url = await upload_file(BUCKET_NAME, remote_path, photo_bytes, content_type)
+            if uploaded_url:
+                final_delivery_image_url = uploaded_url
+
+    # Handle invoice file upload
+    final_invoice_url = invoice_url
+    if invoice_file and invoice_file.filename:
+        inv_bytes = await invoice_file.read()
+        if len(inv_bytes) > 0:
+            ext = invoice_file.filename.split(".")[-1].lower() if "." in invoice_file.filename else "pdf"
+            remote_path = f"invoices/{req.id}/{uuid.uuid4()}.{ext}"
+            content_type = invoice_file.content_type or "application/pdf"
+            uploaded_url = await upload_file(BUCKET_NAME, remote_path, inv_bytes, content_type)
+            if uploaded_url:
+                final_invoice_url = uploaded_url
+
     req.invoice_number = invoice_number
-    req.invoice_url = invoice_url
-    req.delivery_image_url = delivery_image_url
+    req.invoice_url = final_invoice_url
+    req.delivery_image_url = final_delivery_image_url
     req.qc_done = qc_done
 
     from app.requisitions.service import transition_requisition_status
