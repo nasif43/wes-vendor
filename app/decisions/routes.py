@@ -17,19 +17,9 @@ from app.vendors.models import Vendor
 router = APIRouter()
 
 
-@router.get("", response_class=HTMLResponse)
-async def list_decisions(
-    request: Request,
-    user: UserProfile = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    from app.main import templates
-
-    result = await db.execute(select(Decision).order_by(Decision.decided_at.desc()))
-    decisions = result.scalars().all()
-    return templates.TemplateResponse(
-        request, "decisions/list.html", {"user": user, "decisions": decisions}
-    )
+@router.get("")
+async def list_decisions(request: Request):
+    return RedirectResponse(url="/past-orders", status_code=301)
 
 
 @router.post("/new/{req_id}/{vendor_id}")

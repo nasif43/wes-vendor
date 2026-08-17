@@ -358,6 +358,20 @@
     </div>
     {% endif %}
 
+    {% if total_pages and total_pages > 1 %}
+    <div class="mt-6 flex items-center justify-between border-t border-slate-200 pt-4">
+        <p class="text-xs text-slate-500 font-medium">Page {{ page }} of {{ total_pages }}</p>
+        <div class="flex items-center gap-2">
+            {% if page > 1 %}
+            <a href="?page={{ page - 1 }}&view={{ view_mode }}" class="px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition">Previous</a>
+            {% endif %}
+            {% if page < total_pages %}
+            <a href="?page={{ page + 1 }}&view={{ view_mode }}" class="px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition">Next</a>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
 </div>
 
 <script>

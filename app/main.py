@@ -112,6 +112,28 @@ from app.dependencies import get_current_user
 from app.auth.models import UserProfile
 from app.database import get_db
 
+@app.get("/past-orders")
+async def past_orders(
+    request: Request,
+    user: UserProfile = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    from sqlalchemy import select
+    from app.requisitions.models import Requisition, RequisitionStatus
+
+    stmt = select(Requisition).where(Requisition.status == RequisitionStatus.CLOSED).order_by(Requisition.created_at.desc())
+    if not user.can_see_all_requisitions:
+        stmt = stmt.where(Requisition.created_by == user.id)
+
+    result = await db.execute(stmt)
+    requisitions = result.scalars().all()
+
+    return templates.TemplateResponse(request, "requisitions/past_orders.html", {
+        "user": user,
+        "requisitions": requisitions
+    })
+
+
 @app.get("/")
 async def index(
     request: Request,

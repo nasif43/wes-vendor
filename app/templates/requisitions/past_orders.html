@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Past Orders — WES Vendor Portal{% endblock %}
+
+{% block nav_side_past_orders %}tab-active bg-slate-800/60 text-white{% endblock %}
+{% block nav_past_orders_icon %}text-brand-600{% endblock %}
+{% block nav_past_orders_label %}text-brand-600 font-semibold{% endblock %}
+
+{% block content %}
+<div class="slide-up max-w-5xl mx-auto pb-10">
+    <div class="flex items-center justify-between mb-6">
+        <div>
+            <h1 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                <svg class="w-5 h-5 text-brand-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                Past Orders
+            </h1>
+            <p class="text-xs text-slate-500 font-medium mt-0.5">Archive of all completed and closed purchase requisitions.</p>
+        </div>
+    </div>
+
+    {% if requisitions %}
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {% for req in requisitions %}
+        <a href="/requisitions/{{ req.id }}" class="block bg-white rounded-2xl border border-slate-200 p-4 hover:shadow-md hover:border-brand-200 transition shadow-sm group active:scale-[0.98]">
+            <div class="flex items-center justify-between mb-3">
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+                    {{ req.display_id }}
+                </span>
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-800 text-white border border-slate-900">
+                    Closed
+                </span>
+            </div>
+
+            <h3 class="font-bold text-slate-900 mb-1 leading-snug group-hover:text-brand-700 transition line-clamp-2">
+                {{ req.title }}
+            </h3>
+
+            <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
+                <div class="text-[10px] text-slate-400 font-medium">
+                    Created {{ req.created_at.strftime('%b %d, %Y') }}
+                </div>
+                <div class="text-[10px] font-bold text-brand-600 group-hover:translate-x-0.5 transition-transform flex items-center gap-1">
+                    View Details &rarr;
+                </div>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="bg-white rounded-2xl border border-slate-200 p-10 text-center flex flex-col items-center shadow-sm">
+        <div class="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4 border border-slate-100 shadow-inner">
+            <svg class="w-8 h-8 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        </div>
+        <p class="text-sm font-semibold text-slate-900 mb-1">No Past Orders Found</p>
+        <p class="text-xs text-slate-400">Completed requisitions will appear here once QC is finished and tickets are closed.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

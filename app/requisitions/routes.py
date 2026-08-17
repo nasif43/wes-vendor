@@ -22,11 +22,14 @@ router = APIRouter()
 async def list_requisitions(
     request: Request,
     view: str = "table",
+    page: int = 1,
+    page_size: int = 50,
     user: UserProfile = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     from app.main import templates
     from app.decisions.models import Decision
+    from sqlalchemy import func
 
     stmt = select(Requisition).order_by(Requisition.created_at.desc())
     if user.role == UserRole.QC_RECEIVER and not user.can_view_all_requisitions:
@@ -40,6 +43,11 @@ async def list_requisitions(
         # Procurement officers only see requisitions they created unless given access to see all
         stmt = stmt.where(Requisition.created_by == user.id)
 
+    count_stmt = select(func.count()).select_from(stmt.subquery())
+    total_count = await db.scalar(count_stmt) or 0
+    total_pages = max(1, (total_count + page_size - 1) // page_size)
+
+    stmt = stmt.limit(page_size).offset((page - 1) * page_size)
     result = await db.execute(stmt)
     requisitions = list(result.scalars().all())
 
@@ -103,6 +111,8 @@ async def list_requisitions(
             "requisitions": requisitions,
             "items": items,
             "view": view,
+            "page": page,
+            "total_pages": total_pages,
         },
     )
 

@@ -22,9 +22,10 @@ async def quotation_inbox(
     if not user.can_see_quotes:
         return RedirectResponse(url="/?error=Permission+denied", status_code=303)
 
+    from app.requisitions.models import RequisitionStatus
     result = await db.execute(
         select(Requisition)
-        .where(Requisition.status != "draft")
+        .where(Requisition.status == RequisitionStatus.IN_PROGRESS)
         .order_by(Requisition.created_at.desc())
     )
     requisitions = result.scalars().all()

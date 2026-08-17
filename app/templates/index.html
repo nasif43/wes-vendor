@@ -54,8 +54,8 @@
             </div>
         </a>
 
-        <!-- CARD 3: PENDING DECISIONS -->
-        <a href="/decisions" class="bg-white rounded-2xl border border-slate-200/80 p-4.5 hover:shadow-md hover:border-amber-200 transition group active:scale-[0.99] flex items-center justify-between">
+        <!-- CARD 3: PAST ORDERS -->
+        <a href="/past-orders" class="bg-white rounded-2xl border border-slate-200/80 p-4.5 hover:shadow-md hover:border-amber-200 transition group active:scale-[0.99] flex items-center justify-between">
             <div class="flex items-center gap-3.5">
                 <div class="w-11 h-11 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0 shadow-xs">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
@@ -252,9 +252,9 @@
                     {% endif %}
 
                     {% if not user or user.has_management_authority %}
-                    <a href="/decisions" class="p-3 rounded-xl border border-slate-200 hover:border-brand-300 hover:bg-brand-50/50 transition text-left flex flex-col justify-between group active:scale-95 min-h-[72px]">
-                        <svg class="w-4 h-4 text-purple-600 group-hover:scale-110 transition mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                        <span class="text-xs font-bold text-slate-800 group-hover:text-purple-700">Decisions</span>
+                    <a href="/past-orders" class="p-3 rounded-xl border border-slate-200 hover:border-brand-300 hover:bg-brand-50/50 transition text-left flex flex-col justify-between group active:scale-95 min-h-[72px]">
+                        <svg class="w-5 h-5 text-slate-400 group-hover:text-purple-600 mb-2 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        <span class="text-xs font-bold text-slate-800 group-hover:text-purple-700">Past Orders</span>
                     </a>
                     {% endif %}
                 </div>

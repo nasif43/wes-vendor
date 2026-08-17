@@ -118,9 +118,9 @@
             {% endif %}
 
             {% if not user or user.has_management_authority %}
-            <a href="/decisions" class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition {% block nav_side_dec %}text-slate-400 hover:text-white hover:bg-slate-800/60{% endblock %}">
-                <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                Decisions &amp; Approvals
+            <a href="/past-orders" class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition {% block nav_side_past_orders %}text-slate-400 hover:text-white hover:bg-slate-800/60{% endblock %}">
+                <svg class="w-5 h-5 opacity-70 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                Past Orders
             </a>
 
             <a href="/reports" class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition {% block nav_side_del %}text-slate-400 hover:text-white hover:bg-slate-800/60{% endblock %}">
@@ -269,11 +269,11 @@
         </a>
         {% endif %}
         {% if user.has_management_authority %}
-        <a href="/decisions" class="flex flex-col items-center pt-2 pb-1 {% block nav_decisions %}{% endblock %}">
-            <div class="tab-pill w-10 h-7 flex items-center justify-center mb-0.5">
-                <svg class="tab-icon w-5 h-5 {% block nav_decisions_icon %}text-slate-400{% endblock %}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <a href="/past-orders" class="flex flex-col items-center pt-2 pb-1 {% block nav_past_orders %}{% endblock %}">
+            <div class="relative group-active:scale-90 transition-transform">
+                <svg class="tab-icon w-5 h-5 {% block nav_past_orders_icon %}text-slate-400{% endblock %}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
             </div>
-            <span class="tab-label text-[10px] {% block nav_decisions_label %}text-slate-400{% endblock %}">Decide</span>
+            <span class="tab-label text-[10px] {% block nav_past_orders_label %}text-slate-400{% endblock %}">Past Orders</span>
         </a>
         {% endif %}
     </div>
