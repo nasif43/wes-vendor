@@ -187,9 +187,33 @@ The app connects to hosted Supabase for everything — no local database or Dock
 
 - [ ] Set `DATABASE_URL` to Supabase PostgreSQL connection string
 - [ ] Set `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
-- [ ] Set `MAILGUN_API_KEY`, `MAILGUN_DOMAIN`, `MAIL_FROM`
+- [ ] Set `RESEND_API_KEY`, `MAIL_FROM`, `DEFAULT_CC`
 - [ ] Set `SECRET_KEY` to a random string
 - [ ] Set `DEBUG=false` in production
 - [ ] Run `make migrate` to apply schema
 - [ ] Create Supabase Storage bucket for quotation images
 - [ ] Configure Supabase RLS policies if needed
+
+### Heroku (Student Pack) Quick Deploy
+
+This repository includes:
+
+- `Procfile` → starts FastAPI via Gunicorn/Uvicorn workers
+- `runtime.txt` → pins Python runtime for Heroku
+
+Deploy steps:
+
+1. Create app and connect this GitHub repo in Heroku.
+2. Add environment variables from `.env.example` with real values:
+   - `SUPABASE_URL`
+   - `SUPABASE_ANON_KEY`
+   - `SUPABASE_SERVICE_ROLE_KEY`
+   - `DATABASE_URL`
+   - `RESEND_API_KEY`
+   - `MAIL_FROM`
+   - `DEFAULT_CC`
+   - `SECRET_KEY`
+   - `DEBUG=false`
+3. Deploy from `main`.
+4. Open Heroku shell and run migrations:
+   - `alembic upgrade head`
