@@ -65,7 +65,9 @@ class UserProfile(Base):
     @property
     def can_see_quotes(self) -> bool:
         role_str = str(self.role.value) if hasattr(self.role, "value") else str(self.role or "")
-        return bool(self.can_view_quotations or self.is_management or role_str in ("management", "admin", "procurement"))
+        # Procurement by default cannot see quotation details/pricing unless explicitly granted can_view_quotations by management
+        return bool(self.can_view_quotations or self.is_management or role_str in ("management", "admin"))
+
 
     @property
     def can_perform_qc(self) -> bool:

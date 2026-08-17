@@ -146,12 +146,13 @@
                         {% elif link.status == 'submitted' %}bg-emerald-100 text-emerald-700
                         {% elif link.status == 'flagged' %}bg-red-100 text-red-700
                         {% else %}bg-slate-100 text-slate-600{% endif %}">
-                        {{ link.status }}
+                        {% if link.status == 'submitted' %}Quote Received{% elif link.status == 'pending' %}Awaiting Quote{% else %}{{ link.status }}{% endif %}
                     </span>
                 </div>
             </div>
             {% endfor %}
         </div>
+
         {% else %}
         <div class="bg-white rounded-2xl border border-slate-200 p-8 text-center shadow-sm mb-4">
             <p class="text-sm text-slate-400">No vendors selected yet.</p>

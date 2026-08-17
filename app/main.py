@@ -23,15 +23,13 @@ templates = Jinja2Templates(directory="app/templates")
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     logger.info("Starting up — DEBUG=%s", settings.debug)
     try:
-        from sqlalchemy import text
-        from app.database import engine
-        async with engine.connect() as conn:
-            await conn.execute(text("SELECT 1"))
-        logger.info("Database connection verified")
+        await init_db()
+        logger.info("Database schema initialized and verified")
     except Exception as e:
-        logger.exception("Database connectivity check failed: %s", e)
+        logger.exception("Database init_db failed: %s", e)
 
     yield
+
 
     try:
         from app.storage import close_storage_client

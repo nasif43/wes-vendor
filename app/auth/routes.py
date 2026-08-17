@@ -96,7 +96,7 @@ async def signup(
             request, "auth/signup.html", {"error": "Email already registered"}
         )
 
-    user = UserProfile(email=email, full_name=full_name, role=UserRole.REQUESTER)
+    user = UserProfile(email=email, full_name=full_name, role=UserRole.PROCUREMENT)
     db.add(user)
     await db.flush()
 

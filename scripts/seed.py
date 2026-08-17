@@ -42,19 +42,12 @@ def now_minus(days: int) -> datetime:
 # ── USERS ──────────────────────────────────────────────────────────────────
 USERS = [
     dict(
-        email="rafiqul.islam@wenerbd.com",
-        full_name="Md. Rafiqul Islam",
-        role=UserRole.REQUESTER,
-        can_view_quotations=False,
-        can_do_qc=False,
-        is_management=False,
-    ),
-    dict(
         email="tanjila.akter@wenerbd.com",
         full_name="Tanjila Akter",
         role=UserRole.PROCUREMENT,
-        can_view_quotations=True,
+        can_view_quotations=False,
         can_do_qc=False,
+        can_view_all_requisitions=False,
         is_management=False,
     ),
     dict(
@@ -62,7 +55,8 @@ USERS = [
         full_name="Mizanur Rahman",
         role=UserRole.MANAGEMENT,
         can_view_quotations=True,
-        can_do_qc=False,
+        can_do_qc=True,
+        can_view_all_requisitions=True,
         is_management=True,
     ),
     dict(
@@ -71,6 +65,7 @@ USERS = [
         role=UserRole.QC_RECEIVER,
         can_view_quotations=False,
         can_do_qc=True,
+        can_view_all_requisitions=True,
         is_management=False,
     ),
     dict(
@@ -79,9 +74,11 @@ USERS = [
         role=UserRole.ADMIN,
         can_view_quotations=True,
         can_do_qc=True,
+        can_view_all_requisitions=True,
         is_management=True,
     ),
 ]
+
 
 # ── CATEGORIES ────────────────────────────────────────────────────────────
 CATEGORIES = [
