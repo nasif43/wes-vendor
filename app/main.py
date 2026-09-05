@@ -46,9 +46,6 @@ app = FastAPI(
     redoc_url=None,
 )
 
-from app.middleware import TelemetryMiddleware
-app.add_middleware(TelemetryMiddleware)
-
 app.add_middleware(
     SessionMiddleware,
     secret_key=settings.secret_key,
