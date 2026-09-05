@@ -79,7 +79,7 @@ async def trigger_db_seed(
 @router.get("/signup")
 async def signup_page(request: Request):
     return RedirectResponse(
-        url="/auth/login?error=Self-registration+is+disabled.+User+accounts+are+provisioned+by+System+Administrator.",
+        url="/auth/login?error=Self-registration+is+disabled.+User+accounts+are+created+by+System+Administrator.",
         status_code=303,
     )
 
@@ -87,7 +87,7 @@ async def signup_page(request: Request):
 @router.post("/signup")
 async def signup(request: Request):
     return RedirectResponse(
-        url="/auth/login?error=Self-registration+is+disabled.+User+accounts+are+provisioned+by+System+Administrator.",
+        url="/auth/login?error=Self-registration+is+disabled.+User+accounts+are+created+by+System+Administrator.",
         status_code=303,
     )
 

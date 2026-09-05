@@ -8,21 +8,21 @@
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
             <h1 class="text-xl font-bold text-slate-900 flex items-center gap-2">
-                👥 User Provisioning &amp; Role Administration
+                👥 User Management &amp; Role Administration
             </h1>
             <p class="text-xs text-slate-500 font-medium mt-0.5">
-                Internal employee directory. Provision new user accounts, assign roles, and configure multi-role permissions.
+                Internal employee directory. Create new user accounts, assign roles, and configure multi-role permissions.
             </p>
         </div>
 
         <button type="button" onclick="toggleNewUserCard()" id="btn-toggle-new-user"
                 class="inline-flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition shadow-xs active:scale-95 shrink-0 self-start sm:self-auto">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
-            + Provision New User
+            + Create New User
         </button>
     </div>
 
-    <!-- PROVISION NEW USER SLIDE-DOWN CARD -->
+    <!-- CREATE NEW USER SLIDE-DOWN CARD -->
     <div id="new-user-card" class="hidden bg-white rounded-2xl border border-brand-200/80 p-5 mb-6 shadow-md border-t-4 border-t-brand-600">
         <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
             <div>
@@ -30,7 +30,7 @@
                     <span class="w-2 h-2 rounded-full bg-brand-600"></span>
                     Create New Employee Account
                 </h2>
-                <p class="text-xs text-slate-400 mt-0.5">Provision an internal user with tailored portal privileges.</p>
+                <p class="text-xs text-slate-400 mt-0.5">Create an internal user with special portal access.</p>
             </div>
             <button type="button" onclick="toggleNewUserCard()" class="text-slate-400 hover:text-slate-600 text-lg leading-none font-bold">&times;</button>
         </div>
