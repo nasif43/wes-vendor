@@ -178,3 +178,75 @@ async def delete_vendor(
         )
         await db.delete(vendor)
     return RedirectResponse(url="/vendors?success=1", status_code=303)
+
+
+@router.get("/{vendor_id}/audit", response_class=HTMLResponse)
+async def vendor_audit_notes(
+    request: Request,
+    vendor_id: str,
+    user: UserProfile = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Show audit/rejection notes for a specific vendor — management/admin only."""
+    from app.main import templates
+    from app.audit.models import AuditLog
+
+    result = await db.execute(select(Vendor).where(Vendor.id == vendor_id))
+    vendor = result.scalar_one_or_none()
+    if not vendor:
+        return RedirectResponse(url="/vendors", status_code=303)
+
+    # Fetch rejection and QC_FAILED events related to this vendor
+    audit_res = await db.execute(
+        select(AuditLog)
+        .where(
+            AuditLog.notes.contains(vendor.company_name)
+            | (AuditLog.entity_id == vendor_id)
+        )
+        .order_by(AuditLog.created_at.desc())
+        .limit(50)
+    )
+    audit_logs = audit_res.scalars().all()
+
+    return templates.TemplateResponse(
+        request,
+        "vendors/audit.html",
+        {"user": user, "vendor": vendor, "audit_logs": audit_logs},
+    )
+
+
+@router.post("/{vendor_id}/reject-note")
+async def add_vendor_rejection_note(
+    request: Request,
+    vendor_id: str,
+    note_text: str = Form(...),
+    qc_failed: bool = Form(False),
+    user: UserProfile = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Log a rejection or QC failure note against a vendor profile."""
+    from app.main import templates  # noqa: F401
+    from app.auth.models import UserRole
+
+    if not (user.has_management_authority or user.role == UserRole.ADMIN):
+        return RedirectResponse(url=f"/vendors/{vendor_id}?error=Permission+denied", status_code=303)
+
+    result = await db.execute(select(Vendor).where(Vendor.id == vendor_id))
+    vendor = result.scalar_one_or_none()
+    if not vendor:
+        return RedirectResponse(url="/vendors", status_code=303)
+
+    action = "QC_FAILED" if qc_failed else "VENDOR_REJECTED"
+    await log_action(
+        db,
+        actor=user,
+        action=action,
+        entity_type="vendor",
+        entity_id=vendor_id,
+        entity_label=vendor.company_name,
+        notes=note_text,
+    )
+    await db.flush()
+    return RedirectResponse(
+        url=f"/vendors/{vendor_id}/audit?success=Note+added", status_code=303
+    )

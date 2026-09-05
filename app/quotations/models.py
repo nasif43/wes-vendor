@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import uuid4
 
-from sqlalchemy import JSON, DateTime, ForeignKey, String, Text, func
+from sqlalchemy import JSON, DateTime, ForeignKey, Integer, Numeric, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -21,6 +21,10 @@ class Quotation(Base):
         DateTime(timezone=True), server_default=func.now()
     )
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Versioning: 1=initial (v1), 2=negotiated (v2)
+    quote_version: Mapped[int] = mapped_column(Integer, default=1)
+    # Partial quantity quoted by vendor (optional; defaults to full requisition qty)
+    quoted_quantity: Mapped[float | None] = mapped_column(Numeric, nullable=True)
 
     requisition_vendor = relationship(
         "RequisitionVendor", back_populates="quotation", lazy="selectin"

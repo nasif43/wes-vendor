@@ -116,6 +116,61 @@ async def list_requisitions(
         },
     )
 
+@router.get("/{req_id}/edit", response_class=HTMLResponse)
+async def edit_requisition_page(
+    request: Request,
+    req_id: str,
+    user: UserProfile = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    from app.main import templates
+    
+    result = await db.execute(select(Requisition).where(Requisition.id == req_id))
+    req = result.scalar_one_or_none()
+    if not req:
+        return RedirectResponse(url="/requisitions", status_code=303)
+        
+    return templates.TemplateResponse(
+        request, "requisitions/edit.html", {"user": user, "req": req}
+    )
+
+@router.post("/{req_id}/edit")
+async def update_requisition(
+    request: Request,
+    req_id: str,
+    title: str = Form(...),
+    item_description: str = Form(...),
+    quantity: float = Form(...),
+    unit: str = Form(""),
+    notes: str = Form(""),
+    user: UserProfile = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(Requisition).where(Requisition.id == req_id))
+    req = result.scalar_one_or_none()
+    if not req:
+        return RedirectResponse(url="/requisitions", status_code=303)
+        
+    req.title = title
+    req.item_description = item_description
+    req.quantity = quantity
+    req.unit = unit or None
+    req.notes = notes or None
+    
+    await db.flush()
+    
+    await log_action(
+        db,
+        actor=user,
+        action="REQUISITION_UPDATED",
+        entity_type="requisition",
+        entity_id=req.id,
+        entity_label=req.title,
+        notes="Requisition details/quantity updated.",
+    )
+    
+    return RedirectResponse(url=f"/requisitions/{req_id}", status_code=303)
+
 
 @router.get("/new", response_class=HTMLResponse)
 async def new_requisition_page(
@@ -471,3 +526,271 @@ async def receive_requisition_submit(
     await db.flush()
     return RedirectResponse(url=f"/requisitions/{req_id}?success=Order+marked+as+received", status_code=303)
 
+
+@router.post("/{req_id}/cancel")
+async def cancel_requisition(
+    req_id: str,
+    reason: str = Form(""),
+    user: UserProfile = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Cancel a requisition — available to management/admin and the original creator."""
+    from app.auth.models import UserRole
+    result = await db.execute(select(Requisition).where(Requisition.id == req_id))
+    req = result.scalar_one_or_none()
+    if not req:
+        return RedirectResponse(url="/requisitions", status_code=303)
+
+    if not (user.has_management_authority or user.role == UserRole.ADMIN or req.created_by == user.id):
+        return RedirectResponse(url=f"/requisitions/{req_id}?error=Permission+denied", status_code=303)
+
+    req.rejected_reason = reason or None
+    from app.requisitions.service import transition_requisition_status
+    await transition_requisition_status(
+        db,
+        requisition=req,
+        target_status=RequisitionStatus.CANCELLED,
+        actor=user,
+        action_name="REQUISITION_CANCELLED",
+        notes=f"Cancelled by {user.full_name}. Reason: {reason or 'No reason given'}",
+    )
+    await db.flush()
+    return RedirectResponse(url=f"/requisitions/{req_id}?success=Requisition+cancelled", status_code=303)
+
+
+@router.post("/{req_id}/reject")
+async def reject_requisition(
+    req_id: str,
+    reason: str = Form(""),
+    user: UserProfile = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Reject a requisition — management/admin only."""
+    from app.auth.models import UserRole
+    result = await db.execute(select(Requisition).where(Requisition.id == req_id))
+    req = result.scalar_one_or_none()
+    if not req:
+        return RedirectResponse(url="/requisitions", status_code=303)
+
+    if not (user.has_management_authority or user.role == UserRole.ADMIN):
+        return RedirectResponse(url=f"/requisitions/{req_id}?error=Permission+denied", status_code=303)
+
+    req.rejected_reason = reason or None
+    from app.requisitions.service import transition_requisition_status
+    await transition_requisition_status(
+        db,
+        requisition=req,
+        target_status=RequisitionStatus.REJECTED,
+        actor=user,
+        action_name="REQUISITION_REJECTED",
+        notes=f"Rejected by {user.full_name}. Reason: {reason or 'No reason given'}",
+    )
+    await db.flush()
+    return RedirectResponse(url=f"/requisitions/{req_id}?success=Requisition+rejected", status_code=303)
+
+
+@router.post("/{req_id}/shortlist")
+async def shortlist_vendors(
+    req_id: str,
+    request: Request,
+    user: UserProfile = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Shortlist up to 3 vendor links for a requisition and set their quantity allocations."""
+    from app.auth.models import UserRole
+    if not (user.has_management_authority or user.is_procurement or user.role == UserRole.ADMIN):
+        return RedirectResponse(url=f"/quotations/compare/{req_id}?error=Permission+denied", status_code=303)
+
+    form_data = await request.form()
+    # Collect shortlisted link IDs and their allocations
+    shortlisted_ids: list[str] = list(form_data.getlist("shortlisted_ids"))
+    if len(shortlisted_ids) > 3:
+        return RedirectResponse(
+            url=f"/quotations/compare/{req_id}?error=Maximum+3+vendors+can+be+shortlisted",
+            status_code=303,
+        )
+
+    # Reset all existing shortlisting for this requisition
+    all_links_res = await db.execute(
+        select(RequisitionVendor).where(RequisitionVendor.requisition_id == req_id)
+    )
+    all_links = all_links_res.scalars().all()
+    for lnk in all_links:
+        lnk.is_shortlisted = False
+        lnk.allocated_quantity = None
+
+    # Set shortlisted + allocations
+    for link_id in shortlisted_ids:
+        qty_str = form_data.get(f"alloc_qty_{link_id}", "")
+        try:
+            allocated_qty = float(qty_str) if qty_str else None
+        except (ValueError, TypeError):
+            allocated_qty = None
+
+        res = await db.execute(
+            select(RequisitionVendor).where(
+                RequisitionVendor.id == link_id,
+                RequisitionVendor.requisition_id == req_id,
+            )
+        )
+        lnk = res.scalar_one_or_none()
+        if lnk:
+            lnk.is_shortlisted = True
+            lnk.allocated_quantity = allocated_qty
+
+    await log_action(
+        db,
+        actor=user,
+        action="VENDORS_SHORTLISTED",
+        entity_type="requisition",
+        entity_id=req_id,
+        entity_label=f"Requisition #{req_id}",
+        notes=f"{len(shortlisted_ids)} vendor(s) shortlisted by {user.full_name}",
+    )
+    await db.flush()
+    return RedirectResponse(
+        url=f"/quotations/compare/{req_id}?success=Vendors+shortlisted", status_code=303
+    )
+
+
+@router.post("/{req_id}/negotiate")
+async def start_negotiation(
+    req_id: str,
+    request: Request,
+    user: UserProfile = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Generate v2 quote links for all shortlisted vendors in this requisition."""
+    from app.auth.models import UserRole
+    from datetime import UTC, datetime
+
+    if not (user.has_management_authority or user.is_procurement or user.role == UserRole.ADMIN):
+        return RedirectResponse(url=f"/quotations/compare/{req_id}?error=Permission+denied", status_code=303)
+
+    result = await db.execute(select(Requisition).where(Requisition.id == req_id))
+    req = result.scalar_one_or_none()
+    if not req:
+        return RedirectResponse(url="/requisitions", status_code=303)
+
+    # Find shortlisted vendor links (v1 only, not already v2)
+    shortlisted_res = await db.execute(
+        select(RequisitionVendor).where(
+            RequisitionVendor.requisition_id == req_id,
+            RequisitionVendor.is_shortlisted == True,
+            RequisitionVendor.negotiation_version == "1",
+        )
+    )
+    shortlisted = shortlisted_res.scalars().all()
+    if not shortlisted:
+        return RedirectResponse(
+            url=f"/quotations/compare/{req_id}?error=No+shortlisted+vendors+found.+Shortlist+vendors+first.",
+            status_code=303,
+        )
+
+    v2_links = []
+    for lnk in shortlisted:
+        # Check if a v2 link already exists for this vendor in this req
+        existing_v2_res = await db.execute(
+            select(RequisitionVendor).where(
+                RequisitionVendor.requisition_id == req_id,
+                RequisitionVendor.vendor_id == lnk.vendor_id,
+                RequisitionVendor.negotiation_version == "2",
+            )
+        )
+        existing_v2 = existing_v2_res.scalar_one_or_none()
+        if existing_v2:
+            v2_links.append(existing_v2)
+            continue
+
+        v2_link = RequisitionVendor(
+            requisition_id=req_id,
+            vendor_id=lnk.vendor_id,
+            status="pending",
+            is_shortlisted=True,
+            allocated_quantity=lnk.allocated_quantity,
+            negotiation_version="2",
+            link_sent_at=datetime.now(UTC),
+        )
+        db.add(v2_link)
+        v2_links.append(v2_link)
+
+    await db.flush()
+
+    # Send v2 invitation emails
+    try:
+        email_params = []
+        for v2_lnk in v2_links:
+            vendor = v2_lnk.vendor
+            if vendor and vendor.contact_email:
+                quote_url = f"{str(request.base_url).rstrip('/')}/vendor-quote/{v2_lnk.unique_link_token}"
+                email_params.append(
+                    await build_vendor_invitation(
+                        to=vendor.contact_email,
+                        vendor_name=vendor.contact_person or vendor.company_name,
+                        requisition_title=req.title,
+                        quote_url=quote_url,
+                    )
+                )
+        if email_params:
+            await send_batch(email_params)
+    except Exception as e:
+        import logging as _logging
+        _logging.getLogger(__name__).exception("Failed to send v2 negotiation emails: %s", e)
+
+    await log_action(
+        db,
+        actor=user,
+        action="NEGOTIATION_STARTED",
+        entity_type="requisition",
+        entity_id=req_id,
+        entity_label=req.title,
+        notes=f"v2 negotiation links generated for {len(v2_links)} vendor(s) by {user.full_name}",
+    )
+    await db.flush()
+    return RedirectResponse(
+        url=f"/quotations/compare/{req_id}?success=Negotiation+links+sent", status_code=303
+    )
+
+
+@router.get("/{req_id}/invoice", response_class=HTMLResponse)
+async def generate_invoice(
+    req_id: str,
+    request: Request,
+    user: UserProfile = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Render a printable invoice for a closed/QC-passed requisition."""
+    from app.main import templates
+    from app.decisions.models import Decision
+
+    result = await db.execute(select(Requisition).where(Requisition.id == req_id))
+    req = result.scalar_one_or_none()
+    if not req:
+        return RedirectResponse(url="/requisitions", status_code=303)
+
+    dec_res = await db.execute(select(Decision).where(Decision.requisition_id == req_id))
+    decision = dec_res.scalar_one_or_none()
+
+    # Find the winning vendor quotation
+    winning_quotation = None
+    if decision:
+        wv_res = await db.execute(
+            select(RequisitionVendor).where(
+                RequisitionVendor.requisition_id == req_id,
+                RequisitionVendor.vendor_id == decision.winning_vendor_id,
+            )
+        )
+        winning_link = wv_res.scalar_one_or_none()
+        if winning_link:
+            winning_quotation = winning_link.quotation
+
+    return templates.TemplateResponse(
+        request,
+        "requisitions/invoice.html",
+        {
+            "user": user,
+            "req": req,
+            "decision": decision,
+            "winning_quotation": winning_quotation,
+        },
+    )

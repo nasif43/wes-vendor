@@ -14,11 +14,19 @@
         <a href="/requisitions" class="w-9 h-9 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50 transition shadow-sm shrink-0">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
         </a>
-        <div class="min-w-0">
+        <div class="min-w-0 flex-1">
             <h1 class="text-xl font-bold text-slate-900 truncate">{{ req.title }}</h1>
             <p class="text-xs text-slate-400 mt-0.5">{{ req.created_at.strftime('%b %d, %Y') }}</p>
         </div>
-    </div>    <!-- STATUS + DETAILS CARD -->
+        {% if user and (user.is_procurement or user.is_management or user.role == 'admin') and req.status.value in ('draft', 'new', 'in_progress') %}
+        <a href="/requisitions/{{ req.id }}/edit" class="bg-white border border-slate-200 text-slate-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-slate-50 transition shadow-sm shrink-0 flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+            Edit
+        </a>
+        {% endif %}
+    </div>
+    
+    <!-- STATUS + DETAILS CARD -->
     {% from "components/status_badge.html" import render_status_badge %}
     <div class="bg-white rounded-2xl border border-slate-200 p-5 mb-4 shadow-sm">
         <div class="flex items-center justify-between mb-4">
@@ -120,6 +128,7 @@
 
     <!-- VENDORS SECTION (Hidden for QC Receiver) -->
     {% if not user or role_str != 'qc_receiver' %}
+    {% set any_submitted = req.vendor_links | selectattr('status', 'equalto', 'submitted') | list | length > 0 %}
     <div>
         <div class="flex items-center justify-between mb-3">
             <h2 class="text-xs font-bold text-slate-400 uppercase tracking-widest">Vendors Contacted</h2>
@@ -139,17 +148,21 @@
                         {% elif link.status == 'flagged' %}bg-red-400
                         {% else %}bg-slate-300{% endif %}"></div>
                     <div class="min-w-0">
-                        <div class="font-semibold text-sm text-slate-900 truncate">{{ link.vendor.company_name }}</div>
+                        <div class="font-semibold text-sm text-slate-900 truncate">{{ link.vendor.company_name }}
+                            {% if link.negotiation_version == '2' %}<span class="text-xs text-amber-600 font-bold ml-1">v2</span>{% endif %}
+                        </div>
                         <div class="text-xs text-slate-400 truncate">{{ link.vendor.contact_email }}</div>
                     </div>
                 </div>
                 <div class="flex items-center gap-2 shrink-0 ml-3">
+                    {% if link.status != 'submitted' %}
                     <button type="button"
                         onclick="navigator.clipboard.writeText('{{ request.base_url }}vendor-quote/{{ link.unique_link_token }}');const t=this;const o=t.innerHTML;t.innerHTML='Copied!';setTimeout(()=>t.innerHTML=o,2000)"
                         class="text-xs text-brand-600 bg-brand-50 hover:bg-brand-100 px-2.5 py-1.5 rounded-lg border border-brand-100 transition active:scale-95 flex items-center gap-1 min-h-[36px]">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
                         Link
                     </button>
+                    {% endif %}
                     <span class="text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wide
                         {% if link.status == 'pending' %}bg-amber-100 text-amber-700
                         {% elif link.status == 'submitted' %}bg-emerald-100 text-emerald-700
@@ -168,7 +181,8 @@
         </div>
         {% endif %}
 
-        <!-- TEMPORARY VENDOR CARD -->
+        <!-- TEMPORARY VENDOR CARD — hidden once any vendor has submitted a quote -->
+        {% if not any_submitted %}
         <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
             <h3 class="text-sm font-bold text-slate-900 mb-1">Unlisted Vendor</h3>
             <p class="text-xs text-slate-400 mb-3">Generate a quote link for an unlisted or temporary vendor.</p>
@@ -178,6 +192,57 @@
                 </button>
             </form>
         </div>
+        {% else %}
+        <div class="bg-slate-50 rounded-2xl border border-slate-200 p-4 shadow-sm opacity-60">
+            <h3 class="text-sm font-bold text-slate-500 mb-1">Unlisted Vendor</h3>
+            <p class="text-xs text-slate-400">New quote links are disabled once a quotation has been received.</p>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- INVOICE LINK — for closed/QC-done requisitions -->
+    {% if req.qc_done or status_str == 'closed' %}
+    <a href="/requisitions/{{ req.id }}/invoice" class="flex items-center justify-between bg-white border border-slate-200 rounded-2xl p-4 hover:border-brand-300 hover:shadow-sm transition shadow-sm group mb-4 active:scale-[0.98] mt-4">
+        <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center">
+                <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            </div>
+            <div>
+                <div class="text-sm font-semibold text-slate-900">View / Print Invoice</div>
+                <div class="text-xs text-slate-400">BDT-denominated, printable invoice</div>
+            </div>
+        </div>
+        <svg class="w-4 h-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+    </a>
+    {% endif %}
+
+    <!-- CANCEL / REJECT ACTIONS — management/admin only on active requisitions -->
+    {% if user and user.has_management_authority and status_str not in ('closed', 'cancelled', 'rejected') %}
+    <div class="bg-white rounded-2xl border border-red-100 p-4 shadow-sm mt-4">
+        <h3 class="text-xs font-bold text-red-500 uppercase tracking-widest mb-3">Management Actions</h3>
+        <div class="grid grid-cols-2 gap-3">
+            <form method="post" action="/requisitions/{{ req.id }}/cancel" onsubmit="return confirm('Cancel this requisition?')">
+                <input type="hidden" name="reason" value="">
+                <button type="submit" class="w-full py-2.5 rounded-xl text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 transition min-h-[40px]">
+                    🚫 Cancel
+                </button>
+            </form>
+            <form method="post" action="/requisitions/{{ req.id }}/reject" onsubmit="return confirm('Reject this requisition?')">
+                <input type="hidden" name="reason" value="">
+                <button type="submit" class="w-full py-2.5 rounded-xl text-xs font-bold bg-red-100 text-red-700 hover:bg-red-200 transition min-h-[40px]">
+                    ✕ Reject
+                </button>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- REJECTION/CANCELLATION REASON -->
+    {% if req.rejected_reason and status_str in ('cancelled', 'rejected') %}
+    <div class="bg-red-50 border border-red-200 rounded-2xl p-4 shadow-sm mt-4">
+        <p class="text-xs font-bold text-red-600 uppercase tracking-wider mb-1">Reason</p>
+        <p class="text-sm text-red-800">{{ req.rejected_reason }}</p>
     </div>
     {% endif %}
 

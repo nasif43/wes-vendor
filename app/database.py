@@ -184,3 +184,73 @@ async def init_db() -> None:
                 await conn.execute(text("ALTER TABLE requisitions ADD COLUMN payment_status VARCHAR(50) DEFAULT 'pending'"))
 
         # status and role columns are String(50) — no Postgres native enum to migrate
+
+        # ── New negotiation & versioning columns ──────────────────────────────
+        # requisition_vendors: is_shortlisted, allocated_quantity, negotiation_version
+        for col_name, col_def_pg, col_def_sqlite in [
+            ("is_shortlisted", "BOOLEAN DEFAULT FALSE", "BOOLEAN DEFAULT 0"),
+            ("allocated_quantity", "NUMERIC", "NUMERIC"),
+            ("negotiation_version", "VARCHAR(10) DEFAULT '1'", "VARCHAR(10) DEFAULT '1'"),
+        ]:
+            col_exists = False
+            if dialect_name == "postgresql":
+                res = await conn.execute(text(
+                    f"SELECT 1 FROM information_schema.columns "
+                    f"WHERE table_name='requisition_vendors' AND column_name='{col_name}'"
+                ))
+                col_exists = res.scalar() is not None
+            else:
+                res = await conn.execute(text("PRAGMA table_info(requisition_vendors)"))
+                columns = res.fetchall()
+                col_exists = any(col[1] == col_name for col in columns)
+            if not col_exists:
+                logger.info("Adding %s column to requisition_vendors table", col_name)
+                col_def = col_def_pg if dialect_name == "postgresql" else col_def_sqlite
+                await conn.execute(text(
+                    f"ALTER TABLE requisition_vendors ADD COLUMN {col_name} {col_def}"
+                ))
+
+        # quotations: quote_version, quoted_quantity
+        for col_name, col_def_pg, col_def_sqlite in [
+            ("quote_version", "INTEGER DEFAULT 1", "INTEGER DEFAULT 1"),
+            ("quoted_quantity", "NUMERIC", "NUMERIC"),
+        ]:
+            col_exists = False
+            if dialect_name == "postgresql":
+                res = await conn.execute(text(
+                    f"SELECT 1 FROM information_schema.columns "
+                    f"WHERE table_name='quotations' AND column_name='{col_name}'"
+                ))
+                col_exists = res.scalar() is not None
+            else:
+                res = await conn.execute(text("PRAGMA table_info(quotations)"))
+                columns = res.fetchall()
+                col_exists = any(col[1] == col_name for col in columns)
+            if not col_exists:
+                logger.info("Adding %s column to quotations table", col_name)
+                col_def = col_def_pg if dialect_name == "postgresql" else col_def_sqlite
+                await conn.execute(text(
+                    f"ALTER TABLE quotations ADD COLUMN {col_name} {col_def}"
+                ))
+
+        # requisitions: rejected_reason
+        for col_name, col_def_pg, col_def_sqlite in [
+            ("rejected_reason", "TEXT", "TEXT"),
+        ]:
+            col_exists = False
+            if dialect_name == "postgresql":
+                res = await conn.execute(text(
+                    f"SELECT 1 FROM information_schema.columns "
+                    f"WHERE table_name='requisitions' AND column_name='{col_name}'"
+                ))
+                col_exists = res.scalar() is not None
+            else:
+                res = await conn.execute(text("PRAGMA table_info(requisitions)"))
+                columns = res.fetchall()
+                col_exists = any(col[1] == col_name for col in columns)
+            if not col_exists:
+                logger.info("Adding %s column to requisitions table", col_name)
+                col_def = col_def_pg if dialect_name == "postgresql" else col_def_sqlite
+                await conn.execute(text(
+                    f"ALTER TABLE requisitions ADD COLUMN {col_name} {col_def}"
+                ))

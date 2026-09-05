@@ -50,11 +50,12 @@ async def submit_quotation(
     token: str,
     submission_type: str = Form(...),
     price: str = Form(""),
-    currency: str = Form(""),
+    currency: str = Form("BDT"),
     delivery_days: str = Form(""),
     payment_terms: str = Form(""),
     warranty: str = Form(""),
     notes: str = Form(""),
+    quoted_quantity: str = Form(""),
     quote_image: UploadFile = File(None),
     company_name: str = Form(""),
     contact_person: str = Form(""),
@@ -121,11 +122,24 @@ async def submit_quotation(
     if submission_type == "form":
         form_data = {
             "price": price,
-            "currency": currency,
+            "currency": "BDT",  # Locked globally to BDT
             "delivery_days": delivery_days,
-            "payment_terms": payment_terms,
-            "warranty": warranty,
+            "payment_terms": payment_terms or None,
+            "warranty": warranty or None,
         }
+
+    # Determine quote version based on negotiation_version of the link
+    quote_ver = 2 if str(link.negotiation_version or "1") == "2" else 1
+
+    # Parse optional quoted quantity
+    quoted_qty = None
+    if quoted_quantity:
+        try:
+            quoted_qty = float(quoted_quantity)
+            if quoted_qty <= 0:
+                quoted_qty = None
+        except (ValueError, TypeError):
+            quoted_qty = None
 
     quotation = Quotation(
         requisition_vendor_id=link.id,
@@ -133,6 +147,8 @@ async def submit_quotation(
         image_url=image_url,
         form_data=form_data,
         notes=notes or None,
+        quote_version=quote_ver,
+        quoted_quantity=quoted_qty,
     )
     db.add(quotation)
     link.status = "submitted"

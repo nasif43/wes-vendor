@@ -5,6 +5,7 @@
 {% block nav_quotations_icon %}text-brand-600{% endblock %}
 {% block nav_quotations_label %}text-brand-600 font-semibold{% endblock %}
 {% block content %}
+{% set blind = user and user.is_procurement_blind %}
 <div class="slide-up">
 
     <div class="flex items-center gap-3 mb-5">
@@ -22,8 +23,121 @@
         <p class="text-sm text-slate-700 leading-relaxed">{{ req.item_description }}</p>
     </div>
 
+    {% if blind %}
+    <div class="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 mb-5 text-xs text-amber-700 font-semibold flex items-center gap-2">
+        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/></svg>
+        Price details are hidden for your role. Contact management for pricing visibility.
+    </div>
+    {% endif %}
+
     {% set submitted = links | selectattr('quotation') | list %}
     {% if submitted %}
+
+    <!-- SHORTLISTING FORM (management/procurement only, no decision yet) -->
+    {% if not decision and user and (user.is_procurement or user.is_management or user.role == 'admin') %}
+    <form method="post" action="/requisitions/{{ req.id }}/shortlist" class="mb-6">
+        <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm mb-3">
+            <div class="flex items-center justify-between mb-3">
+                <h2 class="text-sm font-bold text-slate-900">Shortlist Vendors <span class="text-slate-400 font-normal text-xs">(max 3 for split order)</span></h2>
+                <button type="submit" class="bg-brand-600 text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-brand-700 transition shadow-sm active:scale-[0.97] min-h-[36px]">
+                    Save Shortlist
+                </button>
+            </div>
+            <div class="space-y-2">
+                {% for link in submitted %}
+                {% if link.negotiation_version == '1' or not link.negotiation_version %}
+                <label class="flex items-center gap-3 p-3 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer transition">
+                    <input type="checkbox" name="shortlisted_ids" value="{{ link.id }}"
+                        {% if link.is_shortlisted %}checked{% endif %}
+                        class="w-4 h-4 rounded text-brand-600 border-slate-300">
+                    <span class="flex-1 text-sm font-semibold text-slate-900">{{ link.vendor.company_name }}</span>
+                    <div class="flex items-center gap-2">
+                        <label class="text-xs text-slate-500">Alloc. Qty:</label>
+                        <input type="number" name="alloc_qty_{{ link.id }}" min="0.01" step="any"
+                            value="{{ link.allocated_quantity or req.quantity }}"
+                            class="w-20 px-2 py-1 border border-slate-200 rounded-lg text-xs text-center focus:outline-none focus:ring-2 focus:ring-brand-500">
+                    </div>
+                    {% if link.is_shortlisted %}
+                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-brand-100 text-brand-700">Shortlisted</span>
+                    {% endif %}
+                </label>
+                {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+    </form>
+
+    <!-- NEGOTIATE BUTTON (if any vendors are shortlisted) -->
+    {% set shortlisted_count = submitted | selectattr('is_shortlisted') | list | length %}
+    {% if shortlisted_count > 0 %}
+    <form method="post" action="/requisitions/{{ req.id }}/negotiate" class="mb-5">
+        <button type="submit" class="w-full bg-amber-600 text-white py-3 rounded-xl text-sm font-bold hover:bg-amber-700 transition shadow-sm active:scale-[0.98] flex items-center justify-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
+            Start Negotiation — Send v2 Links to {{ shortlisted_count }} Vendor{{ 's' if shortlisted_count > 1 else '' }}
+        </button>
+    </form>
+    {% endif %}
+    {% endif %}
+
+    <!-- V1 vs V2 DELTA TABLE -->
+    {% set v1_links = links | selectattr('quotation') | selectattr('negotiation_version', 'equalto', '1') | list %}
+    {% set v2_links = links | selectattr('quotation') | selectattr('negotiation_version', 'equalto', '2') | list %}
+    {% if v2_links | length > 0 %}
+    <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm mb-5">
+        <div class="px-4 py-3 bg-amber-50 border-b border-amber-100">
+            <h2 class="text-sm font-bold text-amber-900">v1 → v2 Negotiation Delta</h2>
+            <p class="text-xs text-amber-700 mt-0.5">Price and quantity changes from initial to revised quotes</p>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="border-b border-slate-100 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                        <th class="px-4 py-3 text-left">Vendor</th>
+                        <th class="px-4 py-3 text-right">v1 Rate</th>
+                        <th class="px-4 py-3 text-right">v2 Rate</th>
+                        <th class="px-4 py-3 text-right">Δ Rate</th>
+                        <th class="px-4 py-3 text-right">v1 Qty</th>
+                        <th class="px-4 py-3 text-right">v2 Qty</th>
+                        <th class="px-4 py-3 text-right">Δ Qty</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    {% for v2 in v2_links %}
+                    {% set v1 = v1_links | selectattr('vendor_id', 'equalto', v2.vendor_id) | first %}
+                    {% if v1 and v1.quotation and v1.quotation.form_data and v2.quotation and v2.quotation.form_data %}
+                    {% set v1_price = v1.quotation.form_data.price | float(0) %}
+                    {% set v2_price = v2.quotation.form_data.price | float(0) %}
+                    {% set delta_price = v2_price - v1_price %}
+                    {% set v1_qty = v1.quotation.quoted_quantity or req.quantity %}
+                    {% set v2_qty = v2.quotation.quoted_quantity or req.quantity %}
+                    {% set delta_qty = (v2_qty | float(0)) - (v1_qty | float(0)) %}
+                    <tr>
+                        <td class="px-4 py-3 font-semibold text-slate-900">{{ v2.vendor.company_name }}</td>
+                        {% if blind %}
+                        <td class="px-4 py-3 text-right text-slate-400 font-mono">—</td>
+                        <td class="px-4 py-3 text-right text-slate-400 font-mono">—</td>
+                        <td class="px-4 py-3 text-right text-slate-400 font-mono">—</td>
+                        {% else %}
+                        <td class="px-4 py-3 text-right font-mono text-slate-700">৳{{ "%.2f"|format(v1_price) }}</td>
+                        <td class="px-4 py-3 text-right font-mono text-slate-700">৳{{ "%.2f"|format(v2_price) }}</td>
+                        <td class="px-4 py-3 text-right font-mono font-bold {% if delta_price < 0 %}text-emerald-600{% elif delta_price > 0 %}text-red-600{% else %}text-slate-500{% endif %}">
+                            {% if delta_price > 0 %}+{% endif %}৳{{ "%.2f"|format(delta_price) }}
+                        </td>
+                        {% endif %}
+                        <td class="px-4 py-3 text-right font-mono text-slate-700">{{ v1_qty }}</td>
+                        <td class="px-4 py-3 text-right font-mono text-slate-700">{{ v2_qty }}</td>
+                        <td class="px-4 py-3 text-right font-mono font-bold {% if delta_qty < 0 %}text-amber-600{% elif delta_qty > 0 %}text-emerald-600{% else %}text-slate-500{% endif %}">
+                            {% if delta_qty > 0 %}+{% endif %}{{ "%.2f"|format(delta_qty) }}
+                        </td>
+                    </tr>
+                    {% endif %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Mobile: stacked cards. Desktop: 2-col grid -->
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         {% for link in submitted %}
@@ -35,7 +149,15 @@
                     <div class="w-8 h-8 rounded-lg bg-brand-600 flex items-center justify-center shrink-0">
                         <span class="text-xs font-bold text-white">{{ link.vendor.company_name[:2] | upper }}</span>
                     </div>
-                    <span class="font-bold text-sm text-slate-900 truncate">{{ link.vendor.company_name }}</span>
+                    <div>
+                        <span class="font-bold text-sm text-slate-900 truncate">{{ link.vendor.company_name }}</span>
+                        {% if link.negotiation_version == '2' %}
+                        <span class="ml-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">v2</span>
+                        {% endif %}
+                        {% if link.allocated_quantity %}
+                        <div class="text-xs text-slate-500 mt-0.5">Allocated: {{ link.allocated_quantity }} {{ req.unit or '' }}</div>
+                        {% endif %}
+                    </div>
                 </div>
                 <span class="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide
                     {% if link.status == 'accepted' %}bg-emerald-100 text-emerald-700
@@ -51,21 +173,41 @@
                     {% if link.quotation.submission_type == 'form' and link.quotation.form_data %}
                     <div class="space-y-0 text-sm">
                         <div class="flex justify-between items-center py-3 border-b border-slate-100">
-                            <span class="text-slate-500">Price</span>
-                            <span class="font-bold text-slate-900 text-base">{{ link.quotation.form_data.price or '—' }} <span class="text-xs font-semibold text-slate-500">{{ link.quotation.form_data.currency or '' }}</span></span>
+                            <span class="text-slate-500">Unit Rate</span>
+                            {% if blind %}
+                            <span class="font-bold text-slate-400">— (hidden)</span>
+                            {% else %}
+                            <span class="font-bold text-slate-900 text-base">৳{{ link.quotation.form_data.price or '—' }}</span>
+                            {% endif %}
                         </div>
+                        <div class="flex justify-between items-center py-3 border-b border-slate-100">
+                            <span class="text-slate-500">Qty Offered</span>
+                            <span class="font-semibold text-slate-800">{{ link.quotation.quoted_quantity or req.quantity }} {{ req.unit or '' }}</span>
+                        </div>
+                        {% if not blind %}
+                        <div class="flex justify-between items-center py-3 border-b border-slate-100">
+                            <span class="text-slate-500">Subtotal</span>
+                            {% set unit_price = link.quotation.form_data.price | float(0) %}
+                            {% set qty = link.quotation.quoted_quantity | float(req.quantity) %}
+                            <span class="font-bold text-slate-900">৳{{ "%.2f"|format(unit_price * qty) }}</span>
+                        </div>
+                        {% endif %}
                         <div class="flex justify-between items-center py-3 border-b border-slate-100">
                             <span class="text-slate-500">Delivery</span>
                             <span class="font-semibold text-slate-800">{{ link.quotation.form_data.delivery_days or '—' }} days</span>
                         </div>
+                        {% if link.quotation.form_data.payment_terms %}
                         <div class="flex justify-between items-center py-3 border-b border-slate-100">
                             <span class="text-slate-500">Payment</span>
-                            <span class="font-semibold text-slate-800">{{ link.quotation.form_data.payment_terms or '—' }}</span>
+                            <span class="font-semibold text-slate-800">{{ link.quotation.form_data.payment_terms }}</span>
                         </div>
+                        {% endif %}
+                        {% if link.quotation.form_data.warranty %}
                         <div class="flex justify-between items-center py-3">
                             <span class="text-slate-500">Warranty</span>
-                            <span class="font-semibold text-slate-800">{{ link.quotation.form_data.warranty or '—' }}</span>
+                            <span class="font-semibold text-slate-800">{{ link.quotation.form_data.warranty }}</span>
                         </div>
+                        {% endif %}
                     </div>
                     {% endif %}
                     {% if link.quotation.submission_type == 'image' and link.quotation.image_url %}

@@ -15,6 +15,8 @@ class RequisitionStatus(enum.StrEnum):
     SUBMITTED = "submitted"
     RECEIVED = "received"
     CLOSED = "closed"
+    CANCELLED = "cancelled"
+    REJECTED = "rejected"
 
     @classmethod
     def _missing_(cls, value):
@@ -58,6 +60,7 @@ class Requisition(Base):
     invoice_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
     invoice_number: Mapped[str | None] = mapped_column(String(255), nullable=True)
     payment_status: Mapped[str] = mapped_column(String(50), default="pending")
+    rejected_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     vendor_links = relationship("RequisitionVendor", back_populates="requisition", lazy="selectin")
     creator = relationship("UserProfile", foreign_keys=[created_by], lazy="selectin")
@@ -80,6 +83,11 @@ class RequisitionVendor(Base):
     link_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     status: Mapped[str] = mapped_column(String(20), default="pending")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    # Shortlisting & allocation for multi-vendor split
+    is_shortlisted: Mapped[bool] = mapped_column(Boolean, default=False)
+    allocated_quantity: Mapped[float | None] = mapped_column(Numeric, nullable=True)
+    # Negotiation versioning: 1=initial, 2=negotiated
+    negotiation_version: Mapped[int] = mapped_column(String(10), default="1")
 
     requisition = relationship("Requisition", back_populates="vendor_links", lazy="selectin")
     vendor = relationship("Vendor", lazy="selectin")

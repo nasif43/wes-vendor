@@ -3,7 +3,10 @@
 {% block content %}
 <div class="slide-up">
     <h1 class="text-2xl font-bold text-white text-center mb-1">Submit Quotation</h1>
-    <p class="text-blue-200 text-sm text-center mb-6">{% if vendor.is_temporary %}Unlisted Vendor{% else %}{{ vendor.company_name }}{% endif %}</p>
+    <p class="text-blue-200 text-sm text-center mb-2">{% if vendor.is_temporary %}Unlisted Vendor{% else %}{{ vendor.company_name }}{% endif %}</p>
+    {% if link.negotiation_version == '2' %}
+    <p class="text-amber-300 text-xs text-center mb-4 font-semibold">⟳ Revised Quote (v2 Negotiation)</p>
+    {% endif %}
 
     {% if error %}
     <div class="bg-red-500/20 border border-red-400/30 text-red-100 px-4 py-3 rounded-2xl mb-4 text-sm flex items-center gap-2">
@@ -16,7 +19,7 @@
     <div class="bg-white/10 backdrop-blur border border-white/20 rounded-2xl p-4 mb-4">
         <h2 class="font-bold text-white text-base">{{ req.title }}</h2>
         <p class="text-blue-100 text-sm mt-1 leading-relaxed">{{ req.item_description }}</p>
-        <p class="text-blue-200 text-xs mt-2">Qty: {{ req.quantity }} {{ req.unit or '' }}</p>
+        <p class="text-blue-200 text-xs mt-2">Requested Qty: <strong class="text-white">{{ req.quantity }} {{ req.unit or '' }}</strong></p>
         {% if req.notes %}
         <p class="text-blue-300 text-xs mt-1 italic">Note: {{ req.notes }}</p>
         {% endif %}
@@ -30,23 +33,23 @@
             <h3 class="font-bold text-white text-sm">Your Contact Information</h3>
             <div>
                 <label class="block text-xs font-semibold text-blue-200 uppercase tracking-wider mb-1.5">Company Name *</label>
-                <input type="text" name="company_name" required placeholder="e.g. ABC Trading Co."
+                <input type="text" name="company_name" required
                     class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-sm text-white placeholder-blue-300 focus:outline-none focus:ring-2 focus:ring-white/40 transition">
             </div>
             <div>
                 <label class="block text-xs font-semibold text-blue-200 uppercase tracking-wider mb-1.5">Contact Person *</label>
-                <input type="text" name="contact_person" required placeholder="e.g. John Doe"
+                <input type="text" name="contact_person" required
                     class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-sm text-white placeholder-blue-300 focus:outline-none focus:ring-2 focus:ring-white/40 transition">
             </div>
             <div class="grid grid-cols-2 gap-3">
                 <div>
                     <label class="block text-xs font-semibold text-blue-200 uppercase tracking-wider mb-1.5">Phone *</label>
-                    <input type="tel" name="phone" required placeholder="+1 555-0199"
+                    <input type="tel" name="phone" required
                         class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-sm text-white placeholder-blue-300 focus:outline-none focus:ring-2 focus:ring-white/40 transition">
                 </div>
                 <div>
                     <label class="block text-xs font-semibold text-blue-200 uppercase tracking-wider mb-1.5">Email *</label>
-                    <input type="email" name="contact_email" required placeholder="sales@abc.com"
+                    <input type="email" name="contact_email" required
                         class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-sm text-white placeholder-blue-300 focus:outline-none focus:ring-2 focus:ring-white/40 transition">
                 </div>
             </div>
@@ -69,39 +72,42 @@
         </div>
 
         <input type="hidden" name="submission_type" id="submission_type" value="form">
+        <!-- Currency is locked globally to BDT -->
+        <input type="hidden" name="currency" value="BDT">
 
         <!-- FORM FIELDS -->
         <div id="form-fields" class="bg-white/10 backdrop-blur border border-white/20 rounded-2xl p-4 space-y-3">
             <div>
-                <label class="block text-sm font-semibold text-blue-100 mb-1.5">Price *</label>
-                <input type="text" name="price" id="price" required placeholder="e.g., 1500.00"
+                <label class="block text-sm font-semibold text-blue-100 mb-1.5">Unit Rate (৳ BDT) *</label>
+                <input type="number" name="price" id="price" required min="0.01" step="any"
+                    {% if link.quotation and link.quotation.form_data %}value="{{ link.quotation.form_data.price or '' }}"{% endif %}
                     class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-sm text-white placeholder-blue-300 focus:outline-none focus:ring-2 focus:ring-white/40 transition text-lg font-bold">
             </div>
             <div class="grid grid-cols-2 gap-3">
                 <div>
-                    <label class="block text-sm font-semibold text-blue-100 mb-1.5">Currency</label>
-                    <select name="currency" class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-sm text-white focus:outline-none focus:ring-2 focus:ring-white/40 transition">
-                        <option value="BDT" class="text-slate-900">BDT (Taka)</option>
-                        <option value="USD" class="text-slate-900">USD</option>
-                        <option value="INR" class="text-slate-900">INR</option>
-                        <option value="EUR" class="text-slate-900">EUR</option>
-                        <option value="GBP" class="text-slate-900">GBP</option>
-                    </select>
+                    <label class="block text-sm font-semibold text-blue-100 mb-1.5">Quantity Offered</label>
+                    <input type="number" name="quoted_quantity" min="0.01" step="any"
+                        value="{{ req.quantity }}"
+                        class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-sm text-white placeholder-blue-300 focus:outline-none focus:ring-2 focus:ring-white/40 transition">
+                    <p class="text-blue-300 text-xs mt-1">Partial qty supported</p>
                 </div>
                 <div>
                     <label class="block text-sm font-semibold text-blue-100 mb-1.5">Delivery (days)</label>
-                    <input type="number" name="delivery_days" placeholder="e.g., 14"
+                    <input type="number" name="delivery_days" min="1" step="1"
+                        {% if link.quotation and link.quotation.form_data %}value="{{ link.quotation.form_data.delivery_days or '' }}"{% endif %}
                         class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-sm text-white placeholder-blue-300 focus:outline-none focus:ring-2 focus:ring-white/40 transition">
                 </div>
             </div>
             <div>
-                <label class="block text-sm font-semibold text-blue-100 mb-1.5">Payment Terms</label>
-                <input type="text" name="payment_terms" placeholder="e.g., Net 30"
+                <label class="block text-sm font-semibold text-blue-100 mb-1.5">Payment Terms <span class="text-blue-400 text-xs font-normal">(optional)</span></label>
+                <input type="text" name="payment_terms"
+                    {% if link.quotation and link.quotation.form_data %}value="{{ link.quotation.form_data.payment_terms or '' }}"{% endif %}
                     class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-sm text-white placeholder-blue-300 focus:outline-none focus:ring-2 focus:ring-white/40 transition">
             </div>
             <div>
-                <label class="block text-sm font-semibold text-blue-100 mb-1.5">Warranty</label>
-                <input type="text" name="warranty" placeholder="e.g., 1 year"
+                <label class="block text-sm font-semibold text-blue-100 mb-1.5">Warranty <span class="text-blue-400 text-xs font-normal">(optional)</span></label>
+                <input type="text" name="warranty"
+                    {% if link.quotation and link.quotation.form_data %}value="{{ link.quotation.form_data.warranty or '' }}"{% endif %}
                     class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-sm text-white placeholder-blue-300 focus:outline-none focus:ring-2 focus:ring-white/40 transition">
             </div>
         </div>
@@ -122,13 +128,13 @@
 
         <!-- NOTES -->
         <div class="bg-white/10 backdrop-blur border border-white/20 rounded-2xl p-4">
-            <label class="block text-sm font-semibold text-blue-100 mb-1.5">Additional Notes</label>
-            <textarea name="notes" rows="2" placeholder="Any additional information, terms, or conditions..."
+            <label class="block text-sm font-semibold text-blue-100 mb-1.5">Additional Notes <span class="text-blue-400 text-xs font-normal">(optional)</span></label>
+            <textarea name="notes" rows="2"
                 class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-sm text-white placeholder-blue-300 focus:outline-none focus:ring-2 focus:ring-white/40 transition resize-none"></textarea>
         </div>
 
         <button type="submit" class="w-full bg-white text-brand-700 py-4 rounded-xl text-sm font-bold hover:bg-blue-50 transition shadow-lg active:scale-[0.98] min-h-[52px]">
-            Submit Quotation
+            {% if link.negotiation_version == '2' %}Submit Revised Quote (v2){% else %}Submit Quotation{% endif %}
         </button>
     </form>
 </div>
@@ -164,3 +170,5 @@ function previewImage(input) {
 </script>
 {% endblock %}
 {% endblock %}
+
+

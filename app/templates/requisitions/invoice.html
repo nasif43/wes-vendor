@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+{% block title %}Invoice — {{ req.title }} — WES Vendor Portal{% endblock %}
+{% block content %}
+<style>
+@media print {
+    body * { visibility: hidden !important; }
+    #invoice-print-area, #invoice-print-area * { visibility: visible !important; }
+    #invoice-print-area { position: fixed; left: 0; top: 0; width: 100%; }
+    .no-print { display: none !important; }
+    @page { margin: 1.5cm; }
+}
+</style>
+
+<div class="slide-up max-w-3xl mx-auto">
+    <!-- ACTIONS (no-print) -->
+    <div class="flex items-center gap-3 mb-5 no-print">
+        <a href="/requisitions/{{ req.id }}" class="w-9 h-9 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50 transition shadow-sm shrink-0">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+        </a>
+        <h1 class="text-xl font-bold text-slate-900 flex-1">Invoice</h1>
+        <button onclick="window.print()" class="bg-brand-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-brand-700 transition shadow-sm flex items-center gap-2 active:scale-[0.98]">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+            Print / Download
+        </button>
+    </div>
+
+    <!-- INVOICE PRINT AREA -->
+    <div id="invoice-print-area" class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <!-- LETTERHEAD -->
+        <div class="bg-brand-700 px-8 py-6 text-white">
+            <div class="flex items-start justify-between">
+                <div>
+                    <h1 class="text-2xl font-black tracking-tight">WenerBD</h1>
+                    <p class="text-brand-200 text-sm mt-0.5">Vendor Management & Procurement System</p>
+                </div>
+                <div class="text-right">
+                    <p class="text-brand-200 text-xs uppercase tracking-wider">Invoice</p>
+                    {% if req.invoice_number %}
+                    <p class="text-white text-lg font-bold mt-0.5">#{{ req.invoice_number }}</p>
+                    {% endif %}
+                    <p class="text-brand-300 text-xs mt-1">{{ req.qc_done_at.strftime('%B %d, %Y') if req.qc_done_at else req.updated_at.strftime('%B %d, %Y') }}</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="p-8">
+            <!-- FROM / TO -->
+            <div class="grid grid-cols-2 gap-8 mb-8">
+                <div>
+                    <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Billed To</p>
+                    <p class="font-bold text-slate-900">WenerBD (Internal Procurement)</p>
+                    <p class="text-sm text-slate-600 mt-1">Requisition: {{ req.title }}</p>
+                    <p class="text-xs text-slate-500 mt-0.5">Created by: {{ req.creator.full_name if req.creator else 'Unknown' }}</p>
+                </div>
+                <div>
+                    <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Vendor / Supplier</p>
+                    {% if decision and decision.winning_vendor %}
+                    <p class="font-bold text-slate-900">{{ decision.winning_vendor.company_name }}</p>
+                    {% if decision.winning_vendor.contact_person %}
+                    <p class="text-sm text-slate-600 mt-0.5">{{ decision.winning_vendor.contact_person }}</p>
+                    {% endif %}
+                    <p class="text-sm text-slate-500 mt-0.5">{{ decision.winning_vendor.contact_email }}</p>
+                    {% if decision.winning_vendor.phone %}
+                    <p class="text-xs text-slate-500 mt-0.5">{{ decision.winning_vendor.phone }}</p>
+                    {% endif %}
+                    {% else %}
+                    <p class="text-sm text-slate-400 italic">Vendor information unavailable</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- LINE ITEMS TABLE -->
+            <div class="mb-8">
+                <table class="w-full">
+                    <thead>
+                        <tr class="border-b-2 border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                            <th class="pb-3 text-left">Description</th>
+                            <th class="pb-3 text-right">Qty</th>
+                            <th class="pb-3 text-right">Unit</th>
+                            <th class="pb-3 text-right">Unit Rate (৳)</th>
+                            <th class="pb-3 text-right">Subtotal (৳)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="border-b border-slate-100">
+                            <td class="py-4">
+                                <p class="font-semibold text-slate-900">{{ req.item_description }}</p>
+                                <p class="text-xs text-slate-500 mt-1">Requisition: {{ req.title }}</p>
+                            </td>
+                            <td class="py-4 text-right font-semibold text-slate-800">
+                                {% if winning_quotation and winning_quotation.quoted_quantity %}
+                                {{ winning_quotation.quoted_quantity }}
+                                {% else %}
+                                {{ req.quantity }}
+                                {% endif %}
+                            </td>
+                            <td class="py-4 text-right text-slate-600">{{ req.unit or '—' }}</td>
+                            <td class="py-4 text-right font-semibold text-slate-800">
+                                {% if winning_quotation and winning_quotation.form_data and winning_quotation.form_data.price %}
+                                {{ winning_quotation.form_data.price }}
+                                {% else %}
+                                —
+                                {% endif %}
+                            </td>
+                            <td class="py-4 text-right font-bold text-slate-900">
+                                {% if winning_quotation and winning_quotation.form_data and winning_quotation.form_data.price %}
+                                {% set unit_p = winning_quotation.form_data.price | float(0) %}
+                                {% set qty = (winning_quotation.quoted_quantity | float(0)) or (req.quantity | float(0)) %}
+                                ৳{{ "%.2f"|format(unit_p * qty) }}
+                                {% else %}
+                                —
+                                {% endif %}
+                            </td>
+                        </tr>
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="4" class="pt-4 text-right text-sm font-bold text-slate-600 pr-4">Total (BDT):</td>
+                            <td class="pt-4 text-right text-xl font-black text-brand-700">
+                                {% if winning_quotation and winning_quotation.form_data and winning_quotation.form_data.price %}
+                                {% set unit_p = winning_quotation.form_data.price | float(0) %}
+                                {% set qty = (winning_quotation.quoted_quantity | float(0)) or (req.quantity | float(0)) %}
+                                ৳{{ "%.2f"|format(unit_p * qty) }}
+                                {% else %}
+                                —
+                                {% endif %}
+                            </td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+
+            <!-- QUOTE DETAILS -->
+            {% if winning_quotation and winning_quotation.form_data %}
+            <div class="bg-slate-50 rounded-xl p-4 mb-6">
+                <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-3">Quote Terms</p>
+                <div class="grid grid-cols-3 gap-4 text-sm">
+                    {% if winning_quotation.form_data.delivery_days %}
+                    <div>
+                        <p class="text-xs text-slate-500">Delivery</p>
+                        <p class="font-semibold text-slate-900">{{ winning_quotation.form_data.delivery_days }} days</p>
+                    </div>
+                    {% endif %}
+                    {% if winning_quotation.form_data.payment_terms %}
+                    <div>
+                        <p class="text-xs text-slate-500">Payment Terms</p>
+                        <p class="font-semibold text-slate-900">{{ winning_quotation.form_data.payment_terms }}</p>
+                    </div>
+                    {% endif %}
+                    {% if winning_quotation.form_data.warranty %}
+                    <div>
+                        <p class="text-xs text-slate-500">Warranty</p>
+                        <p class="font-semibold text-slate-900">{{ winning_quotation.form_data.warranty }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- QC STATUS -->
+            <div class="border rounded-xl p-4 mb-6 {% if req.qc_done %}bg-emerald-50 border-emerald-200{% else %}bg-amber-50 border-amber-200{% endif %}">
+                <div class="flex items-center gap-2">
+                    {% if req.qc_done %}
+                    <svg class="w-5 h-5 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    <div>
+                        <p class="text-sm font-bold text-emerald-800">Quality Control: PASSED ✓</p>
+                        <p class="text-xs text-emerald-700 mt-0.5">
+                            Verified by {{ req.qc_receiver.full_name if req.qc_receiver else 'QC Inspector' }}
+                            {% if req.qc_done_at %}on {{ req.qc_done_at.strftime('%B %d, %Y at %I:%M %p') }}{% endif %}
+                        </p>
+                    </div>
+                    {% else %}
+                    <svg class="w-5 h-5 text-amber-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                    <p class="text-sm font-bold text-amber-800">Quality Control: PENDING</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- PAYMENT STATUS -->
+            <div class="flex items-center justify-between text-sm border-t border-slate-100 pt-4">
+                <span class="text-slate-500 font-medium">Payment Status:</span>
+                <span class="font-bold px-3 py-1 rounded-full text-xs uppercase tracking-wide
+                    {% if req.payment_status == 'paid' %}bg-emerald-100 text-emerald-700
+                    {% else %}bg-amber-100 text-amber-700{% endif %}">
+                    {{ req.payment_status | upper }}
+                </span>
+            </div>
+
+            <!-- FOOTER -->
+            <div class="mt-8 pt-6 border-t border-slate-200 text-center text-xs text-slate-400">
+                <p>Generated by WenerBD Vendor Management Platform</p>
+                <p class="mt-0.5">All amounts in Bangladeshi Taka (৳ BDT)</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

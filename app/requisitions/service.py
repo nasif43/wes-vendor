@@ -24,28 +24,43 @@ ALLOWED_TRANSITIONS: dict[RequisitionStatus, set[RequisitionStatus]] = {
         RequisitionStatus.DRAFT,
         RequisitionStatus.NEW,
         RequisitionStatus.IN_PROGRESS,
+        RequisitionStatus.CANCELLED,
     },
     RequisitionStatus.NEW: {
         RequisitionStatus.NEW,
         RequisitionStatus.IN_PROGRESS,
         RequisitionStatus.SUBMITTED,
+        RequisitionStatus.CANCELLED,
+        RequisitionStatus.REJECTED,
     },
     RequisitionStatus.IN_PROGRESS: {
         RequisitionStatus.IN_PROGRESS,
         RequisitionStatus.SUBMITTED,
+        RequisitionStatus.CANCELLED,
+        RequisitionStatus.REJECTED,
     },
     RequisitionStatus.SUBMITTED: {
         RequisitionStatus.SUBMITTED,
         RequisitionStatus.IN_PROGRESS,  # e.g., management rejection returns order for re-decision
         RequisitionStatus.RECEIVED,
         RequisitionStatus.CLOSED,
+        RequisitionStatus.CANCELLED,
+        RequisitionStatus.REJECTED,
     },
     RequisitionStatus.RECEIVED: {
         RequisitionStatus.RECEIVED,
         RequisitionStatus.CLOSED,
+        RequisitionStatus.CANCELLED,
     },
     RequisitionStatus.CLOSED: {
         RequisitionStatus.CLOSED,  # Terminal state
+    },
+    RequisitionStatus.CANCELLED: {
+        RequisitionStatus.CANCELLED,  # Terminal state
+    },
+    RequisitionStatus.REJECTED: {
+        RequisitionStatus.REJECTED,  # Terminal state
+        RequisitionStatus.DRAFT,  # Allow re-opening rejected requisitions
     },
 }
 

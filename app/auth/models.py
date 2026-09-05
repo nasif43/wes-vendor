@@ -84,3 +84,14 @@ class UserProfile(Base):
     def can_see_all_requisitions(self) -> bool:
         return bool(self.has_management_authority or self.can_perform_qc or self.can_view_all_requisitions)
 
+    @property
+    def is_procurement_blind(self) -> bool:
+        """True for Procurement users who cannot view quotation pricing details.
+        Management-flagged users and those explicitly granted can_view_quotations are exempt."""
+        role_str = str(self.role.value) if hasattr(self.role, "value") else str(self.role or "")
+        return bool(
+            role_str == "procurement"
+            and not self.is_management
+            and not self.can_view_quotations
+        )
+

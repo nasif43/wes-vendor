@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Edit Requisition — WES Vendor Portal{% endblock %}
+{% block nav_desktop_req_cls %}text-brand-600 font-semibold bg-brand-50{% endblock %}
+{% block nav_requisitions %}tab-active{% endblock %}
+{% block nav_requisitions_icon %}text-brand-600{% endblock %}
+{% block nav_requisitions_label %}text-brand-600 font-semibold{% endblock %}
+{% block content %}
+<div class="slide-up max-w-2xl mx-auto">
+    <div class="flex items-center gap-3 mb-6">
+        <a href="/requisitions/{{ req.id }}" class="w-9 h-9 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50 transition shadow-sm shrink-0">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+        </a>
+        <div>
+            <h1 class="text-xl font-bold text-slate-900">Edit Requisition</h1>
+            <p class="text-xs text-slate-500 mt-0.5">Update details or quantity</p>
+        </div>
+    </div>
+
+    <form method="post" action="/requisitions/{{ req.id }}/edit" class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="p-5 md:p-6 space-y-4">
+            <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-1.5">Title *</label>
+                <input type="text" name="title" required value="{{ req.title }}"
+                    class="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition bg-slate-50 focus:bg-white">
+            </div>
+            <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-1.5">Item Description *</label>
+                <textarea name="item_description" rows="3" required
+                    class="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition bg-slate-50 focus:bg-white resize-none">{{ req.item_description }}</textarea>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Quantity *</label>
+                    <input type="number" name="quantity" required min="0.01" step="any" value="{{ req.quantity }}"
+                        class="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition bg-slate-50 focus:bg-white">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Unit</label>
+                    <input type="text" name="unit" value="{{ req.unit or '' }}"
+                        class="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition bg-slate-50 focus:bg-white">
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-1.5">Notes</label>
+                <textarea name="notes" rows="2"
+                    class="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition bg-slate-50 focus:bg-white resize-none">{{ req.notes or '' }}</textarea>
+            </div>
+        </div>
+        <div class="px-5 md:px-6 py-4 bg-slate-50 border-t border-slate-200">
+            <button type="submit" class="w-full bg-brand-600 text-white py-3.5 rounded-xl text-sm font-bold hover:bg-brand-700 transition shadow-sm active:scale-[0.98]">
+                Save Changes
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}
