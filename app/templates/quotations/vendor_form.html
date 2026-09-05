@@ -19,7 +19,7 @@
     <div class="bg-white/10 backdrop-blur border border-white/20 rounded-2xl p-4 mb-4">
         <h2 class="font-bold text-white text-base">{{ req.title }}</h2>
         <p class="text-blue-100 text-sm mt-1 leading-relaxed">{{ req.item_description }}</p>
-        <p class="text-blue-200 text-xs mt-2">Requested Qty: <strong class="text-white">{{ req.quantity }} {{ req.unit or '' }}</strong></p>
+        <p class="text-blue-200 text-xs mt-2">Requested Qty: <strong class="text-white">{{ link.allocated_quantity or req.quantity }} {{ req.unit or '' }}</strong></p>
         {% if req.notes %}
         <p class="text-blue-300 text-xs mt-1 italic">Note: {{ req.notes }}</p>
         {% endif %}
@@ -85,11 +85,11 @@
             </div>
             <div class="grid grid-cols-2 gap-3">
                 <div>
-                    <label class="block text-sm font-semibold text-blue-100 mb-1.5">Quantity Offered</label>
-                    <input type="number" name="quoted_quantity" min="0.01" step="any"
-                        value="{{ req.quantity }}"
-                        class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-sm text-white placeholder-blue-300 focus:outline-none focus:ring-2 focus:ring-white/40 transition">
-                    <p class="text-blue-300 text-xs mt-1">Partial qty supported</p>
+                <label class="block text-sm font-semibold text-blue-100 mb-1.5">Quantity Offered</label>
+                <input type="number" name="quoted_quantity" min="0.01" step="any"
+                    value="{{ link.allocated_quantity or req.quantity }}"
+                    class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-sm text-white placeholder-blue-300 focus:outline-none focus:ring-2 focus:ring-white/40 transition">
+                <p class="text-blue-300 text-xs mt-1">Partial qty supported</p>
                 </div>
                 <div>
                     <label class="block text-sm font-semibold text-blue-100 mb-1.5">Delivery (days)</label>
