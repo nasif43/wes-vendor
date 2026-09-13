@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}{{ vendor.company_name }} — Audit Notes — WES Vendor Portal{% endblock %}
+{% block title %}{{ vendor.company_name }} — Audit Notes — WES Supplier Portal{% endblock %}
 {% block nav_desktop_ven_cls %}text-brand-600 font-semibold bg-brand-50{% endblock %}
 {% block nav_vendors %}tab-active{% endblock %}
 {% block nav_vendors_icon %}text-brand-600{% endblock %}
@@ -89,7 +89,7 @@
         </div>
         {% else %}
         <div class="px-5 py-10 text-center">
-            <p class="text-sm text-slate-400">No notes or audit events found for this vendor.</p>
+            <p class="text-sm text-slate-400">No notes or audit events found for this supplier.</p>
         </div>
         {% endif %}
     </div>

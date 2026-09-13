@@ -128,7 +128,8 @@ async def edit_requisition_page(
     result = await db.execute(select(Requisition).where(Requisition.id == req_id))
     req = result.scalar_one_or_none()
     if not req:
-        return RedirectResponse(url="/requisitions", status_code=303)
+        await db.commit()
+    return RedirectResponse(url="/requisitions", status_code=303)
         
     return templates.TemplateResponse(
         request, "requisitions/edit.html", {"user": user, "req": req}
@@ -139,9 +140,6 @@ async def update_requisition(
     request: Request,
     req_id: str,
     title: str = Form(...),
-    item_description: str = Form(...),
-    quantity: float = Form(...),
-    unit: str = Form(""),
     notes: str = Form(""),
     user: UserProfile = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -149,12 +147,25 @@ async def update_requisition(
     result = await db.execute(select(Requisition).where(Requisition.id == req_id))
     req = result.scalar_one_or_none()
     if not req:
-        return RedirectResponse(url="/requisitions", status_code=303)
+        await db.commit()
+    return RedirectResponse(url="/requisitions", status_code=303)
         
+    form_data = await request.form()
+    item_names = form_data.getlist("item_name[]")
+    item_descs = form_data.getlist("item_desc[]")
+    item_qtys = form_data.getlist("item_qty[]")
+    
+    items = []
+    total_qty = 0.0
+    for n, d, q in zip(item_names, item_descs, item_qtys):
+        qty = float(q) if q else 0.0
+        items.append({"name": n, "description": d, "qty": qty})
+        total_qty += qty
+
     req.title = title
-    req.item_description = item_description
-    req.quantity = quantity
-    req.unit = unit or None
+    req.items = items
+    req.quantity = total_qty
+    req.item_description = "Multiple items" if items else ""
     req.notes = notes or None
     
     await db.flush()
@@ -169,6 +180,7 @@ async def update_requisition(
         notes="Requisition details/quantity updated.",
     )
     
+    await db.commit()
     return RedirectResponse(url=f"/requisitions/{req_id}", status_code=303)
 
 
@@ -191,19 +203,28 @@ async def new_requisition_page(
 async def create_requisition(
     request: Request,
     title: str = Form(...),
-    item_description: str = Form(...),
-    quantity: float = Form(...),
-    unit: str = Form(""),
     notes: str = Form(""),
     action: str = Form("continue"),
     user: UserProfile = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    form_data = await request.form()
+    item_names = form_data.getlist("item_name[]")
+    item_descs = form_data.getlist("item_desc[]")
+    item_qtys = form_data.getlist("item_qty[]")
+    
+    items = []
+    total_qty = 0.0
+    for n, d, q in zip(item_names, item_descs, item_qtys):
+        qty = float(q) if q else 0.0
+        items.append({"name": n, "description": d, "qty": qty})
+        total_qty += qty
+
     req = Requisition(
         title=title,
-        item_description=item_description,
-        quantity=quantity,
-        unit=unit or None,
+        item_description="Multiple items" if items else "",
+        quantity=total_qty,
+        items=items,
         notes=notes or None,
         status=RequisitionStatus.DRAFT,
         created_by=user.id,
@@ -223,8 +244,10 @@ async def create_requisition(
     )
 
     if action == "draft":
-        return RedirectResponse(url=f"/requisitions/{req.id}?success=Draft+requisition+saved", status_code=303)
+        await db.commit()
+    return RedirectResponse(url=f"/requisitions/{req.id}?success=Draft+requisition+saved", status_code=303)
 
+    await db.commit()
     return RedirectResponse(url=f"/requisitions/{req.id}/select-vendors", status_code=303)
 
 
@@ -241,7 +264,8 @@ async def view_requisition(
     result = await db.execute(select(Requisition).where(Requisition.id == req_id))
     req = result.scalar_one_or_none()
     if not req:
-        return RedirectResponse(url="/requisitions", status_code=303)
+        await db.commit()
+    return RedirectResponse(url="/requisitions", status_code=303)
 
     return templates.TemplateResponse(
         request, "requisitions/detail.html", {"user": user, "req": req}
@@ -260,7 +284,8 @@ async def select_vendors_page(
     result = await db.execute(select(Requisition).where(Requisition.id == req_id))
     req = result.scalar_one_or_none()
     if not req:
-        return RedirectResponse(url="/requisitions", status_code=303)
+        await db.commit()
+    return RedirectResponse(url="/requisitions", status_code=303)
 
     result = await db.execute(
         select(Vendor).where(Vendor.is_active == True, Vendor.is_temporary == False).order_by(Vendor.company_name)
@@ -290,10 +315,12 @@ async def send_requisition(
     result = await db.execute(select(Requisition).where(Requisition.id == req_id))
     req = result.scalar_one_or_none()
     if not req:
-        return RedirectResponse(url="/requisitions", status_code=303)
+        await db.commit()
+    return RedirectResponse(url="/requisitions", status_code=303)
 
     if user.role not in [UserRole.PROCUREMENT, UserRole.ADMIN] and req.created_by != user.id:
-        return RedirectResponse(url=f"/requisitions/{req_id}?error=Permission+denied", status_code=303)
+        await db.commit()
+    return RedirectResponse(url=f"/requisitions/{req_id}?error=Permission+denied", status_code=303)
 
     if not vendor_ids:
         result = await db.execute(
@@ -361,10 +388,12 @@ async def send_requisition(
     )
 
     if not email_sent:
-        return RedirectResponse(
+        await db.commit()
+    return RedirectResponse(
             url=f"/requisitions/{req_id}?error=Links+created+but+email+failed.+Share+links+manually.",
             status_code=303,
         )
+    await db.commit()
     return RedirectResponse(url=f"/requisitions/{req_id}?success=1", status_code=303)
 
 
@@ -377,7 +406,8 @@ async def add_temporary_vendor(
     result = await db.execute(select(Requisition).where(Requisition.id == req_id))
     req = result.scalar_one_or_none()
     if not req:
-        return RedirectResponse(url="/requisitions", status_code=303)
+        await db.commit()
+    return RedirectResponse(url="/requisitions", status_code=303)
 
     temp_vendor = Vendor(
         company_name="Temporary Vendor",
@@ -420,6 +450,7 @@ async def add_temporary_vendor(
 
     await db.flush()
 
+    await db.commit()
     return RedirectResponse(url=f"/requisitions/{req_id}?success=Temporary+vendor+link+generated", status_code=303)
 
 
@@ -435,11 +466,21 @@ async def receive_requisition_form(
     result = await db.execute(select(Requisition).where(Requisition.id == req_id))
     req = result.scalar_one_or_none()
     if not req:
-        return RedirectResponse(url="/requisitions", status_code=303)
+        await db.commit()
+    return RedirectResponse(url="/requisitions", status_code=303)
 
     # We allow QC_RECEIVER, ADMIN, MANAGEMENT
     if not user.can_perform_qc:
-        return RedirectResponse(url=f"/requisitions/{req_id}?error=Permission+denied", status_code=303)
+        await db.commit()
+    return RedirectResponse(url=f"/requisitions/{req_id}?error=Permission+denied", status_code=303)
+
+    from app.decisions.models import Decision
+    dec = await db.execute(select(Decision).where(Decision.requisition_id == req_id))
+    dec_obj = dec.scalar_one_or_none()
+    if not dec_obj or dec_obj.work_order_status != 'approved':
+        await db.commit()
+    return RedirectResponse(url=f"/requisitions/{req_id}?error=Work+order+not+approved", status_code=303)
+
 
     return templates.TemplateResponse(
         request,
@@ -458,6 +499,9 @@ async def receive_requisition_submit(
     delivery_photo: UploadFile = File(None),
     invoice_file: UploadFile = File(None),
     qc_done: bool = Form(False),
+    received_pieces: int = Form(None),
+    qc_number: str = Form(None),
+    receiver_number: str = Form(None),
     user: UserProfile = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -467,10 +511,20 @@ async def receive_requisition_submit(
     result = await db.execute(select(Requisition).where(Requisition.id == req_id))
     req = result.scalar_one_or_none()
     if not req:
-        return RedirectResponse(url="/requisitions", status_code=303)
+        await db.commit()
+    return RedirectResponse(url="/requisitions", status_code=303)
 
     if not user.can_perform_qc:
-        return RedirectResponse(url=f"/requisitions/{req_id}?error=Permission+denied", status_code=303)
+        await db.commit()
+    return RedirectResponse(url=f"/requisitions/{req_id}?error=Permission+denied", status_code=303)
+
+    from app.decisions.models import Decision
+    dec = await db.execute(select(Decision).where(Decision.requisition_id == req_id))
+    dec_obj = dec.scalar_one_or_none()
+    if not dec_obj or dec_obj.work_order_status != 'approved':
+        await db.commit()
+    return RedirectResponse(url=f"/requisitions/{req_id}?error=Work+order+not+approved", status_code=303)
+
 
     # Handle native camera / delivery photo upload
     final_delivery_image_url = delivery_image_url
@@ -498,6 +552,11 @@ async def receive_requisition_submit(
 
     req.invoice_number = invoice_number
     req.invoice_url = final_invoice_url
+    req.received_pieces = received_pieces
+    req.qc_number = qc_number
+    req.receiver_number = receiver_number
+    from datetime import timezone
+    req.received_at = datetime.now(timezone.utc)
     req.delivery_image_url = final_delivery_image_url
     req.qc_done = qc_done
 
@@ -524,6 +583,7 @@ async def receive_requisition_submit(
         )
 
     await db.flush()
+    await db.commit()
     return RedirectResponse(url=f"/requisitions/{req_id}?success=Order+marked+as+received", status_code=303)
 
 
@@ -539,10 +599,12 @@ async def cancel_requisition(
     result = await db.execute(select(Requisition).where(Requisition.id == req_id))
     req = result.scalar_one_or_none()
     if not req:
-        return RedirectResponse(url="/requisitions", status_code=303)
+        await db.commit()
+    return RedirectResponse(url="/requisitions", status_code=303)
 
     if not (user.has_management_authority or user.role == UserRole.ADMIN or req.created_by == user.id):
-        return RedirectResponse(url=f"/requisitions/{req_id}?error=Permission+denied", status_code=303)
+        await db.commit()
+    return RedirectResponse(url=f"/requisitions/{req_id}?error=Permission+denied", status_code=303)
 
     req.rejected_reason = reason or None
     from app.requisitions.service import transition_requisition_status
@@ -555,6 +617,7 @@ async def cancel_requisition(
         notes=f"Cancelled by {user.full_name}. Reason: {reason or 'No reason given'}",
     )
     await db.flush()
+    await db.commit()
     return RedirectResponse(url=f"/requisitions/{req_id}?success=Requisition+cancelled", status_code=303)
 
 
@@ -570,10 +633,12 @@ async def reject_requisition(
     result = await db.execute(select(Requisition).where(Requisition.id == req_id))
     req = result.scalar_one_or_none()
     if not req:
-        return RedirectResponse(url="/requisitions", status_code=303)
+        await db.commit()
+    return RedirectResponse(url="/requisitions", status_code=303)
 
     if not (user.has_management_authority or user.role == UserRole.ADMIN):
-        return RedirectResponse(url=f"/requisitions/{req_id}?error=Permission+denied", status_code=303)
+        await db.commit()
+    return RedirectResponse(url=f"/requisitions/{req_id}?error=Permission+denied", status_code=303)
 
     req.rejected_reason = reason or None
     from app.requisitions.service import transition_requisition_status
@@ -586,6 +651,7 @@ async def reject_requisition(
         notes=f"Rejected by {user.full_name}. Reason: {reason or 'No reason given'}",
     )
     await db.flush()
+    await db.commit()
     return RedirectResponse(url=f"/requisitions/{req_id}?success=Requisition+rejected", status_code=303)
 
 
@@ -599,16 +665,12 @@ async def shortlist_vendors(
     """Shortlist up to 3 vendor links for a requisition and set their quantity allocations."""
     from app.auth.models import UserRole
     if not (user.has_management_authority or user.is_procurement or user.role == UserRole.ADMIN):
-        return RedirectResponse(url=f"/quotations/compare/{req_id}?error=Permission+denied", status_code=303)
+        await db.commit()
+    return RedirectResponse(url=f"/quotations/compare/{req_id}?error=Permission+denied", status_code=303)
 
     form_data = await request.form()
     # Collect shortlisted link IDs and their allocations
     shortlisted_ids: list[str] = list(form_data.getlist("shortlisted_ids"))
-    if len(shortlisted_ids) > 3:
-        return RedirectResponse(
-            url=f"/quotations/compare/{req_id}?error=Maximum+3+vendors+can+be+shortlisted",
-            status_code=303,
-        )
 
     # Reset all existing shortlisting for this requisition
     all_links_res = await db.execute(
@@ -648,6 +710,7 @@ async def shortlist_vendors(
         notes=f"{len(shortlisted_ids)} vendor(s) shortlisted by {user.full_name}",
     )
     await db.flush()
+    await db.commit()
     return RedirectResponse(
         url=f"/quotations/compare/{req_id}?success=Vendors+shortlisted", status_code=303
     )
@@ -665,12 +728,14 @@ async def start_negotiation(
     from datetime import UTC, datetime
 
     if not (user.has_management_authority or user.is_procurement or user.role == UserRole.ADMIN):
-        return RedirectResponse(url=f"/quotations/compare/{req_id}?error=Permission+denied", status_code=303)
+        await db.commit()
+    return RedirectResponse(url=f"/quotations/compare/{req_id}?error=Permission+denied", status_code=303)
 
     result = await db.execute(select(Requisition).where(Requisition.id == req_id))
     req = result.scalar_one_or_none()
     if not req:
-        return RedirectResponse(url="/requisitions", status_code=303)
+        await db.commit()
+    return RedirectResponse(url="/requisitions", status_code=303)
 
     # Find shortlisted vendor links (v1 only, not already v2)
     shortlisted_res = await db.execute(
@@ -682,7 +747,8 @@ async def start_negotiation(
     )
     shortlisted = shortlisted_res.scalars().all()
     if not shortlisted:
-        return RedirectResponse(
+        await db.commit()
+    return RedirectResponse(
             url=f"/quotations/compare/{req_id}?error=No+shortlisted+vendors+found.+Shortlist+vendors+first.",
             status_code=303,
         )
@@ -747,6 +813,7 @@ async def start_negotiation(
         notes=f"v2 negotiation links generated for {len(v2_links)} vendor(s) by {user.full_name}",
     )
     await db.flush()
+    await db.commit()
     return RedirectResponse(
         url=f"/quotations/compare/{req_id}?success=Negotiation+links+sent", status_code=303
     )
@@ -766,7 +833,8 @@ async def generate_invoice(
     result = await db.execute(select(Requisition).where(Requisition.id == req_id))
     req = result.scalar_one_or_none()
     if not req:
-        return RedirectResponse(url="/requisitions", status_code=303)
+        await db.commit()
+    return RedirectResponse(url="/requisitions", status_code=303)
 
     dec_res = await db.execute(select(Decision).where(Decision.requisition_id == req_id))
     decision = dec_res.scalar_one_or_none()

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Vendor Groups — WES Vendor Portal{% endblock %}
+{% block title %}Supplier Groups — WES Supplier Portal{% endblock %}
 {% block nav_desktop_cat_cls %}text-brand-600 font-semibold bg-brand-50{% endblock %}
 {% block nav_categories %}tab-active{% endblock %}
 {% block nav_categories_icon %}text-brand-600{% endblock %}
@@ -8,8 +8,8 @@
 <div class="slide-up">
 
     <div class="mb-4">
-        <h1 class="text-xl font-bold text-slate-900">Vendor Groups</h1>
-        <p class="text-xs text-slate-400 mt-0.5">Organize vendors by category</p>
+        <h1 class="text-xl font-bold text-slate-900">Supplier Groups</h1>
+        <p class="text-xs text-slate-400 mt-0.5">Organize suppliers by category</p>
     </div>
 
     <!-- ADD GROUP FORM -->
@@ -40,7 +40,7 @@
                     {% if cat.description %}
                     <p class="text-xs text-slate-400 truncate">{{ cat.description }}</p>
                     {% else %}
-                    <p class="text-xs text-slate-400">{{ cat.vendors|length }} vendor{% if cat.vendors|length != 1 %}s{% endif %}</p>
+                    <p class="text-xs text-slate-400">{{ cat.vendors|length }} supplier{% if cat.vendors|length != 1 %}s{% endif %}</p>
                     {% endif %}
                 </div>
             </div>

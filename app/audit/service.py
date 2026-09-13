@@ -36,5 +36,6 @@ async def log_action(
         notes=notes,
     )
     db.add(entry)
-    await db.flush()
+    # Do NOT flush here — let the caller's session batch this with its own commit.
+    # Flushing on every audit entry forces a DB round-trip for each one.
     return entry

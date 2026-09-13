@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Compare: {{ req.title }} — WES Vendor Portal{% endblock %}
+{% block title %}Compare: {{ req.title }} — WES Supplier Portal{% endblock %}
 {% block nav_desktop_quo_cls %}text-brand-600 font-semibold bg-brand-50{% endblock %}
 {% block nav_quotations %}tab-active{% endblock %}
 {% block nav_quotations_icon %}text-brand-600{% endblock %}
@@ -38,7 +38,7 @@
     <form method="post" action="/requisitions/{{ req.id }}/shortlist" class="mb-6">
         <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm mb-3">
             <div class="flex items-center justify-between mb-3">
-                <h2 class="text-sm font-bold text-slate-900">Shortlist Vendors <span class="text-slate-400 font-normal text-xs">(max 3 for split order)</span></h2>
+                <h2 class="text-sm font-bold text-slate-900">Shortlist Suppliers <span class="text-slate-400 font-normal text-xs">(max 3 for split order)</span></h2>
                 <button type="submit" class="bg-brand-600 text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-brand-700 transition shadow-sm active:scale-[0.97] min-h-[36px]">
                     Save Shortlist
                 </button>
@@ -67,13 +67,13 @@
         </div>
     </form>
 
-    <!-- NEGOTIATE BUTTON (if any vendors are shortlisted) -->
+    <!-- NEGOTIATE BUTTON (if any suppliers are shortlisted) -->
     {% set shortlisted_count = submitted | selectattr('is_shortlisted') | list | length %}
     {% if shortlisted_count > 0 %}
     <form method="post" action="/requisitions/{{ req.id }}/negotiate" class="mb-5">
         <button type="submit" class="w-full bg-amber-600 text-white py-3 rounded-xl text-sm font-bold hover:bg-amber-700 transition shadow-sm active:scale-[0.98] flex items-center justify-center gap-2">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
-            Start Negotiation — Send v2 Links to {{ shortlisted_count }} Vendor{{ 's' if shortlisted_count > 1 else '' }}
+            Start Negotiation — Send v2 Links to {{ shortlisted_count }} Supplier{{ 's' if shortlisted_count > 1 else '' }}
         </button>
     </form>
     {% endif %}
@@ -92,7 +92,7 @@
             <table class="w-full text-sm">
                 <thead>
                     <tr class="border-b border-slate-100 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                        <th class="px-4 py-3 text-left">Vendor</th>
+                        <th class="px-4 py-3 text-left">Supplier</th>
                         <th class="px-4 py-3 text-right">v1 Rate</th>
                         <th class="px-4 py-3 text-right">v2 Rate</th>
                         <th class="px-4 py-3 text-right">Δ Rate</th>
@@ -171,7 +171,38 @@
             <div class="p-4">
                 {% if link.quotation %}
                     {% if link.quotation.submission_type == 'form' and link.quotation.form_data %}
+                    
+                    {% if link.quotation.form_data.get('items') %}
+                    <div class="mb-4 border border-slate-200 rounded-xl overflow-hidden">
+                        <table class="w-full text-left text-xs border-collapse">
+                            <thead class="bg-slate-50 border-b border-slate-200 text-slate-500">
+                                <tr>
+                                    <th class="px-3 py-2 font-semibold">Item</th>
+                                    <th class="px-3 py-2 font-semibold text-center">Qty</th>
+                                    <th class="px-3 py-2 font-semibold text-right">Price (৳)</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                {% for item in link.quotation.form_data.get('items') %}
+                                <tr>
+                                    <td class="px-3 py-2 font-medium text-slate-900">{{ item.name }}</td>
+                                    <td class="px-3 py-2 text-center text-slate-700">{{ item.qty }}</td>
+                                    <td class="px-3 py-2 text-right font-mono text-slate-700">{% if blind %}—{% else %}৳{{ "%.2f"|format(item.price|float(0)) }}{% endif %}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot class="bg-slate-50 border-t border-slate-200">
+                                <tr>
+                                    <td colspan="2" class="px-3 py-2 font-bold text-right text-slate-700">Total:</td>
+                                    <td class="px-3 py-2 font-bold text-right font-mono text-slate-900">{% if blind %}—{% else %}৳{{ "%.2f"|format(link.quotation.form_data.price|float(0)) }}{% endif %}</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                    {% endif %}
+
                     <div class="space-y-0 text-sm">
+                        {% if not link.quotation.form_data.get('items') %}
                         <div class="flex justify-between items-center py-3 border-b border-slate-100">
                             <span class="text-slate-500">Unit Rate</span>
                             {% if blind %}
@@ -191,6 +222,7 @@
                             {% set qty = link.quotation.quoted_quantity | float(req.quantity) %}
                             <span class="font-bold text-slate-900">৳{{ "%.2f"|format(unit_price * qty) }}</span>
                         </div>
+                        {% endif %}
                         {% endif %}
                         <div class="flex justify-between items-center py-3 border-b border-slate-100">
                             <span class="text-slate-500">Delivery</span>
@@ -251,7 +283,7 @@
             <svg class="w-7 h-7 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
         </div>
         <p class="text-sm font-semibold text-slate-900 mb-1">No quotations received yet</p>
-        <p class="text-xs text-slate-400">Quotations appear here once vendors submit</p>
+        <p class="text-xs text-slate-400">Quotations appear here once suppliers submit</p>
     </div>
     {% endif %}
 

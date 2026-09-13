@@ -1,5 +1,5 @@
 
-from fastapi import APIRouter, Depends, Form, Request
+from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -52,14 +52,11 @@ async def login(
             is_management=is_admin_or_mgmt,
         )
         db.add(user)
-        await db.flush()
-
 
     request.session["user_id"] = user.id
+    await db.commit()
     return RedirectResponse(url="/", status_code=303)
 
-
-from fastapi import HTTPException
 
 @router.get("/seed-db")
 async def trigger_db_seed(
@@ -71,6 +68,7 @@ async def trigger_db_seed(
     try:
         from scripts.seed import main as seed_main
         await seed_main()
+        await db.commit()
         return RedirectResponse(url="/auth/login?success=Database+re-seeded+successfully", status_code=303)
     except Exception as e:
         return RedirectResponse(url=f"/auth/login?error=Seed+failed:+{str(e)[:100]}", status_code=303)

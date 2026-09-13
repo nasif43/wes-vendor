@@ -137,7 +137,7 @@ async def build_vendor_invitation(
     <p>If you have any questions, please contact us directly.</p>
     """
     return _apply_cc({
-        "from": f"Vendor Portal <{settings.mail_from}>",
+        "from": f"Wener Supplier Management <{settings.mail_from}>",
         "to": [to],
         "subject": f"Quotation Request: {requisition_title}",
         "html": html,
@@ -166,7 +166,7 @@ async def build_decision_notification(
 
     cc = await get_cc_emails()
     return _apply_cc({
-        "from": f"Vendor Portal <{settings.mail_from}>",
+        "from": f"Wener Supplier Management <{settings.mail_from}>",
         "to": [to],
         "subject": subject,
         "html": body,
@@ -174,7 +174,7 @@ async def build_decision_notification(
 
 
 async def build_submission_notification(
-    to: str, vendor_name: str, requisition_title: str, view_url: str
+    to: str, vendor_name: str, requisition_title: str, view_url: str, pdf_bytes: bytes = None
 ) -> dict:
     cc = await get_cc_emails()
     html = f"""
@@ -182,12 +182,15 @@ async def build_submission_notification(
     <p>Vendor <strong>{vendor_name}</strong> has submitted a quotation for your requisition: <strong>{requisition_title}</strong>.</p>
     <p><a href="{view_url}">Click here to view the quotation details in the portal</a></p>
     """
-    return _apply_cc({
-        "from": f"Vendor Portal <{settings.mail_from}>",
+    payload = {
+        "from": f"Wener Supplier Management <{settings.mail_from}>",
         "to": [to],
-        "subject": f"Quotation Submitted: {vendor_name} - {requisition_title}",
+        "subject": f"{requisition_title} - {vendor_name}",
         "html": html,
-    }, cc)
+    }
+    if pdf_bytes:
+        payload["attachments"] = [{"filename": f"Quotation_{vendor_name}.pdf", "content": list(pdf_bytes)}]
+    return _apply_cc(payload, cc)
 
 
 async def build_submission_confirmation(
@@ -200,7 +203,7 @@ async def build_submission_confirmation(
     <p>Thank you for submitting your quotation for <strong>{requisition_title}</strong>. We have received it successfully and will review it shortly.</p>
     """
     return _apply_cc({
-        "from": f"Vendor Portal <{settings.mail_from}>",
+        "from": f"Wener Supplier Management <{settings.mail_from}>",
         "to": [to],
         "subject": f"Quotation Received: {requisition_title}",
         "html": html,

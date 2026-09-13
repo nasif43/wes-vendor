@@ -85,6 +85,7 @@ async def create_vendor(
         notes=f"Email: {vendor.contact_email}. Created by {user.full_name} ({user.email}).",
     )
 
+    await db.commit()
     return RedirectResponse(url="/vendors?success=1", status_code=303)
 
 
@@ -100,7 +101,8 @@ async def view_vendor(
     result = await db.execute(select(Vendor).where(Vendor.id == vendor_id))
     vendor = result.scalar_one_or_none()
     if not vendor:
-        return RedirectResponse(url="/vendors", status_code=303)
+        await db.commit()
+    return RedirectResponse(url="/vendors", status_code=303)
 
     result = await db.execute(select(Category).order_by(Category.name))
     categories = result.scalars().all()
@@ -126,7 +128,8 @@ async def update_vendor(
     result = await db.execute(select(Vendor).where(Vendor.id == vendor_id))
     vendor = result.scalar_one_or_none()
     if not vendor:
-        return RedirectResponse(url="/vendors", status_code=303)
+        await db.commit()
+    return RedirectResponse(url="/vendors", status_code=303)
 
     vendor.company_name = company_name
     vendor.contact_email = contact_email
@@ -155,6 +158,7 @@ async def update_vendor(
         notes=f"Updated by {user.full_name} ({user.email}). Active: {vendor.is_active}.",
     )
 
+    await db.commit()
     return RedirectResponse(url=f"/vendors/{vendor_id}?success=1", status_code=303)
 
 
@@ -177,6 +181,7 @@ async def delete_vendor(
             notes=f"Deleted by {user.full_name} ({user.email}).",
         )
         await db.delete(vendor)
+    await db.commit()
     return RedirectResponse(url="/vendors?success=1", status_code=303)
 
 
@@ -194,7 +199,8 @@ async def vendor_audit_notes(
     result = await db.execute(select(Vendor).where(Vendor.id == vendor_id))
     vendor = result.scalar_one_or_none()
     if not vendor:
-        return RedirectResponse(url="/vendors", status_code=303)
+        await db.commit()
+    return RedirectResponse(url="/vendors", status_code=303)
 
     # Fetch rejection and QC_FAILED events related to this vendor
     audit_res = await db.execute(
@@ -229,12 +235,14 @@ async def add_vendor_rejection_note(
     from app.auth.models import UserRole
 
     if not (user.has_management_authority or user.role == UserRole.ADMIN):
-        return RedirectResponse(url=f"/vendors/{vendor_id}?error=Permission+denied", status_code=303)
+        await db.commit()
+    return RedirectResponse(url=f"/vendors/{vendor_id}?error=Permission+denied", status_code=303)
 
     result = await db.execute(select(Vendor).where(Vendor.id == vendor_id))
     vendor = result.scalar_one_or_none()
     if not vendor:
-        return RedirectResponse(url="/vendors", status_code=303)
+        await db.commit()
+    return RedirectResponse(url="/vendors", status_code=303)
 
     action = "QC_FAILED" if qc_failed else "VENDOR_REJECTED"
     await log_action(
@@ -247,6 +255,7 @@ async def add_vendor_rejection_note(
         notes=note_text,
     )
     await db.flush()
+    await db.commit()
     return RedirectResponse(
         url=f"/vendors/{vendor_id}/audit?success=Note+added", status_code=303
     )

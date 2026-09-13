@@ -1,7 +1,61 @@
 {% extends "base.html" %}
 
-{% block title %}System Settings — WES Vendor Portal{% endblock %}
-{% block nav_side_settings %}text-white bg-slate-800/80{% endblock %}
+{% block title %}System Settings — WES Supplier Portal
+<div class="mt-8 bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+    <div class="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
+        <h3 class="font-bold text-slate-900 text-lg">Letterheads</h3>
+    </div>
+    <div class="p-6">
+        <form action="/settings/letterhead/upload" method="POST" enctype="multipart/form-data" class="mb-4">
+            <input type="file" name="letterhead_image" required class="mb-2">
+            <select name="slot" required class="mb-2">
+                <option value="1">Slot 1</option>
+                <option value="2">Slot 2</option>
+                <option value="3">Slot 3</option>
+                <option value="4">Slot 4</option>
+            </select>
+            <button type="submit" class="bg-brand-600 text-white px-4 py-2 rounded">Upload</button>
+        </form>
+        <form action="/settings/letterhead/activate" method="POST">
+            <select name="slot" required class="mb-2">
+                <option value="1">Slot 1</option>
+                <option value="2">Slot 2</option>
+                <option value="3">Slot 3</option>
+                <option value="4">Slot 4</option>
+            </select>
+            <button type="submit" class="bg-brand-600 text-white px-4 py-2 rounded">Activate</button>
+        </form>
+    </div>
+</div>
+{% endblock %}
+{% block nav_side_settings %}text-white bg-slate-800/80
+<div class="mt-8 bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+    <div class="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
+        <h3 class="font-bold text-slate-900 text-lg">Letterheads</h3>
+    </div>
+    <div class="p-6">
+        <form action="/settings/letterhead/upload" method="POST" enctype="multipart/form-data" class="mb-4">
+            <input type="file" name="letterhead_image" required class="mb-2">
+            <select name="slot" required class="mb-2">
+                <option value="1">Slot 1</option>
+                <option value="2">Slot 2</option>
+                <option value="3">Slot 3</option>
+                <option value="4">Slot 4</option>
+            </select>
+            <button type="submit" class="bg-brand-600 text-white px-4 py-2 rounded">Upload</button>
+        </form>
+        <form action="/settings/letterhead/activate" method="POST">
+            <select name="slot" required class="mb-2">
+                <option value="1">Slot 1</option>
+                <option value="2">Slot 2</option>
+                <option value="3">Slot 3</option>
+                <option value="4">Slot 4</option>
+            </select>
+            <button type="submit" class="bg-brand-600 text-white px-4 py-2 rounded">Activate</button>
+        </form>
+    </div>
+</div>
+{% endblock %}
 
 {% block content %}
 <div class="max-w-2xl mx-auto py-10 px-4 sm:px-6">
@@ -38,7 +92,7 @@
             </svg>
             <div>
                 <h2 class="text-sm font-semibold text-white">Email CC Recipients</h2>
-                <p class="text-xs text-slate-400 mt-0.5">These addresses are CC'd on every outbound email — vendor invitations, quotation notifications, and decision emails.</p>
+                <p class="text-xs text-slate-400 mt-0.5">These addresses are CC'd on every outbound email — supplier invitations, quotation notifications, and decision emails.</p>
             </div>
         </div>
 
@@ -102,5 +156,32 @@
         </div>
     </div>
 
+</div>
+
+<div class="mt-8 bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+    <div class="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
+        <h3 class="font-bold text-slate-900 text-lg">Letterheads</h3>
+    </div>
+    <div class="p-6">
+        <form action="/settings/letterhead/upload" method="POST" enctype="multipart/form-data" class="mb-4">
+            <input type="file" name="letterhead_image" required class="mb-2">
+            <select name="slot" required class="mb-2">
+                <option value="1">Slot 1</option>
+                <option value="2">Slot 2</option>
+                <option value="3">Slot 3</option>
+                <option value="4">Slot 4</option>
+            </select>
+            <button type="submit" class="bg-brand-600 text-white px-4 py-2 rounded">Upload</button>
+        </form>
+        <form action="/settings/letterhead/activate" method="POST">
+            <select name="slot" required class="mb-2">
+                <option value="1">Slot 1</option>
+                <option value="2">Slot 2</option>
+                <option value="3">Slot 3</option>
+                <option value="4">Slot 4</option>
+            </select>
+            <button type="submit" class="bg-brand-600 text-white px-4 py-2 rounded">Activate</button>
+        </form>
+    </div>
 </div>
 {% endblock %}

@@ -149,83 +149,47 @@ async def index(
 
     try:
         # 1. Aggregate requisition counts in a single query compatible with both SQLite and Postgres
-        req_stats_stmt = sa_select(
-            func.sum(
-                case(
-                    (
-                        (Requisition.qc_done == False) & (Requisition.status != RequisitionStatus.CLOSED),
-                        1
-                    ),
-                    else_=0
+        from sqlalchemy import text
+        combined_stmt = text("""
+        SELECT 
+            (SELECT SUM(CASE WHEN qc_done = false AND status != 'closed' THEN 1 ELSE 0 END) FROM requisitions) as open_req,
+            (SELECT SUM(CASE WHEN qc_done = true THEN 1 ELSE 0 END) FROM requisitions) as delivered_req,
+            (SELECT SUM(CASE WHEN qc_done = true AND payment_status != 'paid' THEN 1 ELSE 0 END) FROM requisitions) as pending_pay,
+            (SELECT COUNT(*) FROM vendors WHERE is_active = true AND is_temporary = false) as total_vendors,
+            (SELECT COUNT(*) FROM decisions WHERE management_approved IS NULL) as pending_decisions,
+            (SELECT COUNT(*) FROM decisions d JOIN requisitions r ON d.requisition_id = r.id WHERE d.management_approved = true AND r.qc_done = false) as confirmed_orders
+        """)
+        combined_r = await db.execute(combined_stmt)
+        row = combined_r.fetchone()
+        
+        open_requisitions = row[0] or 0
+        delivered_requisitions = row[1] or 0
+        pending_payments = row[2] or 0
+        total_vendors = row[3] or 0
+        pending_decisions = row[4] or 0
+        confirmed_orders = row[5] or 0
+
+        completed_reqs_r, recent_req_r, audit_r = await asyncio.gather(
+            db.execute(
+                sa_select(Requisition, Decision)
+                .join(Decision, Requisition.id == Decision.requisition_id)
+                .where(
+                    Requisition.qc_done == True,
+                    Requisition.qc_done_at.isnot(None),
+                    Decision.approved_at.isnot(None)
                 )
-            ).label("open_req"),
-            func.sum(
-                case(
-                    (Requisition.qc_done == True, 1),
-                    else_=0
-                )
-            ).label("delivered_req"),
-            func.sum(
-                case(
-                    ((Requisition.qc_done == True) & (Requisition.payment_status != "paid"), 1),
-                    else_=0
-                )
-            ).label("pending_pay"),
+            ),
+            db.execute(
+                sa_select(Requisition)
+                .order_by(Requisition.created_at.desc())
+                .limit(5)
+            ),
+            db.execute(
+                sa_select(AuditLog)
+                .order_by(AuditLog.created_at.desc())
+                .limit(5)
+            ),
         )
-
-        req_stats_r = await db.execute(req_stats_stmt)
-        row = req_stats_r.one()
-        open_requisitions = row.open_req or 0
-        delivered_requisitions = row.delivered_req or 0
-        pending_payments = row.pending_pay or 0
-
-        vendors_r = await db.execute(
-            sa_select(func.count(Vendor.id)).where(
-                Vendor.is_active == True,
-                Vendor.is_temporary == False
-            )
-        )
-        total_vendors = vendors_r.scalar_one() or 0
-
-        pending_dec_r = await db.execute(
-            sa_select(func.count(Decision.id)).where(
-                Decision.management_approved.is_(None)
-            )
-        )
-        pending_decisions = pending_dec_r.scalar_one() or 0
-
-        confirmed_r = await db.execute(
-            sa_select(func.count(Decision.id))
-            .join(Requisition, Decision.requisition_id == Requisition.id)
-            .where(
-                Decision.management_approved == True,
-                Requisition.qc_done == False
-            )
-        )
-        confirmed_orders = confirmed_r.scalar_one() or 0
-
-        completed_reqs_r = await db.execute(
-            sa_select(Requisition, Decision)
-            .join(Decision, Requisition.id == Decision.requisition_id)
-            .where(
-                Requisition.qc_done == True,
-                Requisition.qc_done_at.isnot(None),
-                Decision.approved_at.isnot(None)
-            )
-        )
-
-        recent_req_r = await db.execute(
-            sa_select(Requisition)
-            .order_by(Requisition.created_at.desc())
-            .limit(5)
-        )
-
-        audit_r = await db.execute(
-            sa_select(AuditLog)
-            .order_by(AuditLog.created_at.desc())
-            .limit(5)
-        )
-
         lead_times = []
         for req, dec in completed_reqs_r.all():
             if req.qc_done_at and dec.approved_at:

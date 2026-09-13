@@ -35,6 +35,7 @@ async def create_category(
 ):
     category = Category(name=name, description=description or None)
     db.add(category)
+    await db.commit()
     return RedirectResponse(url="/categories?success=1", status_code=303)
 
 
@@ -51,6 +52,7 @@ async def update_category(
     if cat:
         cat.name = name
         cat.description = description or None
+    await db.commit()
     return RedirectResponse(url="/categories?success=1", status_code=303)
 
 
@@ -64,4 +66,5 @@ async def delete_category(
     cat = result.scalar_one_or_none()
     if cat:
         await db.delete(cat)
+    await db.commit()
     return RedirectResponse(url="/categories?success=1", status_code=303)

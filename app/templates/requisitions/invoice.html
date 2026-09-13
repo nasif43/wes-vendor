@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Invoice — {{ req.title }} — WES Vendor Portal{% endblock %}
+{% block title %}Invoice — {{ req.title }} — WES Supplier Portal{% endblock %}
 {% block content %}
 <style>
 @media print {
@@ -31,11 +31,18 @@
             <div class="flex items-start justify-between">
                 <div>
                     <h1 class="text-2xl font-black tracking-tight">WenerBD</h1>
-                    <p class="text-brand-200 text-sm mt-0.5">Vendor Management & Procurement System</p>
+                    <p class="text-brand-200 text-sm mt-0.5">Supplier Management & Procurement System</p>
                 </div>
                 <div class="text-right">
                     <p class="text-brand-200 text-xs uppercase tracking-wider">Invoice</p>
-                    {% if req.invoice_number %}
+                    
+                    {% if req.qc_number %}
+                    <p class="text-slate-500 text-xs mt-1">QC Number: <span class="font-medium text-slate-900">{{ req.qc_number }}</span></p>
+                    {% endif %}
+                    {% if req.receiver_number %}
+                    <p class="text-slate-500 text-xs mt-1">Receiver Number: <span class="font-medium text-slate-900">{{ req.receiver_number }}</span></p>
+                    {% endif %}
+        {% if req.invoice_number %}
                     <p class="text-white text-lg font-bold mt-0.5">#{{ req.invoice_number }}</p>
                     {% endif %}
                     <p class="text-brand-300 text-xs mt-1">{{ req.qc_done_at.strftime('%B %d, %Y') if req.qc_done_at else req.updated_at.strftime('%B %d, %Y') }}</p>
@@ -53,7 +60,7 @@
                     <p class="text-xs text-slate-500 mt-0.5">Created by: {{ req.creator.full_name if req.creator else 'Unknown' }}</p>
                 </div>
                 <div>
-                    <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Vendor / Supplier</p>
+                    <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Supplier / Supplier</p>
                     {% if decision and decision.winning_vendor %}
                     <p class="font-bold text-slate-900">{{ decision.winning_vendor.company_name }}</p>
                     {% if decision.winning_vendor.contact_person %}
@@ -64,7 +71,7 @@
                     <p class="text-xs text-slate-500 mt-0.5">{{ decision.winning_vendor.phone }}</p>
                     {% endif %}
                     {% else %}
-                    <p class="text-sm text-slate-400 italic">Vendor information unavailable</p>
+                    <p class="text-sm text-slate-400 italic">Supplier information unavailable</p>
                     {% endif %}
                 </div>
             </div>
@@ -82,45 +89,64 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr class="border-b border-slate-100">
-                            <td class="py-4">
-                                <p class="font-semibold text-slate-900">{{ req.item_description }}</p>
-                                <p class="text-xs text-slate-500 mt-1">Requisition: {{ req.title }}</p>
-                            </td>
-                            <td class="py-4 text-right font-semibold text-slate-800">
-                                {% if winning_quotation and winning_quotation.quoted_quantity %}
-                                {{ winning_quotation.quoted_quantity }}
-                                {% else %}
-                                {{ req.quantity }}
-                                {% endif %}
-                            </td>
-                            <td class="py-4 text-right text-slate-600">{{ req.unit or '—' }}</td>
-                            <td class="py-4 text-right font-semibold text-slate-800">
-                                {% if winning_quotation and winning_quotation.form_data and winning_quotation.form_data.price %}
-                                {{ winning_quotation.form_data.price }}
-                                {% else %}
-                                —
-                                {% endif %}
-                            </td>
-                            <td class="py-4 text-right font-bold text-slate-900">
-                                {% if winning_quotation and winning_quotation.form_data and winning_quotation.form_data.price %}
-                                {% set unit_p = winning_quotation.form_data.price | float(0) %}
-                                {% set qty = (winning_quotation.quoted_quantity | float(0)) or (req.quantity | float(0)) %}
-                                ৳{{ "%.2f"|format(unit_p * qty) }}
-                                {% else %}
-                                —
-                                {% endif %}
-                            </td>
-                        </tr>
+                        {% if req.items and winning_quotation and winning_quotation.form_data and winning_quotation.form_data.get('items') %}
+                            {% for item in winning_quotation.form_data.get('items') %}
+                            <tr class="border-b border-slate-100">
+                                <td class="py-4">
+                                    <p class="font-semibold text-slate-900">{{ item.name }}</p>
+                                    <p class="text-xs text-slate-500 mt-1">{{ item.description }}</p>
+                                </td>
+                                <td class="py-4 text-right font-semibold text-slate-800">{{ item.qty }}</td>
+                                <td class="py-4 text-right text-slate-600">{{ req.unit or '—' }}</td>
+                                <td class="py-4 text-right font-semibold text-slate-800">{{ "%.2f"|format(item.price|float(0)) }}</td>
+                                <td class="py-4 text-right font-bold text-slate-900">৳{{ "%.2f"|format((item.price|float(0)) * (item.qty|float(0))) }}</td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr class="border-b border-slate-100">
+                                <td class="py-4">
+                                    <p class="font-semibold text-slate-900">{{ req.item_description }}</p>
+                                    <p class="text-xs text-slate-500 mt-1">Requisition: {{ req.title }}</p>
+                                </td>
+                                <td class="py-4 text-right font-semibold text-slate-800">
+                                    {% if winning_quotation and winning_quotation.quoted_quantity %}
+                                    {{ winning_quotation.quoted_quantity }}
+                                    {% else %}
+                                    {{ req.received_pieces or req.quantity }}
+                                    {% endif %}
+                                </td>
+                                <td class="py-4 text-right text-slate-600">{{ req.unit or '—' }}</td>
+                                <td class="py-4 text-right font-semibold text-slate-800">
+                                    {% if winning_quotation and winning_quotation.form_data and winning_quotation.form_data.price %}
+                                    {{ winning_quotation.form_data.price }}
+                                    {% else %}
+                                    —
+                                    {% endif %}
+                                </td>
+                                <td class="py-4 text-right font-bold text-slate-900">
+                                    {% if winning_quotation and winning_quotation.form_data and winning_quotation.form_data.price %}
+                                    {% set unit_p = winning_quotation.form_data.price | float(0) %}
+                                    {% set qty = (winning_quotation.quoted_quantity | float(0)) or (req.quantity | float(0)) %}
+                                    ৳{{ "%.2f"|format(unit_p * qty) }}
+                                    {% else %}
+                                    —
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endif %}
                     </tbody>
                     <tfoot>
                         <tr>
                             <td colspan="4" class="pt-4 text-right text-sm font-bold text-slate-600 pr-4">Total (BDT):</td>
                             <td class="pt-4 text-right text-xl font-black text-brand-700">
                                 {% if winning_quotation and winning_quotation.form_data and winning_quotation.form_data.price %}
-                                {% set unit_p = winning_quotation.form_data.price | float(0) %}
-                                {% set qty = (winning_quotation.quoted_quantity | float(0)) or (req.quantity | float(0)) %}
-                                ৳{{ "%.2f"|format(unit_p * qty) }}
+                                    {% if req.items and winning_quotation.form_data.get('items') %}
+                                        ৳{{ "%.2f"|format(winning_quotation.form_data.price|float(0)) }}
+                                    {% else %}
+                                        {% set unit_p = winning_quotation.form_data.price | float(0) %}
+                                        {% set qty = (winning_quotation.quoted_quantity | float(0)) or (req.quantity | float(0)) %}
+                                        ৳{{ "%.2f"|format(unit_p * qty) }}
+                                    {% endif %}
                                 {% else %}
                                 —
                                 {% endif %}
@@ -188,7 +214,7 @@
 
             <!-- FOOTER -->
             <div class="mt-8 pt-6 border-t border-slate-200 text-center text-xs text-slate-400">
-                <p>Generated by WenerBD Vendor Management Platform</p>
+                <p>Generated by WenerBD Supplier Management Platform</p>
                 <p class="mt-0.5">All amounts in Bangladeshi Taka (৳ BDT)</p>
             </div>
         </div>

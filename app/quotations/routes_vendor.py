@@ -64,6 +64,7 @@ async def submit_quotation(
     db: AsyncSession = Depends(get_db),
 ):
     from app.main import templates
+    req_form = await request.form()
 
     result = await db.execute(
         select(RequisitionVendor).where(RequisitionVendor.unique_link_token == token)
@@ -75,7 +76,8 @@ async def submit_quotation(
         )
 
     if link.quotation:
-        return RedirectResponse(url=f"/vendor-quote/{token}", status_code=303)
+        await db.commit()
+    return RedirectResponse(url=f"/vendor-quote/{token}", status_code=303)
 
     if link.vendor and link.vendor.is_temporary:
         if not company_name or not contact_person or not phone or not contact_email:
@@ -120,8 +122,20 @@ async def submit_quotation(
 
     form_data = None
     if submission_type == "form":
+        item_prices = req_form.getlist("item_price[]")
+        items = []
+        if item_prices and link.requisition and link.requisition.items:
+            for item, p in zip(link.requisition.items, item_prices):
+                items.append({
+                    "name": item.get("name"),
+                    "description": item.get("description"),
+                    "qty": item.get("qty"),
+                    "price": float(p) if p else 0.0
+                })
+        
         form_data = {
             "price": price,
+            "items": items,
             "currency": "BDT",  # Locked globally to BDT
             "delivery_days": delivery_days,
             "payment_terms": payment_terms or None,
@@ -190,6 +204,62 @@ async def submit_quotation(
         from app.email.resend import build_submission_notification, build_submission_confirmation, send_batch
         email_params = []
         
+        
+        pdf_bytes = None
+        try:
+            from weasyprint import HTML
+            table_html = ""
+            if form_data and form_data.get("items"):
+                rows = []
+                grand_total = 0.0
+                for item in form_data["items"]:
+                    qty = item.get("qty", 0)
+                    item_price = item.get("price", 0)
+                    total = qty * item_price
+                    grand_total += total
+                    rows.append(f"<tr><td>{item.get('name', '')}</td><td>{item.get('description', '')}</td><td>{qty}</td><td>{item_price:.2f}</td><td>{total:.2f}</td></tr>")
+                
+                table_html = f"""
+                <table border="1" cellpadding="6" cellspacing="0" style="border-collapse: collapse; width: 100%; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 13px; text-align: left; border: 1px solid #333; margin-top: 20px;">
+                  <thead style="background-color: #e2e8f0; border-bottom: 2px solid #333;">
+                    <tr>
+                      <th style="border: 1px solid #333;">Name</th>
+                      <th style="border: 1px solid #333;">Description</th>
+                      <th style="border: 1px solid #333;">Qty</th>
+                      <th style="border: 1px solid #333;">Price</th>
+                      <th style="border: 1px solid #333;">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {''.join(rows)}
+                  </tbody>
+                  <tfoot style="background-color: #f8fafc;">
+                    <tr>
+                      <td colspan="4" style="text-align: right; font-weight: bold; border: 1px solid #333;">Grand Total:</td>
+                      <td style="font-weight: bold; border: 1px solid #333;">{grand_total:.2f}</td>
+                    </tr>
+                  </tfoot>
+                </table>
+                """
+                
+            html_content = f"""
+            <html>
+            <body style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">
+                <h1 style="border-bottom: 2px solid #333; padding-bottom: 5px;">Quotation</h1>
+                <table style="width: 100%; font-size: 14px; margin-bottom: 20px;">
+                    <tr><td><strong>Title:</strong> {link.requisition.title}</td><td><strong>Supplier:</strong> {link.vendor.company_name}</td></tr>
+                    <tr><td><strong>Total Quote Price:</strong> {price} {currency}</td><td><strong>Delivery Days:</strong> {delivery_days}</td></tr>
+                    <tr><td colspan="2"><strong>Notes:</strong> {notes}</td></tr>
+                </table>
+                {table_html}
+            </body>
+            </html>
+            """
+            pdf_bytes = HTML(string=html_content).write_pdf()
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).exception("Failed to generate PDF")
+            
         if link.requisition and link.requisition.creator and link.requisition.creator.email:
             view_url = f"{str(request.base_url).rstrip('/')}/quotations/detail/{link.id}"
             email_params.append(
@@ -198,6 +268,7 @@ async def submit_quotation(
                     vendor_name=link.vendor.company_name,
                     requisition_title=link.requisition.title,
                     view_url=view_url,
+                    pdf_bytes=pdf_bytes
                 )
             )
             
@@ -216,4 +287,5 @@ async def submit_quotation(
         import logging
         logging.getLogger(__name__).exception("Failed to send submission emails: %s", e)
 
+    await db.commit()
     return RedirectResponse(url=f"/vendor-quote/{token}", status_code=303)

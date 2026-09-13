@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}{{ req.title }} — WES Vendor Portal{% endblock %}
+{% block title %}{{ req.title }} — WES Supplier Portal{% endblock %}
 {% block nav_desktop_req_cls %}text-brand-600 font-semibold bg-brand-50{% endblock %}
 {% block nav_requisitions %}tab-active{% endblock %}
 {% block nav_requisitions_icon %}text-brand-600{% endblock %}
@@ -33,6 +33,38 @@
             {{ render_status_badge(req.status) }}
         </div>
         <div class="space-y-4">
+            {% if req.items %}
+            <div class="border border-slate-200 rounded-xl overflow-hidden">
+                <table class="w-full text-left text-sm border-collapse">
+                    <thead class="bg-slate-50 border-b border-slate-200 text-xs text-slate-500 uppercase">
+                        <tr>
+                            <th class="px-4 py-3 font-semibold">Name</th>
+                            <th class="px-4 py-3 font-semibold">Description</th>
+                            <th class="px-4 py-3 font-semibold text-right">Qty</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100 text-slate-800">
+                        {% for item in req.items %}
+                        <tr>
+                            <td class="px-4 py-3">{{ item.name }}</td>
+                            <td class="px-4 py-3">{{ item.description }}</td>
+                            <td class="px-4 py-3 text-right font-semibold">{{ item.qty }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot class="bg-slate-50 border-t border-slate-200">
+                        <tr>
+                            <td colspan="2" class="px-4 py-3 font-bold text-right">Total Qty:</td>
+                            <td class="px-4 py-3 font-bold text-right">{{ req.quantity }}</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+            <div class="pt-3 border-t border-slate-100">
+                <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Created</p>
+                <p class="text-sm text-slate-800">{{ req.created_at.strftime('%b %d, %Y') }}</p>
+            </div>
+            {% else %}
             <div>
                 <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Description</p>
                 <p class="text-sm text-slate-800 leading-relaxed">{{ req.item_description }}</p>
@@ -47,6 +79,7 @@
                     <p class="text-sm text-slate-800">{{ req.created_at.strftime('%b %d, %Y') }}</p>
                 </div>
             </div>
+            {% endif %}
             {% if req.notes %}
             <div class="pt-3 border-t border-slate-100">
                 <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Notes</p>
@@ -79,11 +112,11 @@
         </div>
     </div>
 
-    <!-- ACTION BUTTON: Invite Vendors & Send RFQ (draft or new) -->
+    <!-- ACTION BUTTON: Invite Suppliers & Send RFQ (draft or new) -->
     {% if status_str in ('draft', 'new') and user and (user.is_procurement or req.created_by == user.id) %}
     <a href="/requisitions/{{ req.id }}/select-vendors" class="flex items-center justify-center gap-2 bg-brand-600 text-white py-3.5 rounded-xl text-sm font-semibold hover:bg-brand-700 transition shadow-sm mb-4 active:scale-[0.98]">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-        Invite Vendors &amp; Send RFQ
+        Invite Suppliers &amp; Send RFQ
     </a>
     {% endif %}
 
@@ -119,7 +152,7 @@
             </div>
             <div>
                 <div class="text-sm font-semibold text-slate-900">Compare Quotations</div>
-                <div class="text-xs text-slate-400">Side-by-side vendor offers</div>
+                <div class="text-xs text-slate-400">Side-by-side supplier offers</div>
             </div>
         </div>
         <svg class="w-4 h-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
@@ -131,7 +164,7 @@
     {% set any_submitted = req.vendor_links | selectattr('status', 'equalto', 'submitted') | list | length > 0 %}
     <div>
         <div class="flex items-center justify-between mb-3">
-            <h2 class="text-xs font-bold text-slate-400 uppercase tracking-widest">Vendors Contacted</h2>
+            <h2 class="text-xs font-bold text-slate-400 uppercase tracking-widest">Suppliers Contacted</h2>
             {% if req.vendor_links %}
             <span class="text-xs text-slate-400">{{ req.vendor_links|length }} total</span>
             {% endif %}
@@ -177,15 +210,15 @@
 
         {% else %}
         <div class="bg-white rounded-2xl border border-slate-200 p-8 text-center shadow-sm mb-4">
-            <p class="text-sm text-slate-400">No vendors selected yet.</p>
+            <p class="text-sm text-slate-400">No suppliers selected yet.</p>
         </div>
         {% endif %}
 
-        <!-- TEMPORARY VENDOR CARD — hidden once any vendor has submitted a quote -->
+        <!-- TEMPORARY VENDOR CARD — hidden once any supplier has submitted a quote -->
         {% if not any_submitted %}
         <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
-            <h3 class="text-sm font-bold text-slate-900 mb-1">Unlisted Vendor</h3>
-            <p class="text-xs text-slate-400 mb-3">Generate a quote link for an unlisted or temporary vendor.</p>
+            <h3 class="text-sm font-bold text-slate-900 mb-1">Unlisted Supplier</h3>
+            <p class="text-xs text-slate-400 mb-3">Generate a quote link for an unlisted or temporary supplier.</p>
             <form method="post" action="/requisitions/{{ req.id }}/add-temporary-vendor">
                 <button type="submit" class="w-full bg-slate-800 text-white py-3 rounded-xl text-sm font-semibold hover:bg-slate-900 transition shadow-sm active:scale-[0.98]">
                     Generate Temporary Link
@@ -194,7 +227,7 @@
         </div>
         {% else %}
         <div class="bg-slate-50 rounded-2xl border border-slate-200 p-4 shadow-sm opacity-60">
-            <h3 class="text-sm font-bold text-slate-500 mb-1">Unlisted Vendor</h3>
+            <h3 class="text-sm font-bold text-slate-500 mb-1">Unlisted Supplier</h3>
             <p class="text-xs text-slate-400">New quote links are disabled once a quotation has been received.</p>
         </div>
         {% endif %}

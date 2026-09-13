@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Requisitions &amp; Pipeline — WES Vendor Portal{% endblock %}
+{% block title %}Requisitions &amp; Pipeline — WES Supplier Portal{% endblock %}
 {% block nav_desktop_req_cls %}text-brand-600 font-semibold bg-brand-50{% endblock %}
 {% block nav_requisitions %}tab-active{% endblock %}
 {% block nav_requisitions_icon %}text-brand-600{% endblock %}
@@ -178,7 +178,7 @@
                         <div class="text-xs font-extrabold text-slate-900 mb-1 truncate">{{ req.title }}</div>
                         <div class="text-[11px] font-medium text-slate-500 mb-2 truncate">{{ req.quantity }} {{ req.unit or '' }}</div>
                         <div class="inline-block text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded mb-2 border border-blue-200/50">
-                            {{ req.vendor_links | length }} vendor(s) invited
+                            {{ req.vendor_links | length }} supplier(s) invited
                         </div>
                         <div class="text-[10px] text-slate-400 font-medium border-t border-slate-100 pt-2 flex items-center justify-between">
                             <span>RFQ Invited</span>
@@ -211,7 +211,7 @@
                             Quotes under review
                         </div>
                         <div class="text-[10px] text-slate-400 font-medium border-t border-slate-100 pt-2 flex items-center justify-between">
-                            <span>Vendor selection</span>
+                            <span>Supplier selection</span>
                             <span class="font-bold text-amber-600">Pending</span>
                         </div>
                     </a>
@@ -244,7 +244,7 @@
                             </div>
                             {% endif %}
                             <div class="text-[10px] text-slate-400 font-medium border-t border-slate-100 pt-2 flex items-center justify-between">
-                                <span>Vendor selected</span>
+                                <span>Supplier selected</span>
                                 <span class="font-bold text-purple-600">PO Placed</span>
                             </div>
                         </a>

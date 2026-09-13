@@ -25,6 +25,8 @@ class Decision(Base):
         String(36), ForeignKey("user_profiles.id"), nullable=True
     )
     approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    work_order_status: Mapped[str | None] = mapped_column(String(50), nullable=True, default="pending_approval")
+    work_order_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
 
     requisition = relationship("Requisition", lazy="selectin")
     winning_vendor = relationship("Vendor", foreign_keys=[winning_vendor_id], lazy="selectin")

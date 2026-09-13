@@ -20,7 +20,8 @@ async def list_users(
     from app.main import templates
 
     if not user.has_management_authority:
-        return RedirectResponse(url="/?error=Permission+denied", status_code=303)
+        await db.commit()
+    return RedirectResponse(url="/?error=Permission+denied", status_code=303)
 
     result = await db.execute(select(UserProfile).order_by(UserProfile.full_name))
     users_list = result.scalars().all()
@@ -47,20 +48,23 @@ async def create_user(
 ):
     from sqlalchemy import func
     if not user.has_management_authority and user.role != UserRole.ADMIN:
-        return RedirectResponse(url="/users?error=Permission+denied", status_code=303)
+        await db.commit()
+    return RedirectResponse(url="/users?error=Permission+denied", status_code=303)
 
     clean_email = email.strip().lower()
     clean_name = full_name.strip()
 
     if not clean_email or not clean_name:
-        return RedirectResponse(url="/users?error=Name+and+Email+are+required", status_code=303)
+        await db.commit()
+    return RedirectResponse(url="/users?error=Name+and+Email+are+required", status_code=303)
 
     result = await db.execute(
         select(UserProfile).where(func.lower(UserProfile.email) == clean_email)
     )
     existing = result.scalar_one_or_none()
     if existing:
-        return RedirectResponse(url="/users?error=Email+already+registered", status_code=303)
+        await db.commit()
+    return RedirectResponse(url="/users?error=Email+already+registered", status_code=303)
 
     # Resolve role enum
     target_role = UserRole.PROCUREMENT
@@ -99,6 +103,7 @@ async def create_user(
     )
 
     await db.flush()
+    await db.commit()
     return RedirectResponse(
         url=f"/users?success=User+{new_user.full_name.replace(' ', '+')}+created+successfully",
         status_code=303,
@@ -118,12 +123,14 @@ async def update_user_permissions(
     db: AsyncSession = Depends(get_db),
 ):
     if not user.has_management_authority:
-        return RedirectResponse(url="/?error=Permission+denied", status_code=303)
+        await db.commit()
+    return RedirectResponse(url="/?error=Permission+denied", status_code=303)
 
     result = await db.execute(select(UserProfile).where(UserProfile.id == target_user_id))
     target_user = result.scalar_one_or_none()
     if not target_user:
-        return RedirectResponse(url="/users?error=User+not+found", status_code=303)
+        await db.commit()
+    return RedirectResponse(url="/users?error=User+not+found", status_code=303)
 
     old_role = str(target_user.role.value if hasattr(target_user.role, "value") else target_user.role)
     old_view_quotes = target_user.can_view_quotations
@@ -168,6 +175,7 @@ async def update_user_permissions(
     )
 
     await db.flush()
+    await db.commit()
     return RedirectResponse(
         url=f"/users?success=Permissions+updated+for+{target_user.full_name.replace(' ', '+')}",
         status_code=303,
@@ -182,15 +190,18 @@ async def toggle_user_active(
     db: AsyncSession = Depends(get_db),
 ):
     if not user.has_management_authority and user.role != UserRole.ADMIN:
-        return RedirectResponse(url="/users?error=Permission+denied", status_code=303)
+        await db.commit()
+    return RedirectResponse(url="/users?error=Permission+denied", status_code=303)
 
     if user.id == target_user_id:
-        return RedirectResponse(url="/users?error=You+cannot+deactivate+your+own+account", status_code=303)
+        await db.commit()
+    return RedirectResponse(url="/users?error=You+cannot+deactivate+your+own+account", status_code=303)
 
     result = await db.execute(select(UserProfile).where(UserProfile.id == target_user_id))
     target_user = result.scalar_one_or_none()
     if not target_user:
-        return RedirectResponse(url="/users?error=User+not+found", status_code=303)
+        await db.commit()
+    return RedirectResponse(url="/users?error=User+not+found", status_code=303)
 
     target_user.is_active = not target_user.is_active
     status_label = "Activated" if target_user.is_active else "Deactivated"
@@ -206,6 +217,7 @@ async def toggle_user_active(
     )
 
     await db.flush()
+    await db.commit()
     return RedirectResponse(
         url=f"/users?success=User+{target_user.full_name.replace(' ', '+')}+{status_label.lower()}",
         status_code=303,
@@ -220,15 +232,18 @@ async def delete_user(
     db: AsyncSession = Depends(get_db),
 ):
     if not user.has_management_authority and user.role != UserRole.ADMIN:
-        return RedirectResponse(url="/users?error=Permission+denied", status_code=303)
+        await db.commit()
+    return RedirectResponse(url="/users?error=Permission+denied", status_code=303)
 
     if user.id == target_user_id:
-        return RedirectResponse(url="/users?error=You+cannot+deactivate+your+own+account", status_code=303)
+        await db.commit()
+    return RedirectResponse(url="/users?error=You+cannot+deactivate+your+own+account", status_code=303)
 
     result = await db.execute(select(UserProfile).where(UserProfile.id == target_user_id))
     target_user = result.scalar_one_or_none()
     if not target_user:
-        return RedirectResponse(url="/users?error=User+not+found", status_code=303)
+        await db.commit()
+    return RedirectResponse(url="/users?error=User+not+found", status_code=303)
 
     user_name = target_user.full_name
     user_email = target_user.email
@@ -247,6 +262,7 @@ async def delete_user(
     )
     await db.flush()
 
+    await db.commit()
     return RedirectResponse(
         url=f"/users?success=User+{user_name.replace(' ', '+')}+has+been+deactivated+(soft-deleted)",
         status_code=303,

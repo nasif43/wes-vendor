@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>{% block title %}Wener Vendor Management Platform{% endblock %}</title>
+    <title>{% block title %}Wener Supplier Management Platform{% endblock %}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -69,7 +69,7 @@
                     <span class="text-base font-black text-white tracking-wide">WENER</span>
                     <span class="text-[9px] font-bold text-slate-400 align-top">®</span>
                 </div>
-                <span class="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest block leading-none">VENDOR MANAGEMENT</span>
+                <span class="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest block leading-none">SUPPLIER MANAGEMENT</span>
             </div>
         </a>
 
@@ -101,12 +101,12 @@
             {% if not user or user.is_procurement or user.has_management_authority %}
             <a href="/vendors" class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition {% block nav_side_ven %}text-slate-400 hover:text-white hover:bg-slate-800/60{% endblock %}">
                 <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
-                Vendors Directory
+                Suppliers Directory
             </a>
 
             <a href="/categories" class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition {% block nav_side_cat %}text-slate-400 hover:text-white hover:bg-slate-800/60{% endblock %}">
                 <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg>
-                Vendor Groups
+                Supplier Groups
             </a>
             {% endif %}
 
@@ -166,7 +166,7 @@
         <!-- DESKTOP TOP HEADER BAR -->
         <header class="hidden lg:flex items-center justify-between h-16 bg-white border-b border-slate-200/80 px-8 sticky top-0 z-30 shadow-xs">
             <div class="flex items-center gap-3">
-                <span class="text-xs font-extrabold text-slate-400 uppercase tracking-widest">WENER® Vendor Management Platform</span>
+                <span class="text-xs font-extrabold text-slate-400 uppercase tracking-widest">WENER® Supplier Management Platform</span>
             </div>
 
             <!-- RIGHT TOP USER & ACTION WIDGETS -->
@@ -257,7 +257,7 @@
             <div class="tab-pill w-10 h-7 flex items-center justify-center mb-0.5">
                 <svg class="tab-icon w-5 h-5 {% block nav_vendors_icon %}text-slate-400{% endblock %}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
             </div>
-            <span class="tab-label text-[10px] {% block nav_vendors_label %}text-slate-400{% endblock %}">Vendors</span>
+            <span class="tab-label text-[10px] {% block nav_vendors_label %}text-slate-400{% endblock %}">Suppliers</span>
         </a>
         {% endif %}
         {% if user.can_see_quotes %}

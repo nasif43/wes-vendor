@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}{{ vendor.company_name }} — WES Vendor Portal{% endblock %}
+{% block title %}{{ vendor.company_name }} — WES Supplier Portal{% endblock %}
 {% block nav_desktop_ven_cls %}text-brand-600 font-semibold bg-brand-50{% endblock %}
 {% block nav_vendors %}tab-active{% endblock %}
 {% block nav_vendors_icon %}text-brand-600{% endblock %}
@@ -18,7 +18,7 @@
             </div>
             <div class="min-w-0">
                 <h1 class="text-xl font-bold text-slate-900 truncate">{{ vendor.company_name }}</h1>
-                <p class="text-xs text-slate-400">Edit vendor details</p>
+                <p class="text-xs text-slate-400">Edit supplier details</p>
             </div>
         </div>
     </div>
@@ -92,17 +92,17 @@
         </div>
 
         <button type="submit" class="w-full bg-brand-600 text-white py-3.5 rounded-xl text-sm font-semibold hover:bg-brand-700 transition shadow-sm mb-4 active:scale-[0.98]">
-            Update Vendor
+            Update Supplier
         </button>
     </form>
 
     <!-- DANGER ZONE -->
     <div class="bg-white rounded-2xl border border-red-200 p-5 shadow-sm">
         <h2 class="text-xs font-bold text-red-500 uppercase tracking-widest mb-2">Danger Zone</h2>
-        <p class="text-xs text-slate-400 mb-3">Permanently delete this vendor and all associated data.</p>
-        <form method="post" action="/vendors/{{ vendor.id }}/delete" onsubmit="return confirm('Delete this vendor and all their quotations? This cannot be undone.')">
+        <p class="text-xs text-slate-400 mb-3">Permanently delete this supplier and all associated data.</p>
+        <form method="post" action="/vendors/{{ vendor.id }}/delete" onsubmit="return confirm('Delete this supplier and all their quotations? This cannot be undone.')">
             <button type="submit" data-no-spinner class="w-full bg-red-600 text-white py-3 rounded-xl text-sm font-semibold hover:bg-red-700 transition active:scale-[0.98]">
-                Delete Vendor
+                Delete Supplier
             </button>
         </form>
     </div>

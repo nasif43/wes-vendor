@@ -4,7 +4,7 @@ that are automatically included in all outbound Resend emails.
 """
 import logging
 
-from fastapi import APIRouter, Depends, Form, Request
+from fastapi import APIRouter, Depends, Form, Request, UploadFile, File
 from fastapi.responses import RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -86,4 +86,54 @@ async def remove_cc_email(
         invalidate_cc_cache()
         logger.info("CC email removed by %s: %s", user.email, email)
 
+    return RedirectResponse("/settings?saved=1", status_code=303)
+
+@router.post("/letterhead/upload")
+async def upload_letterhead(
+    request: Request,
+    letterhead_image: UploadFile = File(...),
+    slot: str = Form(...),
+    user: UserProfile = Depends(require_role(*_MANAGEMENT_ROLES)),
+    db: AsyncSession = Depends(get_db),
+):
+    from app.storage import BUCKET_NAME, upload_file
+    import uuid
+    
+    if slot not in ['1', '2', '3', '4']:
+        return RedirectResponse("/settings?error=invalid_slot", status_code=303)
+        
+    contents = await letterhead_image.read()
+    ext = letterhead_image.filename.split('.')[-1] if '.' in letterhead_image.filename else 'jpg'
+    remote_path = f"letterheads/{uuid.uuid4()}.{ext}"
+    url = await upload_file(BUCKET_NAME, remote_path, contents, letterhead_image.content_type)
+    
+    if url:
+        key = f"letterhead_{slot}"
+        row = await db.get(SystemSettings, key)
+        if not row:
+            row = SystemSettings(key=key, value=url)
+            db.add(row)
+        else:
+            row.value = url
+        await db.commit()
+    return RedirectResponse("/settings?saved=1", status_code=303)
+
+@router.post("/letterhead/activate")
+async def activate_letterhead(
+    request: Request,
+    slot: str = Form(...),
+    user: UserProfile = Depends(require_role(*_MANAGEMENT_ROLES)),
+    db: AsyncSession = Depends(get_db),
+):
+    if slot not in ['1', '2', '3', '4']:
+        return RedirectResponse("/settings?error=invalid_slot", status_code=303)
+        
+    key = "active_letterhead"
+    row = await db.get(SystemSettings, key)
+    if not row:
+        row = SystemSettings(key=key, value=slot)
+        db.add(row)
+    else:
+        row.value = slot
+    await db.commit()
     return RedirectResponse("/settings?saved=1", status_code=303)

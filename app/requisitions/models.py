@@ -2,7 +2,7 @@ import enum
 from datetime import datetime
 from uuid import uuid4
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Numeric, String, Text, func, Boolean
+from sqlalchemy import DateTime, Enum, ForeignKey, Numeric, String, Text, func, Boolean, JSON, Integer
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -37,8 +37,9 @@ class Requisition(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
     title: Mapped[str] = mapped_column(String(255), nullable=False)
-    item_description: Mapped[str] = mapped_column(Text, nullable=False)
-    quantity: Mapped[float] = mapped_column(Numeric, nullable=False)
+    item_description: Mapped[str] = mapped_column(Text, nullable=True)
+    quantity: Mapped[float] = mapped_column(Numeric, nullable=True)
+    items: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     unit: Mapped[str | None] = mapped_column(String(50), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[RequisitionStatus] = mapped_column(
@@ -60,6 +61,10 @@ class Requisition(Base):
     invoice_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
     invoice_number: Mapped[str | None] = mapped_column(String(255), nullable=True)
     payment_status: Mapped[str] = mapped_column(String(50), default="pending")
+    received_pieces: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    received_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    qc_number: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    receiver_number: Mapped[str | None] = mapped_column(String(255), nullable=True)
     rejected_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     vendor_links = relationship("RequisitionVendor", back_populates="requisition", lazy="selectin")

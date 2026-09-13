@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Quotation — WES Vendor Portal{% endblock %}
+{% block title %}Quotation — WES Supplier Portal{% endblock %}
 {% block nav_desktop_quo_cls %}text-brand-600 font-semibold bg-brand-50{% endblock %}
 {% block nav_quotations %}tab-active{% endblock %}
 {% block nav_quotations_icon %}text-brand-600{% endblock %}
@@ -46,12 +46,47 @@
         {% if link.quotation.submission_type == 'form' and link.quotation.form_data %}
         <div class="bg-white rounded-2xl border border-slate-200 p-4 mb-4 shadow-sm">
             <h3 class="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-3">Quote Details</h3>
+            
+            {% if link.quotation.form_data.get('items') %}
+            <div class="mb-4 border border-slate-200 rounded-xl overflow-hidden">
+                <table class="w-full text-left text-xs border-collapse">
+                    <thead class="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase">
+                        <tr>
+                            <th class="px-3 py-2 font-semibold">Item</th>
+                            <th class="px-3 py-2 font-semibold text-center">Qty</th>
+                            <th class="px-3 py-2 font-semibold text-right">Price (৳)</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100 text-slate-800">
+                        {% for item in link.quotation.form_data.get('items') %}
+                        <tr>
+                            <td class="px-3 py-2">
+                                <div class="font-semibold text-slate-900">{{ item.name }}</div>
+                                <div class="text-[10px] text-slate-500">{{ item.description }}</div>
+                            </td>
+                            <td class="px-3 py-2 text-center text-slate-700">{{ item.qty }}</td>
+                            <td class="px-3 py-2 text-right font-mono text-slate-700">{% if user and user.is_procurement_blind %}—{% else %}{{ "%.2f"|format(item.price|float(0)) }}{% endif %}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot class="bg-slate-50 border-t border-slate-200">
+                        <tr>
+                            <td colspan="2" class="px-3 py-2 font-bold text-right text-slate-700">Total:</td>
+                            <td class="px-3 py-2 font-bold text-right font-mono text-slate-900">{% if user and user.is_procurement_blind %}—{% else %}৳{{ "%.2f"|format(link.quotation.form_data.price|float(0)) }}{% endif %}</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+            {% endif %}
+
             <div class="grid grid-cols-2 gap-3">
+                {% if not link.quotation.form_data.get('items') %}
                 <div class="bg-slate-50 rounded-xl p-3.5">
                     <div class="text-[11px] text-slate-400 font-medium mb-1">Price</div>
-                    <div class="text-base font-bold text-slate-900">{{ link.quotation.form_data.price or '—' }}</div>
+                    <div class="text-base font-bold text-slate-900">{% if user and user.is_procurement_blind %}— (hidden){% else %}{{ link.quotation.form_data.price or '—' }}{% endif %}</div>
                     <div class="text-xs text-slate-500">{{ link.quotation.form_data.currency or '' }}</div>
                 </div>
+                {% endif %}
                 <div class="bg-slate-50 rounded-xl p-3.5">
                     <div class="text-[11px] text-slate-400 font-medium mb-1">Delivery</div>
                     <div class="text-base font-bold text-slate-900">{{ link.quotation.form_data.delivery_days or '—' }}</div>
@@ -71,7 +106,7 @@
 
         {% if link.quotation.notes %}
         <div class="bg-white rounded-2xl border border-slate-200 p-4 mb-4 shadow-sm">
-            <h3 class="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2">Vendor Notes</h3>
+            <h3 class="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2">Supplier Notes</h3>
             <p class="text-sm text-slate-700 leading-relaxed">{{ link.quotation.notes }}</p>
         </div>
         {% endif %}

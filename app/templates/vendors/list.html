@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Vendors — WES Vendor Portal{% endblock %}
+{% block title %}Suppliers — WES Supplier Portal{% endblock %}
 {% block nav_desktop_ven_cls %}text-brand-600 font-semibold bg-brand-50{% endblock %}
 {% block nav_vendors %}tab-active{% endblock %}
 {% block nav_vendors_icon %}text-brand-600{% endblock %}
@@ -10,7 +10,7 @@
     <!-- HEADER -->
     <div class="flex items-center justify-between mb-4">
         <div>
-            <h1 class="text-xl font-bold text-slate-900">Vendors</h1>
+            <h1 class="text-xl font-bold text-slate-900">Suppliers</h1>
             <p class="text-xs text-slate-400 mt-0.5">{{ vendors|length }} active</p>
         </div>
         <a href="/vendors/new" class="bg-brand-600 text-white h-10 px-4 rounded-xl text-sm font-semibold hover:bg-brand-700 transition shadow-sm flex items-center gap-1.5 active:scale-[0.97]">
@@ -54,11 +54,11 @@
         <div class="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-4">
             <svg class="w-7 h-7 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
         </div>
-        <p class="text-sm font-semibold text-slate-900 mb-1">No vendors yet</p>
-        <p class="text-xs text-slate-400 mb-5">Add vendors to start sending quotation requests</p>
+        <p class="text-sm font-semibold text-slate-900 mb-1">No suppliers yet</p>
+        <p class="text-xs text-slate-400 mb-5">Add suppliers to start sending quotation requests</p>
         <a href="/vendors/new" class="inline-flex items-center gap-2 bg-brand-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-brand-700 transition shadow-sm">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
-            Add Vendor
+            Add Supplier
         </a>
     </div>
     {% endif %}

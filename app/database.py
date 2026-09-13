@@ -24,14 +24,25 @@ _connect_args: dict = {}
 if "asyncpg" in db_url:
     _connect_args = {"prepared_statement_cache_size": 0}
 
-from sqlalchemy.pool import NullPool
+# Use a real connection pool instead of NullPool.
+# NullPool opens a fresh TCP+TLS connection for every single query — extremely slow.
+# AsyncAdaptedQueuePool reuses connections across requests, saving 10-100ms per query.
+from sqlalchemy.pool import AsyncAdaptedQueuePool, NullPool  # noqa: E402
 
-# NullPool is required for serverless environments (Vercel) and PgBouncer.
-# It prevents stale connection caches and InvalidCachedStatementError.
+_is_sqlite = db_url.startswith("sqlite")
+
 engine = create_async_engine(
     db_url,
     echo=False,
-    poolclass=NullPool,
+    # SQLite doesn't support connection pooling — it's file-based and single-writer.
+    poolclass=NullPool if _is_sqlite else AsyncAdaptedQueuePool,
+    **({} if _is_sqlite else {
+        "pool_size": 5,          # maintain 5 persistent connections
+        "max_overflow": 10,      # allow up to 10 extra connections under load
+        "pool_timeout": 30,      # wait up to 30s for a free connection before raising
+        "pool_recycle": 1800,    # recycle connections after 30min to avoid Supabase idle timeouts
+        "pool_pre_ping": True,   # test connections before use; auto-discard dead ones
+    }),
     connect_args=_connect_args,
 )
 
@@ -47,10 +58,14 @@ class Base(DeclarativeBase):
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
+    """
+    Yield a database session.
+    The session does NOT auto-commit — handlers that write data must call
+    await db.commit() explicitly. Read-only handlers pay zero WAL overhead.
+    """
     async with AsyncSessionLocal() as session:
         try:
             yield session
-            await session.commit()
         except Exception:
             await session.rollback()
             raise
@@ -70,187 +85,156 @@ async def init_db() -> None:
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
         dialect_name = conn.dialect.name
-        column_exists = False
+
         if dialect_name == "postgresql":
-            res = await conn.execute(text(
-                "SELECT 1 FROM information_schema.columns "
-                "WHERE table_name='vendors' AND column_name='is_temporary'"
-            ))
-            column_exists = res.scalar() is not None
+            # ── Single round-trip: fetch ALL existing columns across all tables at once.
+            # Previously this was 50+ individual information_schema queries. Now it's 1.
+            res = await conn.execute(text("""
+                SELECT table_name, column_name
+                FROM information_schema.columns
+                WHERE table_schema = 'public'
+                  AND table_name IN (
+                    'vendors', 'user_profiles', 'requisitions',
+                    'requisition_vendors', 'quotations', 'decisions'
+                  )
+            """))
+            existing: set[tuple[str, str]] = {(row[0], row[1]) for row in res.fetchall()}
+
+            def col_exists(table: str, column: str) -> bool:
+                return (table, column) in existing
+
+            # ── vendors ──────────────────────────────────────────────────────────────
+            for col, defn in [
+                ("is_temporary", "BOOLEAN DEFAULT FALSE"),
+                ("created_by", "VARCHAR(36)"),
+                ("image_url", "VARCHAR(512)"),
+            ]:
+                if not col_exists("vendors", col):
+                    await conn.execute(text(f"ALTER TABLE vendors ADD COLUMN {col} {defn}"))
+
+            # ── user_profiles ────────────────────────────────────────────────────────
+            for col, defn in [
+                ("can_view_quotations", "BOOLEAN DEFAULT FALSE"),
+                ("can_do_qc", "BOOLEAN DEFAULT FALSE"),
+                ("can_view_all_requisitions", "BOOLEAN DEFAULT FALSE"),
+                ("is_management", "BOOLEAN DEFAULT FALSE"),
+            ]:
+                if not col_exists("user_profiles", col):
+                    await conn.execute(text(f"ALTER TABLE user_profiles ADD COLUMN {col} {defn}"))
+
+            # ── requisitions ─────────────────────────────────────────────────────────
+            for col, defn in [
+                ("delivery_image_url", "VARCHAR(512)"),
+                ("qc_done", "BOOLEAN DEFAULT FALSE"),
+                ("qc_done_by", "VARCHAR(36)"),
+                ("qc_done_at", "TIMESTAMP WITH TIME ZONE"),
+                ("invoice_url", "VARCHAR(512)"),
+                ("invoice_number", "VARCHAR(255)"),
+                ("payment_status", "VARCHAR(50) DEFAULT 'pending'"),
+                ("received_pieces", "INTEGER"),
+                ("received_at", "TIMESTAMP WITH TIME ZONE"),
+                ("qc_number", "VARCHAR(255)"),
+                ("receiver_number", "VARCHAR(255)"),
+                ("rejected_reason", "TEXT"),
+                ("items", "JSONB"),
+            ]:
+                if not col_exists("requisitions", col):
+                    await conn.execute(text(f"ALTER TABLE requisitions ADD COLUMN {col} {defn}"))
+
+            # ── requisition_vendors ──────────────────────────────────────────────────
+            for col, defn in [
+                ("is_shortlisted", "BOOLEAN DEFAULT FALSE"),
+                ("allocated_quantity", "NUMERIC"),
+                ("negotiation_version", "VARCHAR(10) DEFAULT '1'"),
+            ]:
+                if not col_exists("requisition_vendors", col):
+                    await conn.execute(text(f"ALTER TABLE requisition_vendors ADD COLUMN {col} {defn}"))
+
+            # ── quotations ───────────────────────────────────────────────────────────
+            for col, defn in [
+                ("quote_version", "INTEGER DEFAULT 1"),
+                ("quoted_quantity", "NUMERIC"),
+            ]:
+                if not col_exists("quotations", col):
+                    await conn.execute(text(f"ALTER TABLE quotations ADD COLUMN {col} {defn}"))
+
+            # ── decisions ────────────────────────────────────────────────────────────
+            for col, defn in [
+                ("work_order_status", "VARCHAR(50) DEFAULT 'pending_approval'"),
+                ("work_order_url", "VARCHAR(512)"),
+            ]:
+                if not col_exists("decisions", col):
+                    await conn.execute(text(f"ALTER TABLE decisions ADD COLUMN {col} {defn}"))
+
+            # ── Indexes — CREATE INDEX IF NOT EXISTS (idempotent, one-time cost) ─────
+            for idx_sql in [
+                "CREATE INDEX IF NOT EXISTS idx_requisitions_created_by ON requisitions(created_by)",
+                "CREATE INDEX IF NOT EXISTS idx_requisitions_created_at ON requisitions(created_at DESC)",
+                "CREATE INDEX IF NOT EXISTS idx_requisitions_status ON requisitions(status)",
+                "CREATE INDEX IF NOT EXISTS idx_requisitions_qc_done ON requisitions(qc_done)",
+                "CREATE INDEX IF NOT EXISTS idx_req_vendors_requisition_id ON requisition_vendors(requisition_id)",
+                "CREATE INDEX IF NOT EXISTS idx_req_vendors_vendor_id ON requisition_vendors(vendor_id)",
+                "CREATE INDEX IF NOT EXISTS idx_decisions_requisition_id ON decisions(requisition_id)",
+                "CREATE INDEX IF NOT EXISTS idx_decisions_mgmt_approved ON decisions(management_approved)",
+                "CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at DESC)",
+                "CREATE INDEX IF NOT EXISTS idx_user_profiles_email ON user_profiles(email)",
+                "CREATE INDEX IF NOT EXISTS idx_vendors_is_active ON vendors(is_active)",
+                "CREATE INDEX IF NOT EXISTS idx_quotations_req_vendor_id ON quotations(requisition_vendor_id)",
+            ]:
+                try:
+                    await conn.execute(text(idx_sql))
+                except Exception as e:
+                    logger.warning("Index creation skipped: %s", e)
+
         else:
-            res = await conn.execute(text("PRAGMA table_info(vendors)"))
-            columns = res.fetchall()
-            column_exists = any(col[1] == "is_temporary" for col in columns)
+            # ── SQLite fallback ───────────────────────────────────────────────────────
+            sqlite_existing: set[tuple[str, str]] = set()
+            for table in ("vendors", "user_profiles", "requisitions", "requisition_vendors", "quotations", "decisions"):
+                try:
+                    res = await conn.execute(text(f"PRAGMA table_info({table})"))
+                    for row in res.fetchall():
+                        sqlite_existing.add((table, row[1]))
+                except Exception:
+                    pass
 
-        if not column_exists:
-            logger.info("Adding is_temporary column to vendors table")
-            if dialect_name == "postgresql":
-                await conn.execute(text("ALTER TABLE vendors ADD COLUMN is_temporary BOOLEAN DEFAULT FALSE"))
-            else:
-                await conn.execute(text("ALTER TABLE vendors ADD COLUMN is_temporary BOOLEAN DEFAULT 0"))
+            def col_exists(table: str, column: str) -> bool:  # type: ignore[misc]
+                return (table, column) in sqlite_existing
 
-        # Vendor created_by column
-        vendor_created_by_exists = False
-        if dialect_name == "postgresql":
-            res = await conn.execute(text(
-                "SELECT 1 FROM information_schema.columns "
-                "WHERE table_name='vendors' AND column_name='created_by'"
-            ))
-            vendor_created_by_exists = res.scalar() is not None
-        else:
-            res = await conn.execute(text("PRAGMA table_info(vendors)"))
-            columns = res.fetchall()
-            vendor_created_by_exists = any(col[1] == "created_by" for col in columns)
+            for col, defn in [("is_temporary", "BOOLEAN DEFAULT 0"), ("created_by", "VARCHAR(36)"), ("image_url", "VARCHAR(512)")]:
+                if not col_exists("vendors", col):
+                    await conn.execute(text(f"ALTER TABLE vendors ADD COLUMN {col} {defn}"))
 
-        if not vendor_created_by_exists:
-            logger.info("Adding created_by column to vendors table")
-            await conn.execute(text("ALTER TABLE vendors ADD COLUMN created_by VARCHAR(36)"))
+            for col, defn in [
+                ("can_view_quotations", "BOOLEAN DEFAULT 0"), ("can_do_qc", "BOOLEAN DEFAULT 0"),
+                ("can_view_all_requisitions", "BOOLEAN DEFAULT 0"), ("is_management", "BOOLEAN DEFAULT 0"),
+            ]:
+                if not col_exists("user_profiles", col):
+                    await conn.execute(text(f"ALTER TABLE user_profiles ADD COLUMN {col} {defn}"))
 
-        # UserProfile permission columns
-        user_perm_exists = False
-        if dialect_name == "postgresql":
-            res = await conn.execute(text(
-                "SELECT 1 FROM information_schema.columns "
-                "WHERE table_name='user_profiles' AND column_name='can_view_quotations'"
-            ))
-            user_perm_exists = res.scalar() is not None
-        else:
-            res = await conn.execute(text("PRAGMA table_info(user_profiles)"))
-            columns = res.fetchall()
-            user_perm_exists = any(col[1] == "can_view_quotations" for col in columns)
+            for col, defn in [
+                ("delivery_image_url", "VARCHAR(512)"), ("qc_done", "BOOLEAN DEFAULT 0"),
+                ("qc_done_by", "VARCHAR(36)"), ("qc_done_at", "DATETIME"),
+                ("invoice_url", "VARCHAR(512)"), ("invoice_number", "VARCHAR(255)"),
+                ("payment_status", "VARCHAR(50) DEFAULT 'pending'"), ("received_pieces", "INTEGER"),
+                ("received_at", "DATETIME"), ("qc_number", "VARCHAR(255)"),
+                ("receiver_number", "VARCHAR(255)"), ("rejected_reason", "TEXT"), ("items", "TEXT"),
+            ]:
+                if not col_exists("requisitions", col):
+                    await conn.execute(text(f"ALTER TABLE requisitions ADD COLUMN {col} {defn}"))
 
-        if not user_perm_exists:
-            logger.info("Adding permission columns to user_profiles table")
-            if dialect_name == "postgresql":
-                await conn.execute(text("ALTER TABLE user_profiles ADD COLUMN can_view_quotations BOOLEAN DEFAULT FALSE"))
-                await conn.execute(text("ALTER TABLE user_profiles ADD COLUMN can_do_qc BOOLEAN DEFAULT FALSE"))
-                await conn.execute(text("ALTER TABLE user_profiles ADD COLUMN can_view_all_requisitions BOOLEAN DEFAULT FALSE"))
-                await conn.execute(text("ALTER TABLE user_profiles ADD COLUMN is_management BOOLEAN DEFAULT FALSE"))
-            else:
-                await conn.execute(text("ALTER TABLE user_profiles ADD COLUMN can_view_quotations BOOLEAN DEFAULT 0"))
-                await conn.execute(text("ALTER TABLE user_profiles ADD COLUMN can_do_qc BOOLEAN DEFAULT 0"))
-                await conn.execute(text("ALTER TABLE user_profiles ADD COLUMN can_view_all_requisitions BOOLEAN DEFAULT 0"))
-                await conn.execute(text("ALTER TABLE user_profiles ADD COLUMN is_management BOOLEAN DEFAULT 0"))
-        else:
-            # Check individual column can_view_all_requisitions
-            view_all_exists = False
-            if dialect_name == "postgresql":
-                res = await conn.execute(text(
-                    "SELECT 1 FROM information_schema.columns "
-                    "WHERE table_name='user_profiles' AND column_name='can_view_all_requisitions'"
-                ))
-                view_all_exists = res.scalar() is not None
-            else:
-                res = await conn.execute(text("PRAGMA table_info(user_profiles)"))
-                columns = res.fetchall()
-                view_all_exists = any(col[1] == "can_view_all_requisitions" for col in columns)
-            if not view_all_exists:
-                if dialect_name == "postgresql":
-                    await conn.execute(text("ALTER TABLE user_profiles ADD COLUMN can_view_all_requisitions BOOLEAN DEFAULT FALSE"))
-                else:
-                    await conn.execute(text("ALTER TABLE user_profiles ADD COLUMN can_view_all_requisitions BOOLEAN DEFAULT 0"))
+            for col, defn in [
+                ("is_shortlisted", "BOOLEAN DEFAULT 0"), ("allocated_quantity", "NUMERIC"),
+                ("negotiation_version", "VARCHAR(10) DEFAULT '1'"),
+            ]:
+                if not col_exists("requisition_vendors", col):
+                    await conn.execute(text(f"ALTER TABLE requisition_vendors ADD COLUMN {col} {defn}"))
 
+            for col, defn in [("quote_version", "INTEGER DEFAULT 1"), ("quoted_quantity", "NUMERIC")]:
+                if not col_exists("quotations", col):
+                    await conn.execute(text(f"ALTER TABLE quotations ADD COLUMN {col} {defn}"))
 
-
-        # Requisition new columns for QC and Delivery
-        if dialect_name == "postgresql":
-            res = await conn.execute(text(
-                "SELECT 1 FROM information_schema.columns "
-                "WHERE table_name='requisitions' AND column_name='qc_done'"
-            ))
-            qc_exists = res.scalar() is not None
-        else:
-            res = await conn.execute(text("PRAGMA table_info(requisitions)"))
-            columns = res.fetchall()
-            qc_exists = any(col[1] == "qc_done" for col in columns)
-
-        if not qc_exists:
-            logger.info("Adding QC and Delivery columns to requisitions table")
-            if dialect_name == "postgresql":
-                await conn.execute(text("ALTER TABLE requisitions ADD COLUMN delivery_image_url VARCHAR(512)"))
-                await conn.execute(text("ALTER TABLE requisitions ADD COLUMN qc_done BOOLEAN DEFAULT FALSE"))
-                await conn.execute(text("ALTER TABLE requisitions ADD COLUMN qc_done_by VARCHAR(36)"))
-                await conn.execute(text("ALTER TABLE requisitions ADD COLUMN qc_done_at TIMESTAMP WITH TIME ZONE"))
-                await conn.execute(text("ALTER TABLE requisitions ADD COLUMN invoice_url VARCHAR(512)"))
-                await conn.execute(text("ALTER TABLE requisitions ADD COLUMN invoice_number VARCHAR(255)"))
-                await conn.execute(text("ALTER TABLE requisitions ADD COLUMN payment_status VARCHAR(50) DEFAULT 'pending'"))
-            else:
-                await conn.execute(text("ALTER TABLE requisitions ADD COLUMN delivery_image_url VARCHAR(512)"))
-                await conn.execute(text("ALTER TABLE requisitions ADD COLUMN qc_done BOOLEAN DEFAULT 0"))
-                await conn.execute(text("ALTER TABLE requisitions ADD COLUMN qc_done_by VARCHAR(36)"))
-                await conn.execute(text("ALTER TABLE requisitions ADD COLUMN qc_done_at DATETIME"))
-                await conn.execute(text("ALTER TABLE requisitions ADD COLUMN invoice_url VARCHAR(512)"))
-                await conn.execute(text("ALTER TABLE requisitions ADD COLUMN invoice_number VARCHAR(255)"))
-                await conn.execute(text("ALTER TABLE requisitions ADD COLUMN payment_status VARCHAR(50) DEFAULT 'pending'"))
-
-        # status and role columns are String(50) — no Postgres native enum to migrate
-
-        # ── New negotiation & versioning columns ──────────────────────────────
-        # requisition_vendors: is_shortlisted, allocated_quantity, negotiation_version
-        for col_name, col_def_pg, col_def_sqlite in [
-            ("is_shortlisted", "BOOLEAN DEFAULT FALSE", "BOOLEAN DEFAULT 0"),
-            ("allocated_quantity", "NUMERIC", "NUMERIC"),
-            ("negotiation_version", "VARCHAR(10) DEFAULT '1'", "VARCHAR(10) DEFAULT '1'"),
-        ]:
-            col_exists = False
-            if dialect_name == "postgresql":
-                res = await conn.execute(text(
-                    f"SELECT 1 FROM information_schema.columns "
-                    f"WHERE table_name='requisition_vendors' AND column_name='{col_name}'"
-                ))
-                col_exists = res.scalar() is not None
-            else:
-                res = await conn.execute(text("PRAGMA table_info(requisition_vendors)"))
-                columns = res.fetchall()
-                col_exists = any(col[1] == col_name for col in columns)
-            if not col_exists:
-                logger.info("Adding %s column to requisition_vendors table", col_name)
-                col_def = col_def_pg if dialect_name == "postgresql" else col_def_sqlite
-                await conn.execute(text(
-                    f"ALTER TABLE requisition_vendors ADD COLUMN {col_name} {col_def}"
-                ))
-
-        # quotations: quote_version, quoted_quantity
-        for col_name, col_def_pg, col_def_sqlite in [
-            ("quote_version", "INTEGER DEFAULT 1", "INTEGER DEFAULT 1"),
-            ("quoted_quantity", "NUMERIC", "NUMERIC"),
-        ]:
-            col_exists = False
-            if dialect_name == "postgresql":
-                res = await conn.execute(text(
-                    f"SELECT 1 FROM information_schema.columns "
-                    f"WHERE table_name='quotations' AND column_name='{col_name}'"
-                ))
-                col_exists = res.scalar() is not None
-            else:
-                res = await conn.execute(text("PRAGMA table_info(quotations)"))
-                columns = res.fetchall()
-                col_exists = any(col[1] == col_name for col in columns)
-            if not col_exists:
-                logger.info("Adding %s column to quotations table", col_name)
-                col_def = col_def_pg if dialect_name == "postgresql" else col_def_sqlite
-                await conn.execute(text(
-                    f"ALTER TABLE quotations ADD COLUMN {col_name} {col_def}"
-                ))
-
-        # requisitions: rejected_reason
-        for col_name, col_def_pg, col_def_sqlite in [
-            ("rejected_reason", "TEXT", "TEXT"),
-        ]:
-            col_exists = False
-            if dialect_name == "postgresql":
-                res = await conn.execute(text(
-                    f"SELECT 1 FROM information_schema.columns "
-                    f"WHERE table_name='requisitions' AND column_name='{col_name}'"
-                ))
-                col_exists = res.scalar() is not None
-            else:
-                res = await conn.execute(text("PRAGMA table_info(requisitions)"))
-                columns = res.fetchall()
-                col_exists = any(col[1] == col_name for col in columns)
-            if not col_exists:
-                logger.info("Adding %s column to requisitions table", col_name)
-                col_def = col_def_pg if dialect_name == "postgresql" else col_def_sqlite
-                await conn.execute(text(
-                    f"ALTER TABLE requisitions ADD COLUMN {col_name} {col_def}"
-                ))
+            for col, defn in [
+                ("work_order_status", "VARCHAR(50) DEFAULT 'pending_approval'"), ("work_order_url", "VARCHAR(512)"),
+            ]:
+                if not col_exists("decisions", col):
+                    await conn.execute(text(f"ALTER TABLE decisions ADD COLUMN {col} {defn}"))

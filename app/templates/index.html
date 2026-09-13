@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Dashboard — Wener Vendor Management Platform{% endblock %}
+{% block title %}Dashboard — Wener Supplier Management Platform{% endblock %}
 {% block nav_side_dash %}bg-brand-600 text-white shadow-md shadow-brand-600/30{% endblock %}
 
 {% block content %}
@@ -11,7 +11,7 @@
             <h1 class="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
                 Welcome back{% if user and user.full_name %}, {{ user.full_name.split(' ')[0] }}{% endif %} 👋
             </h1>
-            <p class="text-xs text-slate-500 font-medium mt-1">Overview of requisitions, vendor quotes, management decisions, and delivery QC.</p>
+            <p class="text-xs text-slate-500 font-medium mt-1">Overview of requisitions, supplier quotes, management decisions, and delivery QC.</p>
         </div>
         <a href="/requisitions/new" class="inline-flex items-center gap-2 px-4 py-2.5 bg-brand-600 text-white rounded-xl text-xs font-bold hover:bg-brand-700 transition shadow-sm active:scale-95 shrink-0 self-start sm:self-auto">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
@@ -121,7 +121,7 @@
                 <div class="flex items-center justify-between mb-4">
                     <div>
                         <h2 class="text-sm font-bold text-slate-900">Recent Requisitions</h2>
-                        <p class="text-[11px] text-slate-400">Track active purchase requisitions and vendor invite links</p>
+                        <p class="text-[11px] text-slate-400">Track active purchase requisitions and supplier invite links</p>
                     </div>
                     <a href="/requisitions" class="text-xs font-bold text-brand-600 hover:text-brand-700 transition">View All &rarr;</a>
                 </div>
@@ -240,7 +240,7 @@
                     {% if not user or user.is_procurement or user.has_management_authority %}
                     <a href="/vendors/new" class="p-3 rounded-xl border border-slate-200 hover:border-brand-300 hover:bg-brand-50/50 transition text-left flex flex-col justify-between group active:scale-95 min-h-[72px]">
                         <svg class="w-4 h-4 text-emerald-600 group-hover:scale-110 transition mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
-                        <span class="text-xs font-bold text-slate-800 group-hover:text-emerald-700">Enlist Vendor</span>
+                        <span class="text-xs font-bold text-slate-800 group-hover:text-emerald-700">Enlist Supplier</span>
                     </a>
                     {% endif %}
 
@@ -350,7 +350,7 @@
     <footer class="pt-4 border-t border-slate-200/80 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-400 gap-2">
         <div>&copy; 2026 Wener Group. All rights reserved.</div>
         <div class="flex items-center gap-4">
-            <span>Wener Vendor Management Platform</span>
+            <span>Wener Supplier Management Platform</span>
         </div>
     </footer>
 
