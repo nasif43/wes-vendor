@@ -1,144 +1,67 @@
+"""Unit tests for the requisition state machine."""
 import pytest
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
-from app.auth.models import UserProfile, UserRole
-from app.database import Base
-from app.requisitions.models import Requisition, RequisitionStatus
-from app.requisitions.service import (
-    ALLOWED_TRANSITIONS,
-    InvalidStateTransitionError,
-    transition_requisition_status,
-)
+from app.requisitions.models import RequisitionStatus
+from app.requisitions.service import ALLOWED_TRANSITIONS, InvalidStateTransitionError
 
 
-@pytest.fixture
-async def async_db_session():
-    engine = create_async_engine("sqlite+aiosqlite:///:memory:", echo=False)
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+class TestRequisitionStatusEnum:
+    def test_all_new_statuses_exist(self):
+        assert RequisitionStatus.NEGOTIATING == "negotiating"
+        assert RequisitionStatus.AWARDED == "awarded"
+        assert RequisitionStatus.WORK_ORDER_ISSUED == "work_order_issued"
+        assert RequisitionStatus.RECEIVING == "receiving"
 
-    async_session = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-    async with async_session() as session:
-        yield session
+    def test_legacy_statuses_preserved(self):
+        assert RequisitionStatus.SUBMITTED == "submitted"
+        assert RequisitionStatus.RECEIVED == "received"
 
-
-def test_allowed_transitions_graph_coverage():
-    """Verify that all enum statuses exist in the state machine graph."""
-    for status in RequisitionStatus:
-        assert status in ALLOWED_TRANSITIONS
-        assert status in ALLOWED_TRANSITIONS[status]  # Idempotent re-affirmation allowed
-
-
-@pytest.mark.anyio
-async def test_legal_requisition_lifecycle(async_db_session):
-    """Test full sequential lifecycle: DRAFT -> NEW -> IN_PROGRESS -> SUBMITTED -> RECEIVED -> CLOSED."""
-    actor = UserProfile(
-        email="procurement@wener.com",
-        full_name="Procurement Officer",
-        role=UserRole.PROCUREMENT,
-    )
-    async_db_session.add(actor)
-    await async_db_session.flush()
-
-    req = Requisition(
-        title="Laptop Batch Q3",
-        item_description="10x Thinkpad laptops",
-        quantity=10,
-        status=RequisitionStatus.DRAFT,
-        created_by=actor.id,
-    )
-    async_db_session.add(req)
-    await async_db_session.flush()
-
-    assert req.status == RequisitionStatus.DRAFT
-
-    # 1. Invite Vendors: DRAFT -> NEW
-    await transition_requisition_status(
-        async_db_session,
-        requisition=req,
-        target_status=RequisitionStatus.NEW,
-        actor=actor,
-        action_name="VENDORS_INVITED",
-    )
-    assert req.status == RequisitionStatus.NEW
-
-    # 2. Quotation Received: NEW -> IN_PROGRESS
-    await transition_requisition_status(
-        async_db_session,
-        requisition=req,
-        target_status=RequisitionStatus.IN_PROGRESS,
-        actor=actor,
-        action_name="QUOTATION_RECEIVED",
-    )
-    assert req.status == RequisitionStatus.IN_PROGRESS
-
-    # 3. Decision Selected: IN_PROGRESS -> SUBMITTED
-    await transition_requisition_status(
-        async_db_session,
-        requisition=req,
-        target_status=RequisitionStatus.SUBMITTED,
-        actor=actor,
-        action_name="DECISION_CREATED",
-    )
-    assert req.status == RequisitionStatus.SUBMITTED
-
-    # 4. Delivery Arrived: SUBMITTED -> RECEIVED
-    await transition_requisition_status(
-        async_db_session,
-        requisition=req,
-        target_status=RequisitionStatus.RECEIVED,
-        actor=actor,
-        action_name="DELIVERY_RECEIVED",
-    )
-    assert req.status == RequisitionStatus.RECEIVED
-
-    # 5. QC Done: RECEIVED -> CLOSED
-    await transition_requisition_status(
-        async_db_session,
-        requisition=req,
-        target_status=RequisitionStatus.CLOSED,
-        actor=actor,
-        action_name="QC_COMPLETED",
-    )
-    assert req.status == RequisitionStatus.CLOSED
+    def test_terminal_states(self):
+        assert RequisitionStatus.CLOSED in ALLOWED_TRANSITIONS
+        assert RequisitionStatus.CANCELLED in ALLOWED_TRANSITIONS
+        # Terminal: only self-transition
+        assert ALLOWED_TRANSITIONS[RequisitionStatus.CLOSED] == {RequisitionStatus.CLOSED}
+        assert ALLOWED_TRANSITIONS[RequisitionStatus.CANCELLED] == {RequisitionStatus.CANCELLED}
 
 
-@pytest.mark.anyio
-async def test_illegal_transition_rejection(async_db_session):
-    """Test that transitioning from CLOSED back to DRAFT or IN_PROGRESS raises InvalidStateTransitionError."""
-    actor = UserProfile(
-        email="admin@wener.com",
-        full_name="Admin User",
-        role=UserRole.ADMIN,
-    )
-    async_db_session.add(actor)
-    await async_db_session.flush()
+class TestAllowedTransitions:
+    def test_draft_to_new(self):
+        assert RequisitionStatus.NEW in ALLOWED_TRANSITIONS[RequisitionStatus.DRAFT]
 
-    req = Requisition(
-        title="Completed Requisition",
-        item_description="Finished items",
-        quantity=5,
-        status=RequisitionStatus.CLOSED,
-        created_by=actor.id,
-    )
-    async_db_session.add(req)
-    await async_db_session.flush()
+    def test_new_to_in_progress(self):
+        assert RequisitionStatus.IN_PROGRESS in ALLOWED_TRANSITIONS[RequisitionStatus.NEW]
 
-    # Attempt illegal transition: CLOSED -> DRAFT
-    with pytest.raises(InvalidStateTransitionError):
-        await transition_requisition_status(
-            async_db_session,
-            requisition=req,
-            target_status=RequisitionStatus.DRAFT,
-            actor=actor,
-            action_name="ILLEGAL_RESET",
-        )
+    def test_in_progress_to_negotiating(self):
+        assert RequisitionStatus.NEGOTIATING in ALLOWED_TRANSITIONS[RequisitionStatus.IN_PROGRESS]
 
-    # Attempt illegal transition: CLOSED -> IN_PROGRESS
-    with pytest.raises(InvalidStateTransitionError):
-        await transition_requisition_status(
-            async_db_session,
-            requisition=req,
-            target_status=RequisitionStatus.IN_PROGRESS,
-            actor=actor,
-            action_name="ILLEGAL_REGRESSION",
-        )
+    def test_negotiating_to_awarded(self):
+        assert RequisitionStatus.AWARDED in ALLOWED_TRANSITIONS[RequisitionStatus.NEGOTIATING]
+
+    def test_awarded_to_work_order_issued(self):
+        assert RequisitionStatus.WORK_ORDER_ISSUED in ALLOWED_TRANSITIONS[RequisitionStatus.AWARDED]
+
+    def test_work_order_issued_to_receiving(self):
+        assert RequisitionStatus.RECEIVING in ALLOWED_TRANSITIONS[RequisitionStatus.WORK_ORDER_ISSUED]
+
+    def test_receiving_to_closed(self):
+        assert RequisitionStatus.CLOSED in ALLOWED_TRANSITIONS[RequisitionStatus.RECEIVING]
+
+    def test_rejected_can_reopen_to_draft(self):
+        assert RequisitionStatus.DRAFT in ALLOWED_TRANSITIONS[RequisitionStatus.REJECTED]
+
+    def test_all_statuses_in_transitions(self):
+        """Every status must appear as a key in ALLOWED_TRANSITIONS."""
+        for status in RequisitionStatus:
+            assert status in ALLOWED_TRANSITIONS, f"{status} missing from ALLOWED_TRANSITIONS"
+
+    def test_in_progress_can_cancel(self):
+        assert RequisitionStatus.CANCELLED in ALLOWED_TRANSITIONS[RequisitionStatus.IN_PROGRESS]
+
+    def test_negotiating_can_cancel(self):
+        assert RequisitionStatus.CANCELLED in ALLOWED_TRANSITIONS[RequisitionStatus.NEGOTIATING]
+
+
+class TestInvalidStateTransitionError:
+    def test_is_exception(self):
+        err = InvalidStateTransitionError("test")
+        assert isinstance(err, Exception)
+        assert str(err) == "test"

@@ -13,9 +13,9 @@ def test_login_page_loads(client):
 
 
 def test_signup_page_loads(client):
-    response = client.get("/auth/signup")
+    response = client.get("/auth/signup", follow_redirects=True)
     assert response.status_code == 200
-    assert "Create Account" in response.text or "sign up" in response.text.lower()
+    assert "System Administrator" in response.text
 
 
 def test_redirect_to_login(client):

@@ -12,13 +12,16 @@ dev:pg:
 	uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 test:
-	pytest tests/unit/ -v --tb=short
+	.venv/bin/pytest tests/ -v
 
-test-int:
-	pytest tests/integration/ -v --tb=short
+test-unit:
+	.venv/bin/pytest tests/unit/ -v
 
-test-all:
-	pytest tests/ -v --tb=short
+test-integration:
+	.venv/bin/pytest tests/integration/ -v
+
+test-cov:
+	.venv/bin/pytest tests/ --cov=app --cov-report=html --cov-report=term
 
 lint:
 	ruff check app/ tests/
