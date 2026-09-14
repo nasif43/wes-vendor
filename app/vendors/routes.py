@@ -101,8 +101,7 @@ async def view_vendor(
     result = await db.execute(select(Vendor).where(Vendor.id == vendor_id))
     vendor = result.scalar_one_or_none()
     if not vendor:
-        await db.commit()
-    return RedirectResponse(url="/vendors", status_code=303)
+        return RedirectResponse(url="/vendors", status_code=303)
 
     result = await db.execute(select(Category).order_by(Category.name))
     categories = result.scalars().all()
@@ -128,8 +127,7 @@ async def update_vendor(
     result = await db.execute(select(Vendor).where(Vendor.id == vendor_id))
     vendor = result.scalar_one_or_none()
     if not vendor:
-        await db.commit()
-    return RedirectResponse(url="/vendors", status_code=303)
+        return RedirectResponse(url="/vendors", status_code=303)
 
     vendor.company_name = company_name
     vendor.contact_email = contact_email
@@ -199,8 +197,7 @@ async def vendor_audit_notes(
     result = await db.execute(select(Vendor).where(Vendor.id == vendor_id))
     vendor = result.scalar_one_or_none()
     if not vendor:
-        await db.commit()
-    return RedirectResponse(url="/vendors", status_code=303)
+        return RedirectResponse(url="/vendors", status_code=303)
 
     # Fetch rejection and QC_FAILED events related to this vendor
     audit_res = await db.execute(
@@ -235,14 +232,12 @@ async def add_vendor_rejection_note(
     from app.auth.models import UserRole
 
     if not (user.has_management_authority or user.role == UserRole.ADMIN):
-        await db.commit()
-    return RedirectResponse(url=f"/vendors/{vendor_id}?error=Permission+denied", status_code=303)
+        return RedirectResponse(url=f"/vendors/{vendor_id}?error=Permission+denied", status_code=303)
 
     result = await db.execute(select(Vendor).where(Vendor.id == vendor_id))
     vendor = result.scalar_one_or_none()
     if not vendor:
-        await db.commit()
-    return RedirectResponse(url="/vendors", status_code=303)
+        return RedirectResponse(url="/vendors", status_code=303)
 
     action = "QC_FAILED" if qc_failed else "VENDOR_REJECTED"
     await log_action(

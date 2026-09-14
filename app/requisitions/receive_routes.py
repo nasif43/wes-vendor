@@ -9,20 +9,17 @@ async def receive_requisition_form(
     result = await db.execute(select(Requisition).where(Requisition.id == req_id))
     req = result.scalar_one_or_none()
     if not req:
-        await db.commit()
-    return RedirectResponse(url="/requisitions", status_code=303)
+        return RedirectResponse(url="/requisitions", status_code=303)
     
     # We allow QC_RECEIVER, ADMIN, MANAGEMENT
     if user.role not in [UserRole.ADMIN, UserRole.MANAGEMENT, UserRole.QC_RECEIVER]:
-        await db.commit()
-    return RedirectResponse(url=f"/requisitions/{req_id}", status_code=303)
+        return RedirectResponse(url=f"/requisitions/{req_id}", status_code=303)
 
     from app.decisions.models import Decision
     dec = await db.execute(select(Decision).where(Decision.requisition_id == req_id))
     dec_obj = dec.scalar_one_or_none()
     if not dec_obj or dec_obj.work_order_status != 'approved':
-        await db.commit()
-    return RedirectResponse(url=f"/requisitions/{req_id}?error=Work+order+not+approved", status_code=303)
+        return RedirectResponse(url=f"/requisitions/{req_id}?error=Work+order+not+approved", status_code=303)
 
 
     return templates.TemplateResponse(
@@ -45,19 +42,16 @@ async def receive_requisition_submit(
     result = await db.execute(select(Requisition).where(Requisition.id == req_id))
     req = result.scalar_one_or_none()
     if not req:
-        await db.commit()
-    return RedirectResponse(url="/requisitions", status_code=303)
+        return RedirectResponse(url="/requisitions", status_code=303)
 
     if user.role not in [UserRole.ADMIN, UserRole.MANAGEMENT, UserRole.QC_RECEIVER]:
-        await db.commit()
-    return RedirectResponse(url=f"/requisitions/{req_id}", status_code=303)
+        return RedirectResponse(url=f"/requisitions/{req_id}", status_code=303)
 
     from app.decisions.models import Decision
     dec = await db.execute(select(Decision).where(Decision.requisition_id == req_id))
     dec_obj = dec.scalar_one_or_none()
     if not dec_obj or dec_obj.work_order_status != 'approved':
-        await db.commit()
-    return RedirectResponse(url=f"/requisitions/{req_id}?error=Work+order+not+approved", status_code=303)
+        return RedirectResponse(url=f"/requisitions/{req_id}?error=Work+order+not+approved", status_code=303)
 
         
     req.invoice_number = invoice_number

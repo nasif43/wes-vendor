@@ -1,0 +1,24 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: wes-vendor-pg
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-wes_vendor}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-changeme}
+    ports:
+      - "${DB_PORT:-5433}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    command: >
+      postgres
+      -c shared_buffers=128MB
+      -c work_mem=1MB
+      -c effective_cache_size=384MB
+      -c max_connections=50
+
+volumes:
+  pgdata:

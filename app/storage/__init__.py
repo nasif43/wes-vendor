@@ -1,81 +1,30 @@
 import logging
-
-import httpx
+import os
 
 from app.config import get_settings
 
 logger = logging.getLogger(__name__)
 
-BUCKET_NAME = "quotation-uploads"
+# Kept for backward compatibility — no longer used for filesystem paths.
+BUCKET_NAME = ""
 
 
-_storage_client: httpx.AsyncClient | None = None
-
-
-def _get_storage_client() -> httpx.AsyncClient:
-    global _storage_client
-    if _storage_client is None or _storage_client.is_closed:
-        _storage_client = httpx.AsyncClient(timeout=30)
-    return _storage_client
+def _ensure_upload_dir() -> str:
+    """Create the upload directory if it doesn't exist and return its path."""
+    settings = get_settings()
+    upload_dir = settings.upload_dir
+    os.makedirs(upload_dir, exist_ok=True)
+    return upload_dir
 
 
 async def close_storage_client() -> None:
-    global _storage_client
-    if _storage_client is not None and not _storage_client.is_closed:
-        await _storage_client.aclose()
-        _storage_client = None
+    """No-op — filesystem handles its own resources."""
+    return None
 
 
 async def ensure_bucket_exists() -> None:
-    """Create the storage bucket if it doesn't already exist."""
-    settings = get_settings()
-    if not settings.supabase_url or not settings.supabase_service_role_key:
-        logger.warning("Supabase credentials not set — skipping bucket creation")
-        return
-
-    client = _get_storage_client()
-    # Check if bucket exists
-    resp = await client.get(
-        f"{settings.supabase_url}/storage/v1/bucket",
-        headers={
-            "Authorization": f"Bearer {settings.supabase_service_role_key}",
-            "apikey": settings.supabase_service_role_key,
-        },
-        timeout=10,
-    )
-    if resp.status_code == 200:
-        buckets = resp.json()
-        names = [b["id"] for b in buckets] if isinstance(buckets, list) else []
-        if BUCKET_NAME in names:
-            logger.info("Bucket '%s' already exists", BUCKET_NAME)
-            return
-
-    # Create the bucket (public, 50MB limit)
-    resp = await client.post(
-        f"{settings.supabase_url}/storage/v1/bucket",
-        headers={
-            "Authorization": f"Bearer {settings.supabase_service_role_key}",
-            "apikey": settings.supabase_service_role_key,
-            "Content-Type": "application/json",
-        },
-        json={
-            "id": BUCKET_NAME,
-            "name": BUCKET_NAME,
-            "public": True,
-            "file_size_limit": 52428800,  # 50 MB
-            "allowed_mime_types": [
-                "image/jpeg",
-                "image/png",
-                "image/webp",
-                "application/pdf",
-            ],
-        },
-        timeout=10,
-    )
-    if resp.status_code in (200, 201, 409):
-        logger.info("Bucket '%s' ready", BUCKET_NAME)
-    else:
-        logger.error("Failed to create bucket: %s %s", resp.status_code, resp.text)
+    """No-op — the upload directory is created on first write."""
+    _ensure_upload_dir()
 
 
 async def upload_file(
@@ -84,36 +33,21 @@ async def upload_file(
     data: bytes,
     content_type: str = "application/octet-stream",
 ) -> str | None:
-    """Upload a file to Supabase Storage and return its public URL."""
+    """Upload a file to the local filesystem and return its public URL."""
     settings = get_settings()
-    if not settings.supabase_url or not settings.supabase_service_role_key:
-        logger.error("Supabase credentials not configured — cannot upload")
+    upload_dir = settings.upload_dir
+    try:
+        os.makedirs(upload_dir, exist_ok=True)
+        full_path = os.path.join(upload_dir, path)
+        os.makedirs(os.path.dirname(full_path), exist_ok=True)
+        with open(full_path, "wb") as f:
+            f.write(data)
+        return f"{settings.app_url}/uploads/{path}"
+    except Exception as e:
+        logger.error("File upload failed [%s]: %s", path, e)
         return None
-
-    client = _get_storage_client()
-    response = await client.post(
-        f"{settings.supabase_url}/storage/v1/object/{bucket}/{path}",
-        headers={
-            "Authorization": f"Bearer {settings.supabase_service_role_key}",
-            "apikey": settings.supabase_service_role_key,
-            "Content-Type": content_type,
-            "x-upsert": "true",
-        },
-        content=data,
-        timeout=30,
-    )
-    if response.status_code in (200, 201):
-        return get_public_url(bucket, path)
-
-    logger.error(
-        "Upload failed [%s]: %s — %s",
-        response.status_code,
-        path,
-        response.text[:500],
-    )
-    return None
 
 
 def get_public_url(bucket: str, path: str) -> str:
     settings = get_settings()
-    return f"{settings.supabase_url}/storage/v1/object/public/{bucket}/{path}"
+    return f"{settings.app_url}/uploads/{path}"

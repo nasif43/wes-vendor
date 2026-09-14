@@ -76,8 +76,7 @@ async def submit_quotation(
         )
 
     if link.quotation:
-        await db.commit()
-    return RedirectResponse(url=f"/vendor-quote/{token}", status_code=303)
+        return RedirectResponse(url=f"/vendor-quote/{token}", status_code=303)
 
     if link.vendor and link.vendor.is_temporary:
         if not company_name or not contact_person or not phone or not contact_email:

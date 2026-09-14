@@ -21,3 +21,7 @@ __pycache__/
 # OS / IDE
 .DS_Store
 *.log
+
+# Deployment (gitignored - contains env variables)
+plans/DEPLOY.md
+.kilo/plans/*.md

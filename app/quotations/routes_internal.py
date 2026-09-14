@@ -21,7 +21,7 @@ async def quotation_inbox(
 
     if not user.can_see_quotes:
         await db.commit()
-    return RedirectResponse(url="/?error=Permission+denied", status_code=303)
+        return RedirectResponse(url="/quotations/inbox?error=Permission+denied", status_code=303)
 
     from app.requisitions.models import RequisitionStatus
     result = await db.execute(
@@ -50,7 +50,7 @@ async def quotation_detail(
     link = result.scalar_one_or_none()
     if not link:
         await db.commit()
-    return RedirectResponse(url="/quotations/inbox", status_code=303)
+        return RedirectResponse(url="/quotations/inbox", status_code=303)
 
     return templates.TemplateResponse(
         request, "quotations/detail.html", {"user": user, "link": link}
@@ -66,13 +66,13 @@ async def update_quotation_status(
 ):
     if not user.can_see_quotes:
         await db.commit()
-    return RedirectResponse(url="/?error=Permission+denied", status_code=303)
+        return RedirectResponse(url="/quotations/inbox?error=Permission+denied", status_code=303)
 
     valid_statuses = {"pending", "submitted", "accepted", "flagged"}
     clean_status = status.strip().lower()
     if clean_status not in valid_statuses:
         await db.commit()
-    return RedirectResponse(
+        return RedirectResponse(
             url=f"/quotations/detail/{requisition_vendor_id}?error=Invalid+status", status_code=303
         )
 
@@ -113,13 +113,13 @@ async def compare_quotations(
 
     if not user.can_see_quotes:
         await db.commit()
-    return RedirectResponse(url="/?error=Permission+denied", status_code=303)
+        return RedirectResponse(url="/quotations/inbox?error=Permission+denied", status_code=303)
 
     result = await db.execute(select(Requisition).where(Requisition.id == req_id))
     req = result.scalar_one_or_none()
     if not req:
         await db.commit()
-    return RedirectResponse(url="/quotations/inbox", status_code=303)
+        return RedirectResponse(url="/quotations/inbox", status_code=303)
 
     from app.decisions.models import Decision
 

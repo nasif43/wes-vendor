@@ -1,10 +1,14 @@
-.PHONY: dev test test-int lint typecheck migrate seed build clean install
+.PHONY: dev dev:pg test test-int lint typecheck migrate migrate-new seed build clean install
 
 install:
 	pip install -r requirements.txt
 	pip install -e ".[dev]"
 
 dev:
+	uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+
+dev:pg:
+	docker compose up -d postgres
 	uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 test:
