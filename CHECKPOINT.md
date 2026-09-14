@@ -1,34 +1,44 @@
 # Development Checkpoint
 
-This document summarizes the recent development session, tracking all changes made to the base application, bug fixes applied, and known issues/breaking changes to address in the future.
+This document tracks current development status, recent changes, and open issues.
+Update this after each significant development session.
 
-## 1. Features & Schema Changes Implemented
+## Current Branch: `vps-deployment`
 
-- **New Role (`QC_RECEIVER`)**: Added to `UserRole` enum. This role separates quality control operations from generic management.
-- **Delivery & QC Tracking**: Added multiple new columns to the `Requisition` model:
-  - `qc_done` (Boolean)
-  - `qc_done_by` (String)
-  - `qc_done_at` (DateTime)
-  - `delivery_image_url` (String)
-  - `invoice_url` (String)
-  - `invoice_number` (String)
-  - `payment_status` (String, default `pending`)
-- **Receive & QC Workflow**: Created the `/receive` route and a new template (`requisitions/receive.html`) allowing Management/QC roles to mark a decided requisition as received, providing a delivery image, invoice, and tracking who did the QC check.
-- **Reporting & Stats**: 
-  - Added a `/reports` endpoint to track delivery times (from Decided -> QC Done) and overall operational stats.
-  - Implemented 4 new WENER-styled dashboard tiles on `index.html` (Open Orders, Delivered, Pending Payment, Generate Reports).
-- **Apple-Style UX Loading Spinners**: Added `apple_spinner.html` component to `base.html` that intercepts network requests, HTMX swaps, and link clicks, providing visual feedback on low-resource environments.
+## Phase Status
 
-## 2. Bug Fixes Applied
+| Phase | Status | Commit | Notes |
+|-------|--------|--------|-------|
+| Phase 0: Naming cleanup | ⏳ In Progress | — | Template context keys being standardized |
+| Phase 1: Schema & Models | ✅ Done | 8b8909b | New models: ShortlistedItem, ReceivedItem, WorkOrder, SupplierRating; fixed Quotation unique bug |
+| Phase 2: State Machine | ✅ Done | TBD | New statuses, fixed transitions, winner selection is real |
+| Phase 3: Features | 🔜 Next | — | Per-item shortlisting UI, tabular receiving, invoice PDF, supplier ratings |
+| Phase 4: Email Overhaul | 🔜 Next | — | New email builders, proper PDF attachments |
+| Phase 5: Modularization | ✅ Done | TBD | routes.py split into 3 focused files |
+| Phase 6: Documentation | ✅ Done | TBD | ARCHITECTURE.md, DEV_SETUP.md, LIFECYCLE.md created |
+| Phase 7: Tests | 🔜 Next | — | Unit + integration + E2E test suite |
 
-- **AmbiguousForeignKeysError**: The `Requisition` model was crashing with a 500 Server Error because it had two relationships (`creator` and `qc_receiver_user`) pointing to the same `UserProfile` table. Fixed by explicitly defining `foreign_keys=[created_by]` and `foreign_keys=[qc_done_by]`.
-- **Auth Page Styling**: The `signup.html` and `login.html` pages were rendering white text on a white background. Fixed by modifying `base.html` to accept a dynamic `{% block body_class %}` and injecting `bg-brand-600` specifically into the authentication pages to restore the dark blue gradient background.
-- **Missing Imports (500 Errors)**: 
-  - Fixed a crash on the `/receive` route by correctly importing `UserRole` in `app/requisitions/routes.py`.
-  - Fixed an `ImportError` on the Dashboard caused by an incorrect import name (`VendorRequisitionLink` instead of `RequisitionVendor` in `app/main.py`), which was breaking the stat tiles (rendering them as `—`).
+## Recent Changes (Phase 1)
 
-## 3. Known Issues & Breaking Changes (To Fix Later)
+- **Fixed critical bug:** `Quotation.requisition_vendor_id` had `unique=True` — prevented v2 revised quotes. Now uses composite unique (requisition_vendor_id, quote_version).
+- **New models:** `ShortlistedItem`, `ReceivedItem`, `WorkOrder`, `SupplierRating`
+- **New statuses:** `NEGOTIATING`, `AWARDED`, `WORK_ORDER_ISSUED`, `RECEIVING`
+- **New module:** `app/work_orders/` with routes, service, and placeholder templates
+- **Bug fix:** `settings/routes.py` letterhead upload was missing `await db.commit()`
+- **`negotiation_version`** type fixed from `String` to `Integer`
 
-- **Legacy Data 500 Error on `/receive`**: Clicking the "Receive & QC Items" button on older mocked requisitions (created before the `RequisitionVendor` relationship logic was fully implemented) throws a 500 Server Error. The `/receive` route expects to find an accepted vendor quote, but legacy data is missing these associations.
-- **Alembic Migration Limitations**: Alembic `autogenerate` struggles with the async SQLAlchemy setup. Database schema modifications (like adding the `qc_done` fields) were implemented safely via functional `ALTER TABLE` raw SQL checks directly in `database.py` (`init_db`). A proper Alembic async configuration should be established for future schema changes.
-- **Apple Spinner Aggressiveness**: The Apple-style loading spinner triggers on *all* `<a>` clicks, which can be visually jarring on simple local navigation. This may need to be refined to only trigger on forms, HTMX, and heavy transitions.
+## Known Issues
+
+- **Legacy data:** Requisitions with `status=submitted` or `status=received` will map to legacy values. The `_missing_` handler and transition table accommodate these.
+- **Alembic:** Not configured for async. All migrations in `init_db()` via raw SQL.
+- **Work order templates:** Placeholder HTML only — needs proper Tailwind styling to match app design.
+- **Per-item shortlisting UI:** Backend supports it (ShortlistedItem model exists) but compare.html still only does per-vendor shortlisting. Phase 3 will add per-item UI.
+- **Tabular receiving:** Form exists but is single-field. Phase 3 will make it per-item tabular.
+
+## Next Steps (Phase 3)
+
+1. Update compare.html shortlisting UI to support per-item selection
+2. Update vendor quote form to filter items based on ShortlistedItem rows (v2)
+3. Rebuild receive.html as tabular per-item form
+4. Auto-generate invoice PDF from ReceivedItem records
+5. Create supplier performance tab on vendor detail page
