@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Work Orders{% endblock %}
+{% block content %}
+<div class="max-w-5xl mx-auto py-10 px-4">
+  <h1 class="text-2xl font-bold mb-6">Work Orders</h1>
+  {% if work_orders %}
+  <table class="w-full text-sm border-collapse">
+    <thead>
+      <tr class="bg-gray-100">
+        <th class="border px-3 py-2 text-left">Ref</th>
+        <th class="border px-3 py-2 text-left">Requisition</th>
+        <th class="border px-3 py-2 text-left">Supplier</th>
+        <th class="border px-3 py-2 text-left">Status</th>
+        <th class="border px-3 py-2 text-left">Issued</th>
+        <th class="border px-3 py-2">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for wo in work_orders %}
+      <tr class="hover:bg-gray-50">
+        <td class="border px-3 py-2 font-mono text-xs">{{ wo.id[:8]|upper }}</td>
+        <td class="border px-3 py-2">{{ wo.requisition.title if wo.requisition else '—' }}</td>
+        <td class="border px-3 py-2">{{ wo.vendor.company_name if wo.vendor else '—' }}</td>
+        <td class="border px-3 py-2 capitalize">{{ wo.status }}</td>
+        <td class="border px-3 py-2">{{ wo.issued_at.strftime('%Y-%m-%d') if wo.issued_at else '—' }}</td>
+        <td class="border px-3 py-2 text-center">
+          <a href="/work-orders/{{ wo.id }}" class="text-brand-600 hover:underline text-xs">View</a>
+          {% if wo.pdf_url %}
+          | <a href="{{ wo.pdf_url }}" target="_blank" class="text-brand-600 hover:underline text-xs">PDF</a>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="text-gray-500">No work orders issued yet.</p>
+  {% endif %}
+</div>
+{% endblock %}

@@ -115,7 +115,10 @@ async def upload_letterhead(
             db.add(row)
         else:
             row.value = url
+        await db.commit()
         return RedirectResponse("/settings?saved=1", status_code=303)
+        
+    return RedirectResponse("/settings?error=upload_failed", status_code=303)
 
 @router.post("/letterhead/activate")
 async def activate_letterhead(

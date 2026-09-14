@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Work Order {{ wo.id[:8]|upper }}{% endblock %}
+{% block content %}
+<div class="max-w-3xl mx-auto py-10 px-4">
+  <div class="flex items-center justify-between mb-6">
+    <div>
+      <p class="text-xs text-gray-500 font-mono">REF: {{ wo.id[:8]|upper }}</p>
+      <h1 class="text-2xl font-bold">Work Order</h1>
+    </div>
+    {% if wo.pdf_url %}
+    <a href="{{ wo.pdf_url }}" target="_blank"
+       class="bg-brand-600 text-white px-4 py-2 rounded text-sm hover:bg-brand-700">
+      Download PDF
+    </a>
+    {% endif %}
+  </div>
+
+  <div class="bg-white rounded-lg border border-gray-200 p-6 space-y-3">
+    <div class="grid grid-cols-2 gap-4 text-sm">
+      <div><span class="font-semibold">Requisition:</span>
+        {{ wo.requisition.title if wo.requisition else '—' }}</div>
+      <div><span class="font-semibold">Supplier:</span>
+        {{ wo.vendor.company_name if wo.vendor else '—' }}</div>
+      <div><span class="font-semibold">Status:</span>
+        <span class="capitalize">{{ wo.status }}</span></div>
+      <div><span class="font-semibold">Issued:</span>
+        {{ wo.issued_at.strftime('%Y-%m-%d %H:%M') if wo.issued_at else '—' }}</div>
+      <div><span class="font-semibold">Issued By:</span>
+        {{ wo.issuer.full_name if wo.issuer else '—' }}</div>
+      <div><span class="font-semibold">Letterhead Slot:</span>
+        {{ wo.letterhead_slot or 'Default' }}</div>
+    </div>
+    {% if wo.notes %}
+    <div class="text-sm"><span class="font-semibold">Notes:</span> {{ wo.notes }}</div>
+    {% endif %}
+    {% if wo.delivery_started_at %}
+    <div class="text-sm">
+      <span class="font-semibold">Delivery Started:</span>
+      {{ wo.delivery_started_at.strftime('%Y-%m-%d %H:%M') }}
+      {% if wo.delivery_completed_at %}
+      → <span class="font-semibold">Completed:</span>
+      {{ wo.delivery_completed_at.strftime('%Y-%m-%d %H:%M') }}
+      {% else %}
+      <span class="text-amber-600">(In progress)</span>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="mt-6">
+    <a href="/work-orders" class="text-sm text-gray-500 hover:underline">← Back to Work Orders</a>
+  </div>
+</div>
+{% endblock %}

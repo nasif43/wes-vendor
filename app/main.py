@@ -79,6 +79,7 @@ from app.settings.routes import router as settings_router
 from app.vendors.routes import router as vendors_router
 from app.reports.routes import router as reports_router
 from app.users.routes import router as users_router
+from app.work_orders.routes import router as work_orders_router
 
 app.include_router(auth_router, prefix="/auth", tags=["auth"])
 app.include_router(audit_router, prefix="/audit", tags=["audit"])
@@ -90,6 +91,7 @@ app.include_router(quotations_internal_router, prefix="/quotations", tags=["quot
 app.include_router(decisions_router, prefix="/decisions", tags=["decisions"])
 app.include_router(reports_router, prefix="/reports", tags=["reports"])
 app.include_router(users_router, prefix="/users", tags=["users"])
+app.include_router(work_orders_router, prefix="/work-orders", tags=["work-orders"])
 app.include_router(settings_router, prefix="/settings", tags=["settings"])
 
 

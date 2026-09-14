@@ -79,6 +79,8 @@ async def init_db() -> None:
     from app.quotations.models import Quotation  # noqa: F401
     from app.requisitions.models import Requisition, RequisitionVendor  # noqa: F401
     from app.settings.models import SystemSettings  # noqa: F401
+    from app.work_orders.models import WorkOrder, SupplierRating  # noqa: F401
+    from app.requisitions.models import ShortlistedItem, ReceivedItem  # noqa: F401
     from app.vendors.models import Vendor, vendor_categories  # noqa: F401
 
     from sqlalchemy import text
@@ -95,7 +97,8 @@ async def init_db() -> None:
                 WHERE table_schema = 'public'
                   AND table_name IN (
                     'vendors', 'user_profiles', 'requisitions',
-                    'requisition_vendors', 'quotations', 'decisions'
+                    'requisition_vendors', 'quotations', 'decisions',
+                    'work_orders', 'supplier_ratings', 'shortlisted_items', 'received_items'
                   )
             """))
             existing: set[tuple[str, str]] = {(row[0], row[1]) for row in res.fetchall()}
@@ -166,6 +169,16 @@ async def init_db() -> None:
                 if not col_exists("decisions", col):
                     await conn.execute(text(f"ALTER TABLE decisions ADD COLUMN {col} {defn}"))
 
+            # ── work_orders ──────────────────────────────────────────────────────────
+            for col, defn in [
+                ("letterhead_slot", "VARCHAR(10)"),
+                ("notes", "TEXT"),
+                ("delivery_started_at", "TIMESTAMP WITH TIME ZONE"),
+                ("delivery_completed_at", "TIMESTAMP WITH TIME ZONE"),
+            ]:
+                if not col_exists("work_orders", col):
+                    await conn.execute(text(f"ALTER TABLE work_orders ADD COLUMN {col} {defn}"))
+
             # ── Indexes — CREATE INDEX IF NOT EXISTS (idempotent, one-time cost) ─────
             for idx_sql in [
                 "CREATE INDEX IF NOT EXISTS idx_requisitions_created_by ON requisitions(created_by)",
@@ -180,6 +193,11 @@ async def init_db() -> None:
                 "CREATE INDEX IF NOT EXISTS idx_user_profiles_email ON user_profiles(email)",
                 "CREATE INDEX IF NOT EXISTS idx_vendors_is_active ON vendors(is_active)",
                 "CREATE INDEX IF NOT EXISTS idx_quotations_req_vendor_id ON quotations(requisition_vendor_id)",
+                "CREATE INDEX IF NOT EXISTS idx_work_orders_requisition_id ON work_orders(requisition_id)",
+                "CREATE INDEX IF NOT EXISTS idx_work_orders_vendor_id ON work_orders(vendor_id)",
+                "CREATE INDEX IF NOT EXISTS idx_supplier_ratings_vendor_id ON supplier_ratings(vendor_id)",
+                "CREATE INDEX IF NOT EXISTS idx_shortlisted_items_rv_id ON shortlisted_items(requisition_vendor_id)",
+                "CREATE INDEX IF NOT EXISTS idx_received_items_req_id ON received_items(requisition_id)",
             ]:
                 try:
                     await conn.execute(text(idx_sql))
@@ -189,7 +207,7 @@ async def init_db() -> None:
         else:
             # ── SQLite fallback ───────────────────────────────────────────────────────
             sqlite_existing: set[tuple[str, str]] = set()
-            for table in ("vendors", "user_profiles", "requisitions", "requisition_vendors", "quotations", "decisions"):
+            for table in ("vendors", "user_profiles", "requisitions", "requisition_vendors", "quotations", "decisions", "work_orders", "supplier_ratings", "shortlisted_items", "received_items"):
                 try:
                     res = await conn.execute(text(f"PRAGMA table_info({table})"))
                     for row in res.fetchall():
@@ -238,3 +256,12 @@ async def init_db() -> None:
             ]:
                 if not col_exists("decisions", col):
                     await conn.execute(text(f"ALTER TABLE decisions ADD COLUMN {col} {defn}"))
+
+            for col, defn in [
+                ("letterhead_slot", "VARCHAR(10)"),
+                ("notes", "TEXT"),
+                ("delivery_started_at", "DATETIME"),
+                ("delivery_completed_at", "DATETIME"),
+            ]:
+                if not col_exists("work_orders", col):
+                    await conn.execute(text(f"ALTER TABLE work_orders ADD COLUMN {col} {defn}"))

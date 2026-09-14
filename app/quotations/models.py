@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import uuid4
 
-from sqlalchemy import JSON, DateTime, ForeignKey, Integer, Numeric, String, Text, func
+from sqlalchemy import JSON, DateTime, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -9,10 +9,13 @@ from app.database import Base
 
 class Quotation(Base):
     __tablename__ = "quotations"
+    __table_args__ = (
+        UniqueConstraint("requisition_vendor_id", "quote_version", name="uq_quotation_link_version"),
+    )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
     requisition_vendor_id: Mapped[str] = mapped_column(
-        String(36), ForeignKey("requisition_vendors.id", ondelete="CASCADE"), unique=True
+        String(36), ForeignKey("requisition_vendors.id", ondelete="CASCADE")
     )
     submission_type: Mapped[str] = mapped_column(String(10), nullable=False)
     image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
@@ -27,5 +30,5 @@ class Quotation(Base):
     quoted_quantity: Mapped[float | None] = mapped_column(Numeric, nullable=True)
 
     requisition_vendor = relationship(
-        "RequisitionVendor", back_populates="quotation", lazy="selectin"
+        "RequisitionVendor", back_populates="quotations", lazy="selectin"
     )
