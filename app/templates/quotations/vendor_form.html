@@ -64,7 +64,8 @@
 
         <!-- FORM FIELDS -->
         <div id="form-fields" class="space-y-4">
-            {% if req.items %}
+            {% set items_to_show = supplier_items if supplier_items is not none else (req.items if req and req.items else []) %}
+            {% if items_to_show %}
             <div class="bg-white border border-slate-300 shadow-sm overflow-hidden" style="border-radius: 4px;">
                 <table class="w-full text-left text-sm border-collapse text-slate-800" style="font-family: Arial, sans-serif;">
                     <thead class="bg-slate-100 border-b border-slate-300 text-xs text-slate-700">
@@ -76,15 +77,16 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% for item in req.items %}
+                        {% for item in items_to_show %}
                         <tr class="border-b border-slate-200">
+                            <input type="hidden" name="item_original_index[]" value="{{ item.original_index if item.original_index is defined else loop.index0 }}">
                             <td class="px-3 py-2 border-r border-slate-300">{{ item.name }}</td>
                             <td class="px-3 py-2 border-r border-slate-300 text-xs text-slate-500">{{ item.description }}</td>
-                            <td class="px-3 py-2 border-r border-slate-300 text-center">{{ item.qty }}</td>
+                            <td class="px-3 py-2 border-r border-slate-300 text-center">{{ item.shortlisted_qty if item.shortlisted_qty is defined else item.qty }}</td>
                             <td class="px-2 py-1 bg-yellow-50">
                                 <input type="number" name="item_price[]" required min="0" step="any" placeholder="0.00"
                                     class="w-full px-2 py-1 bg-transparent border border-slate-300 rounded-sm text-sm text-right item-price-input focus:outline-none focus:border-blue-500 focus:bg-white transition-colors"
-                                    data-qty="{{ item.qty }}" oninput="updateVendorTotal()">
+                                    data-qty="{{ item.shortlisted_qty if item.shortlisted_qty is defined else item.qty }}" oninput="updateVendorTotal()">
                             </td>
                         </tr>
                         {% endfor %}

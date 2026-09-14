@@ -22,8 +22,8 @@ from app.auth.models import UserProfile, UserRole
 from app.categories.models import Category
 from app.database import get_db
 from app.dependencies import get_current_user
-from app.email.resend import build_vendor_invitation, send_batch
-from app.requisitions.models import Requisition, RequisitionStatus, RequisitionVendor
+from app.email.resend import build_vendor_invitation, build_negotiation_invitation, build_rejection_notification, send_batch
+from app.requisitions.models import Requisition, RequisitionStatus, RequisitionVendor, ShortlistedItem
 from app.vendors.models import Vendor
 
 logger = logging.getLogger(__name__)
@@ -216,13 +216,24 @@ async def shortlist_vendors(
     user: UserProfile = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Shortlist up to 3 vendor links for a requisition and set their quantity allocations."""
+    """Shortlist suppliers with optional per-item selection.
+    
+    Form data format:
+      shortlisted_ids[]   = list of RequisitionVendor IDs to shortlist
+      items_{link_id}[]   = list of item indices (0-based) shortlisted for that supplier
+      qty_{link_id}_{idx} = allocated quantity for that supplier+item combo
+    """
     from app.auth.models import UserRole
-    if not (user.has_management_authority or user.is_procurement or user.role == UserRole.ADMIN):
-        return RedirectResponse(url=f"/quotations/compare/{req_id}?error=Permission+denied", status_code=303)
+    from app.requisitions.models import ShortlistedItem
+    from sqlalchemy import delete
+    
+    if not (user.has_management_authority or user.role == UserRole.ADMIN):
+        return RedirectResponse(
+            url=f"/quotations/compare/{req_id}?error=Permission+denied",
+            status_code=303,
+        )
 
     form_data = await request.form()
-    # Collect shortlisted link IDs and their allocations
     shortlisted_ids: list[str] = list(form_data.getlist("shortlisted_ids"))
 
     # Reset all existing shortlisting for this requisition
@@ -234,14 +245,17 @@ async def shortlist_vendors(
         lnk.is_shortlisted = False
         lnk.allocated_quantity = None
 
-    # Set shortlisted + allocations
-    for link_id in shortlisted_ids:
-        qty_str = form_data.get(f"alloc_qty_{link_id}", "")
-        try:
-            allocated_qty = float(qty_str) if qty_str else None
-        except (ValueError, TypeError):
-            allocated_qty = None
+    # Delete existing ShortlistedItem rows for this requisition's vendor links
+    link_ids = [lnk.id for lnk in all_links]
+    if link_ids:
+        await db.execute(
+            delete(ShortlistedItem).where(
+                ShortlistedItem.requisition_vendor_id.in_(link_ids)
+            )
+        )
 
+    # Process each shortlisted link
+    for link_id in shortlisted_ids:
         res = await db.execute(
             select(RequisitionVendor).where(
                 RequisitionVendor.id == link_id,
@@ -249,9 +263,50 @@ async def shortlist_vendors(
             )
         )
         lnk = res.scalar_one_or_none()
-        if lnk:
-            lnk.is_shortlisted = True
-            lnk.allocated_quantity = allocated_qty
+        if not lnk:
+            continue
+
+        lnk.is_shortlisted = True
+
+        # Check for per-item selections
+        item_indices = form_data.getlist(f"items_{link_id}")
+        if item_indices:
+            # Per-item shortlisting mode
+            total_qty = 0.0
+            for idx_str in item_indices:
+                try:
+                    idx = int(idx_str)
+                except ValueError:
+                    continue
+                qty_str = form_data.get(f"qty_{link_id}_{idx}", "")
+                try:
+                    qty = float(qty_str) if qty_str else 0.0
+                except (ValueError, TypeError):
+                    qty = 0.0
+                total_qty += qty
+
+                # Get item name from requisition
+                item_name = f"Item {idx + 1}"
+                if lnk.requisition and lnk.requisition.items:
+                    items_list = lnk.requisition.items
+                    if idx < len(items_list):
+                        item_name = items_list[idx].get("name", item_name)
+
+                si = ShortlistedItem(
+                    requisition_vendor_id=link_id,
+                    item_index=idx,
+                    item_name=item_name,
+                    shortlisted_qty=qty,
+                )
+                db.add(si)
+            lnk.allocated_quantity = total_qty if total_qty > 0 else None
+        else:
+            # Fallback: whole-vendor shortlisting (no per-item breakdown)
+            qty_str = form_data.get(f"alloc_qty_{link_id}", "")
+            try:
+                lnk.allocated_quantity = float(qty_str) if qty_str else None
+            except (ValueError, TypeError):
+                lnk.allocated_quantity = None
 
     await log_action(
         db,
@@ -260,12 +315,13 @@ async def shortlist_vendors(
         entity_type="requisition",
         entity_id=req_id,
         entity_label=f"Requisition #{req_id}",
-        notes=f"{len(shortlisted_ids)} vendor(s) shortlisted by {user.full_name}",
+        notes=f"{len(shortlisted_ids)} supplier(s) shortlisted by {user.full_name}",
     )
     await db.flush()
     await db.commit()
     return RedirectResponse(
-        url=f"/quotations/compare/{req_id}?success=Vendors+shortlisted", status_code=303
+        url=f"/quotations/compare/{req_id}?success=Suppliers+shortlisted",
+        status_code=303,
     )
 
 
@@ -340,9 +396,9 @@ async def start_negotiation(
             if vendor and vendor.contact_email:
                 quote_url = f"{str(request.base_url).rstrip('/')}/vendor-quote/{v2_lnk.unique_link_token}"
                 email_params.append(
-                    await build_vendor_invitation(
+                    await build_negotiation_invitation(
                         to=vendor.contact_email,
-                        vendor_name=vendor.contact_person or vendor.company_name,
+                        supplier_name=vendor.contact_person or vendor.company_name,
                         requisition_title=req.title,
                         quote_url=quote_url,
                     )
@@ -386,12 +442,10 @@ async def start_negotiation(
         for lnk in non_shortlisted:
             vendor = lnk.vendor
             if vendor and vendor.contact_email:
-                from app.email.resend import build_decision_notification
-                param = await build_decision_notification(
+                param = await build_rejection_notification(
                     to=vendor.contact_email,
-                    vendor_name=vendor.contact_person or vendor.company_name,
+                    supplier_name=vendor.contact_person or vendor.company_name,
                     requisition_title=req.title,
-                    approved=False,
                 )
                 if param:
                     rejection_params.append(param)

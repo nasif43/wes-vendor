@@ -174,7 +174,7 @@ async def build_decision_notification(
 
 
 async def build_submission_notification(
-    to: str, vendor_name: str, requisition_title: str, view_url: str, pdf_bytes: bytes = None
+    to: str, vendor_name: str, requisition_title: str, view_url: str, pdf_bytes: bytes | None = None
 ) -> dict:
     cc = await get_cc_emails()
     html = f"""
@@ -206,6 +206,162 @@ async def build_submission_confirmation(
         "from": f"Wener Supplier Management <{settings.mail_from}>",
         "to": [to],
         "subject": f"Quotation Received: {requisition_title}",
+        "html": html,
+    }, cc)
+
+
+async def build_work_order_email(
+    to: str,
+    supplier_name: str,
+    requisition_title: str,
+    pdf_bytes: bytes,
+    work_order_ref: str = "",
+) -> dict:
+    """Work order email with PDF attachment sent to winning supplier + management CC."""
+    cc = await get_cc_emails()
+    html = f"""
+    <h2>Work Order Issued</h2>
+    <p>Dear {supplier_name},</p>
+    <p>Please find attached the official Work Order / Purchase Order for
+    <strong>{requisition_title}</strong>.</p>
+    <p>Kindly proceed with the delivery of the requested items as per the agreed
+    specifications and timeline.</p>
+    {f'<p>Work Order Reference: <strong>{work_order_ref}</strong></p>' if work_order_ref else ''}
+    <p>If you have any questions regarding this order, please contact us directly.</p>
+    """
+    payload = {
+        "from": f"Wener Supplier Management <{settings.mail_from}>",
+        "to": [to],
+        "subject": f"Work Order: {requisition_title}",
+        "html": html,
+        "attachments": [{
+            "filename": f"WorkOrder_{work_order_ref or 'ref'}.pdf",
+            "content": list(pdf_bytes),
+        }],
+    }
+    return _apply_cc(payload, cc)
+
+
+async def build_invoice_email(
+    to: str,
+    supplier_name: str,
+    requisition_title: str,
+    invoice_number: str,
+    grand_total: float,
+    pdf_bytes: bytes,
+) -> dict:
+    """Invoice email with PDF attachment sent to management CC on invoice finalization."""
+    cc = await get_cc_emails()
+    html = f"""
+    <h2>Invoice Generated</h2>
+    <p>The invoice for requisition <strong>{requisition_title}</strong> has been
+    generated and finalized.</p>
+    <table style="font-family: sans-serif; font-size: 14px; width: 100%; max-width: 400px; margin: 16px 0;">
+      <tr><td style="padding: 4px 0; color: #666;">Supplier:</td>
+          <td style="padding: 4px 0; font-weight: 600;">{supplier_name}</td></tr>
+      <tr><td style="padding: 4px 0; color: #666;">Invoice No:</td>
+          <td style="padding: 4px 0; font-weight: 600;">{invoice_number}</td></tr>
+      <tr><td style="padding: 4px 0; color: #666;">Total Payable:</td>
+          <td style="padding: 4px 0; font-weight: 700; font-size: 16px;">৳{grand_total:.2f}</td></tr>
+    </table>
+    <p style="font-size: 12px; color: #888;">This invoice reflects accepted quantities only.
+    Rejected items have been excluded from the total.</p>
+    """
+    payload = {
+        "from": f"Wener Supplier Management <{settings.mail_from}>",
+        "to": [to],
+        "subject": f"Invoice #{invoice_number} — {requisition_title} (৳{grand_total:.2f})",
+        "html": html,
+        "attachments": [{
+            "filename": f"Invoice_{invoice_number}.pdf",
+            "content": list(pdf_bytes),
+        }],
+    }
+    return _apply_cc(payload, cc)
+
+
+async def build_negotiation_invitation(
+    to: str,
+    supplier_name: str,
+    requisition_title: str,
+    quote_url: str,
+) -> dict:
+    """v2 negotiation invitation — clearly labeled as a revision request.
+    
+    Sent to shortlisted suppliers when management starts the negotiation round.
+    """
+    cc = await get_cc_emails()
+    html = f"""
+    <h2>Revised Quotation Request (Round 2)</h2>
+    <p>Dear {supplier_name},</p>
+    <p>You have been shortlisted for the next round of evaluation for:
+    <strong>{requisition_title}</strong>.</p>
+    <p>We invite you to submit a <strong>revised quotation</strong> for the specific
+    items allocated to you. Please note that this round covers only a subset of the
+    original items.</p>
+    <p><a href="{quote_url}" style="display:inline-block;background:#1d4ed8;color:white;
+    padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:600;
+    margin-top:8px;">Submit Revised Quotation &rarr;</a></p>
+    <p style="margin-top:16px;font-size:12px;color:#888;">
+    This is Round 2 of the quotation process. Only items specifically allocated
+    to your company will be shown in the form.
+    </p>
+    """
+    return _apply_cc({
+        "from": f"Wener Supplier Management <{settings.mail_from}>",
+        "to": [to],
+        "subject": f"Revised Quotation Request (Round 2): {requisition_title}",
+        "html": html,
+    }, cc)
+
+
+async def build_rejection_notification(
+    to: str,
+    supplier_name: str,
+    requisition_title: str,
+) -> dict:
+    """Rejection notification sent to non-shortlisted suppliers after negotiation starts."""
+    cc = await get_cc_emails()
+    html = f"""
+    <h2>Update on Your Quotation</h2>
+    <p>Dear {supplier_name},</p>
+    <p>Thank you for your quotation for <strong>{requisition_title}</strong>.</p>
+    <p>After careful evaluation, we regret to inform you that we will not be
+    proceeding with your quotation for this particular requisition.</p>
+    <p>We appreciate your participation and hope to work with you on future
+    opportunities.</p>
+    """
+    return _apply_cc({
+        "from": f"Wener Supplier Management <{settings.mail_from}>",
+        "to": [to],
+        "subject": f"Update on Your Quotation: {requisition_title}",
+        "html": html,
+    }, cc)
+
+
+async def build_award_notification(
+    to: str,
+    supplier_name: str,
+    requisition_title: str,
+) -> dict:
+    """Award notification sent to winning supplier when management selects them.
+    
+    Informs the winner that they've been selected and to expect a Work Order.
+    """
+    cc = await get_cc_emails()
+    html = f"""
+    <h2>Congratulations! Your Quotation Has Been Accepted</h2>
+    <p>Dear {supplier_name},</p>
+    <p>We are pleased to inform you that your quotation for
+    <strong>{requisition_title}</strong> has been accepted.</p>
+    <p>You will shortly receive an official <strong>Work Order / Purchase Order</strong>
+    with the full details of the items to be supplied.</p>
+    <p>Please be prepared to proceed with delivery upon receiving the Work Order.</p>
+    """
+    return _apply_cc({
+        "from": f"Wener Supplier Management <{settings.mail_from}>",
+        "to": [to],
+        "subject": f"Award Notification: {requisition_title}",
         "html": html,
     }, cc)
 

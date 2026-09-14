@@ -10,6 +10,68 @@ from app.quotations.models import Quotation
 from app.requisitions.models import RequisitionVendor
 from app.storage import BUCKET_NAME, upload_file
 
+def _generate_quotation_pdf(form_data: dict | None, req_title: str, vendor_name: str) -> bytes | None:
+    """Generate quotation PDF from form data. Returns None on failure."""
+    try:
+        from weasyprint import HTML
+        table_html = ""
+        if form_data and form_data.get("items"):
+            rows = []
+            grand_total = 0.0
+            for item in form_data["items"]:
+                qty = item.get("qty", 0)
+                item_price = item.get("price", 0)
+                total = float(qty) * float(item_price)
+                grand_total += total
+                rows.append(
+                    f"<tr>"
+                    f"<td style='border:1px solid #ccc;padding:6px'>{item.get('name','')}</td>"
+                    f"<td style='border:1px solid #ccc;padding:6px'>{item.get('description','')}</td>"
+                    f"<td style='border:1px solid #ccc;padding:6px;text-align:center'>{qty}</td>"
+                    f"<td style='border:1px solid #ccc;padding:6px;text-align:right;font-family:monospace'>৳{float(item_price):.2f}</td>"
+                    f"<td style='border:1px solid #ccc;padding:6px;text-align:right;font-family:monospace;font-weight:700'>৳{total:.2f}</td>"
+                    f"</tr>"
+                )
+            table_html = (
+                "<table style='border-collapse:collapse;width:100%;font-size:12px;margin-top:16px;'>"
+                "<thead style='background:#e2e8f0;'><tr>"
+                "<th style='border:1px solid #ccc;padding:6px;'>Item</th>"
+                "<th style='border:1px solid #ccc;padding:6px;'>Description</th>"
+                "<th style='border:1px solid #ccc;padding:6px;'>Qty</th>"
+                "<th style='border:1px solid #ccc;padding:6px;'>Unit Price</th>"
+                "<th style='border:1px solid #ccc;padding:6px;'>Total</th>"
+                "</tr></thead><tbody>"
+                + "".join(rows)
+                + f"</tbody><tfoot><tr>"
+                f"<td colspan='4' style='border:1px solid #ccc;padding:6px;text-align:right;font-weight:700;'>Grand Total:</td>"
+                f"<td style='border:1px solid #ccc;padding:6px;text-align:right;font-family:monospace;font-weight:700;'>৳{grand_total:.2f}</td>"
+                f"</tr></tfoot></table>"
+            )
+
+        total_price = form_data.get("price", 0) if form_data else 0
+        delivery_days = form_data.get("delivery_days", "N/A") if form_data else "N/A"
+        html_content = f"""
+        <!DOCTYPE html><html>
+        <head><meta charset="utf-8">
+        <style>@page{{margin:40px;}} body{{font-family:'Helvetica Neue',Arial,sans-serif;color:#1a1a1a;line-height:1.5;}}
+        h1{{font-size:20px;border-bottom:2px solid #333;padding-bottom:6px;margin-bottom:14px;}}
+        table.meta{{width:100%;font-size:13px;margin-bottom:12px;}} table.meta td{{padding:3px 0;}}
+        </style></head>
+        <body>
+        <h1>Quotation</h1>
+        <table class="meta">
+        <tr><td><b>Requisition:</b> {req_title}</td><td><b>Supplier:</b> {vendor_name}</td></tr>
+        <tr><td><b>Total Price:</b> ৳{float(total_price):.2f}</td><td><b>Delivery:</b> {delivery_days} days</td></tr>
+        </table>
+        {table_html}
+        </body></html>
+        """
+        return HTML(string=html_content).write_pdf()
+    except Exception as exc:
+        import logging
+        logging.getLogger(__name__).warning("PDF generation failed: %s", exc)
+        return None
+
 router = APIRouter()
 
 
@@ -30,17 +92,29 @@ async def vendor_quote_form(
             request, "quotations/vendor_invalid.html", status_code=404
         )
 
+    supplier_items = None  # None means show all items
+    if link.negotiation_version == 2 and link.shortlisted_items:
+        from app.requisitions.models import ShortlistedItem
+        supplier_items = []
+        req_items = link.requisition.items or [] if link.requisition else []
+        for si in sorted(link.shortlisted_items, key=lambda x: x.item_index):
+            if si.item_index < len(req_items):
+                item = dict(req_items[si.item_index])
+                item['shortlisted_qty'] = float(si.shortlisted_qty)
+                item['original_index'] = si.item_index
+                supplier_items.append(item)
+
     if link.quotation:
         return templates.TemplateResponse(
             request,
             "quotations/vendor_thanks.html",
-            {"vendor": link.vendor, "req": link.requisition},
+            {"vendor": link.vendor, "req": link.requisition, "supplier_items": supplier_items},
         )
 
     return templates.TemplateResponse(
         request,
         "quotations/vendor_form.html",
-        {"link": link, "vendor": link.vendor, "req": link.requisition, "token": token},
+        {"link": link, "vendor": link.vendor, "req": link.requisition, "token": token, "supplier_items": supplier_items},
     )
 
 
@@ -122,15 +196,34 @@ async def submit_quotation(
     form_data = None
     if submission_type == "form":
         item_prices = req_form.getlist("item_price[]")
+        item_original_indices = req_form.getlist("item_original_index[]")
         items = []
         if item_prices and link.requisition and link.requisition.items:
-            for item, p in zip(link.requisition.items, item_prices):
-                items.append({
-                    "name": item.get("name"),
-                    "description": item.get("description"),
-                    "qty": item.get("qty"),
-                    "price": float(p) if p else 0.0
-                })
+            req_items = link.requisition.items
+            if link.negotiation_version == 2 and link.shortlisted_items:
+                # v2: only the shortlisted items are shown
+                shortlisted_sorted = sorted(link.shortlisted_items, key=lambda x: x.item_index)
+                visible_items = [
+                    req_items[si.item_index] 
+                    for si in shortlisted_sorted 
+                    if si.item_index < len(req_items)
+                ]
+                for item, p in zip(visible_items, item_prices):
+                    items.append({
+                        "name": item.get("name"),
+                        "description": item.get("description"),
+                        "qty": item.get("shortlisted_qty", item.get("qty")),
+                        "price": float(p) if p else 0.0
+                    })
+            else:
+                # v1: all items shown
+                for item, p in zip(req_items, item_prices):
+                    items.append({
+                        "name": item.get("name"),
+                        "description": item.get("description"),
+                        "qty": item.get("qty"),
+                        "price": float(p) if p else 0.0
+                    })
         
         form_data = {
             "price": price,

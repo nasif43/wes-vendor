@@ -105,8 +105,41 @@ async def view_vendor(
 
     result = await db.execute(select(Category).order_by(Category.name))
     categories = result.scalars().all()
+    
+    # Fetch supplier performance ratings
+    supplier_ratings = []
+    try:
+        from app.work_orders.models import SupplierRating
+        ratings_res = await db.execute(
+            select(SupplierRating)
+            .where(SupplierRating.vendor_id == vendor_id)
+            .order_by(SupplierRating.rated_at.desc())
+        )
+        supplier_ratings = ratings_res.scalars().all()
+    except Exception:
+        pass
+    
+    # Compute aggregate stats
+    perf_stats = {}
+    if supplier_ratings:
+        delivery_times = [float(r.delivery_days) for r in supplier_ratings if r.delivery_days]
+        defect_rates = [float(r.defect_rate_pct) for r in supplier_ratings]
+        total_ordered = sum(float(r.ordered_qty) for r in supplier_ratings)
+        total_received = sum(float(r.received_qty) for r in supplier_ratings)
+        total_rejected = sum(float(r.rejected_qty) for r in supplier_ratings)
+        perf_stats = {
+            "total_orders": len(supplier_ratings),
+            "avg_delivery_days": round(sum(delivery_times) / len(delivery_times), 1) if delivery_times else None,
+            "avg_defect_rate": round(sum(defect_rates) / len(defect_rates), 1) if defect_rates else 0.0,
+            "total_ordered": total_ordered,
+            "total_received": total_received,
+            "total_rejected": total_rejected,
+        }
+
     return templates.TemplateResponse(
-        request, "vendors/detail.html", {"user": user, "vendor": vendor, "categories": categories}
+        request, "vendors/detail.html",
+        {"user": user, "vendor": vendor, "categories": categories,
+         "supplier_ratings": supplier_ratings, "perf_stats": perf_stats}
     )
 
 

@@ -96,6 +96,65 @@
         </button>
     </form>
 
+    {% if perf_stats and perf_stats.total_orders > 0 %}
+    <div class="bg-white rounded-2xl border border-slate-200 p-5 mt-4 shadow-sm mb-4">
+        <h2 class="text-sm font-bold text-slate-900 mb-4">Supplier Performance</h2>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+            <div class="bg-slate-50 rounded-xl p-3 text-center">
+                <p class="text-2xl font-bold text-slate-900">{{ perf_stats.total_orders }}</p>
+                <p class="text-xs text-slate-500 mt-1">Orders Fulfilled</p>
+            </div>
+            <div class="bg-slate-50 rounded-xl p-3 text-center">
+                <p class="text-2xl font-bold {% if perf_stats.avg_delivery_days and perf_stats.avg_delivery_days <= 7 %}text-emerald-600{% elif perf_stats.avg_delivery_days and perf_stats.avg_delivery_days <= 14 %}text-amber-600{% else %}text-red-600{% endif %}">
+                    {{ perf_stats.avg_delivery_days or '—' }}
+                </p>
+                <p class="text-xs text-slate-500 mt-1">Avg Delivery Days</p>
+            </div>
+            <div class="bg-slate-50 rounded-xl p-3 text-center">
+                <p class="text-2xl font-bold {% if perf_stats.avg_defect_rate <= 5 %}text-emerald-600{% elif perf_stats.avg_defect_rate <= 15 %}text-amber-600{% else %}text-red-600{% endif %}">
+                    {{ perf_stats.avg_defect_rate }}%
+                </p>
+                <p class="text-xs text-slate-500 mt-1">Avg Defect Rate</p>
+            </div>
+            <div class="bg-slate-50 rounded-xl p-3 text-center">
+                <p class="text-2xl font-bold text-slate-900">{{ perf_stats.total_received|int }}/{{ perf_stats.total_ordered|int }}</p>
+                <p class="text-xs text-slate-500 mt-1">Units Received/Ordered</p>
+            </div>
+        </div>
+        {% if supplier_ratings|length > 0 %}
+        <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Order History</h3>
+        <div class="overflow-x-auto">
+            <table class="w-full text-xs">
+                <thead class="text-slate-400 border-b border-slate-100">
+                    <tr>
+                        <th class="text-left pb-2 pr-3">Date</th>
+                        <th class="text-right pb-2 pr-3">Ordered</th>
+                        <th class="text-right pb-2 pr-3">Received</th>
+                        <th class="text-right pb-2 pr-3">Rejected</th>
+                        <th class="text-right pb-2 pr-3">Defect %</th>
+                        <th class="text-right pb-2">Delivery (days)</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    {% for r in supplier_ratings %}
+                    <tr>
+                        <td class="py-2 pr-3 text-slate-500">{{ r.rated_at.strftime('%b %d, %Y') }}</td>
+                        <td class="py-2 pr-3 text-right font-mono">{{ r.ordered_qty|int }}</td>
+                        <td class="py-2 pr-3 text-right font-mono text-emerald-700">{{ r.received_qty|int }}</td>
+                        <td class="py-2 pr-3 text-right font-mono text-red-600">{{ r.rejected_qty|int }}</td>
+                        <td class="py-2 pr-3 text-right font-mono {% if r.defect_rate_pct|float <= 5 %}text-emerald-600{% elif r.defect_rate_pct|float <= 15 %}text-amber-600{% else %}text-red-600{% endif %}">
+                            {{ r.defect_rate_pct }}%
+                        </td>
+                        <td class="py-2 text-right font-mono">{{ r.delivery_days or '—' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
     <!-- DANGER ZONE -->
     <div class="bg-white rounded-2xl border border-red-200 p-5 shadow-sm">
         <h2 class="text-xs font-bold text-red-500 uppercase tracking-widest mb-2">Danger Zone</h2>

@@ -1,207 +1,201 @@
 {% extends "base.html" %}
-{% block title %}Receive Order — {{ req.title }}{% endblock %}
+{% block title %}Receive Items — {{ req.title }}{% endblock %}
 {% block content %}
-{% set status_str = (req.status.value if req.status.value is defined else req.status|string)|lower %}
-{% set is_qc_mode = (status_str == 'received' or request.query_params.get('qc') == '1') %}
-<div class="slide-up max-w-lg mx-auto pb-10">
-
-    <!-- HEADER -->
-    <div class="flex items-center gap-3 mb-6">
-        <a href="/requisitions/{{ req.id }}" class="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-50 transition shadow-sm active:scale-[0.97]">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+<div class="slide-up max-w-5xl mx-auto">
+    <div class="flex items-center gap-3 mb-5">
+        <a href="/requisitions/{{ req.id }}" class="w-9 h-9 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50 transition shadow-sm shrink-0">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
         </a>
-        <div>
-            <h1 class="text-lg font-bold text-slate-900 leading-tight">
-                {% if is_qc_mode %}Quality Control (QC) &amp; Delivery Verification{% else %}Record Physical Delivery Arrival{% endif %}
-            </h1>
-            <p class="text-xs text-slate-400 mt-0.5">{{ req.title }}</p>
+        <div class="min-w-0 flex-1">
+            <h1 class="text-xl font-bold text-slate-900 truncate">Receive Items</h1>
+            <p class="text-xs text-slate-400 mt-0.5 truncate">{{ req.title }}</p>
         </div>
     </div>
 
-    <!-- QC ALREADY DONE BANNER -->
-    {% if req.qc_done or status_str == 'closed' %}
-    <div class="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 mb-5 flex items-center gap-3">
-        <div class="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
-            <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
-        </div>
-        <div>
-            <p class="text-sm font-bold text-emerald-800">QC Inspection Completed</p>
-            {% if req.qc_receiver %}
-            <p class="text-xs text-emerald-600 mt-0.5">Verified &amp; Accepted by <strong>{{ req.qc_receiver.full_name }}</strong>
-                {% if req.qc_done_at %}on {{ req.qc_done_at.strftime('%b %d, %Y at %I:%M %p') }}{% endif %}
-            </p>
-            {% endif %}
-        </div>
+    {% if error %}
+    <div class="bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-5 text-sm text-red-700">
+        {{ error }}
     </div>
     {% endif %}
 
-    <!-- DELIVERY RECEIVED BANNER (Step 1 complete, Step 2 QC pending) -->
-    {% if status_str == 'received' and not req.qc_done %}
-    <div class="bg-sky-50 border border-sky-200 rounded-2xl p-4 mb-5 flex items-center gap-3">
-        <div class="w-8 h-8 rounded-full bg-sky-100 flex items-center justify-center shrink-0">
-            <svg class="w-4 h-4 text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-        </div>
-        <div>
-            <p class="text-sm font-bold text-sky-900">Delivery Arrival Recorded</p>
-            <p class="text-xs text-sky-700 mt-0.5">Physical items arrived at warehouse. Complete Quality Control (QC) inspection below to close ticket.</p>
-        </div>
-    </div>
-    {% endif %}
+    <form method="post" action="/requisitions/{{ req.id }}/receive" enctype="multipart/form-data" id="receiveForm">
 
-    <!-- FORM -->
-    <form method="POST" action="/requisitions/{{ req.id }}/receive" enctype="multipart/form-data" class="space-y-5">
-
-        <!-- INVOICE & RECEIVING DETAILS -->
-                    <div class="mt-4">
-                        <label class="block text-xs font-semibold text-slate-700 mb-1.5">Received Pieces *</label>
-                        <input type="number" name="received_pieces" required class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition">
-                    </div>
-                    <div class="mt-4">
-                        <label class="block text-xs font-semibold text-slate-700 mb-1.5">QC Number *</label>
-                        <input type="text" name="qc_number" required class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition">
-                    </div>
-                    <div class="mt-4">
-                        <label class="block text-xs font-semibold text-slate-700 mb-1.5">Receiver Number *</label>
-                        <input type="text" name="receiver_number" required class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition">
-                    </div>
-    
-        <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
-            <h2 class="text-sm font-bold text-slate-900 mb-4 flex items-center gap-2">
-                <svg class="w-4 h-4 text-brand-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                Delivery Challan / Invoice Details
-            </h2>
-
-            <div class="space-y-4">
+        <!-- Invoice & Reference Numbers -->
+        <div class="bg-white rounded-2xl border border-slate-200 p-5 mb-5 shadow-sm">
+            <h2 class="text-sm font-bold text-slate-900 mb-4">Invoice & Reference</h2>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                    <label class="block text-xs font-semibold text-slate-700 mb-1.5">Invoice / Challan Number *</label>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">Invoice Number *</label>
                     <input type="text" name="invoice_number" required
-                           value="{{ req.invoice_number or '' }}"
-                           placeholder="e.g. CH-2026-90218"
-                        class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition">
+                           class="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                           placeholder="INV-2024-001">
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold text-slate-700 mb-1.5">Attach Invoice / Challan Document</label>
-                    <input type="file" id="invoiceFileInput" name="invoice_file" accept="image/*,application/pdf" class="hidden" onchange="handleInvoiceFile(this)">
-                    <div class="flex items-center gap-2">
-                        <button type="button" onclick="document.getElementById('invoiceFileInput').click()" class="py-2.5 px-4 bg-slate-100 border border-slate-200 text-slate-700 rounded-xl text-xs font-bold hover:bg-slate-200 transition flex items-center gap-2 shrink-0 active:scale-[0.98]">
-                            <svg class="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
-                            Upload File / PDF
-                        </button>
-                        <span id="invoiceFileStatus" class="text-xs text-slate-500 truncate">
-                            {% if req.invoice_url %}Current: <a href="{{ req.invoice_url }}" target="_blank" class="text-brand-600 underline font-semibold">Attached</a>{% else %}No document chosen{% endif %}
-                        </span>
-                    </div>
-                    <input type="url" name="invoice_url" id="invoiceUrlInput"
-                           value="{{ req.invoice_url or '' }}"
-                           placeholder="Or paste URL: https://..."
-                        class="w-full mt-2 px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-600 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition">
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">QC Number</label>
+                    <input type="text" name="qc_number"
+                           class="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                           placeholder="QC-001">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">Receiver Number</label>
+                    <input type="text" name="receiver_number"
+                           class="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                           placeholder="RCV-001">
                 </div>
             </div>
         </div>
 
-        <!-- DELIVERY PHOTO & QC SECTION -->
-        <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
-            <h2 class="text-sm font-bold text-slate-900 mb-4 flex items-center gap-2">
-                <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                Quality Control (QC) &amp; Physical Verification
-            </h2>
+        <!-- Per-Item Receiving Table -->
+        <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm mb-5">
+            <div class="px-5 py-3.5 bg-slate-50 border-b border-slate-200">
+                <h2 class="text-sm font-bold text-slate-900">Item Receipt & QC</h2>
+                <p class="text-xs text-slate-500 mt-0.5">Enter the quantity received for each item. Rejected quantity is calculated automatically.</p>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="border-b border-slate-100 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                            <th class="px-4 py-3 text-left">Item</th>
+                            <th class="px-4 py-3 text-center">Ordered</th>
+                            <th class="px-4 py-3 text-center">Received</th>
+                            <th class="px-4 py-3 text-center">Rejected</th>
+                            <th class="px-4 py-3 text-right">Unit Price (৳)</th>
+                            <th class="px-4 py-3 text-right">Line Total (৳)</th>
+                            <th class="px-4 py-3 text-left">Rejection Reason</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100" id="itemsBody">
+                        {% for item in receive_items %}
+                        <tr>
+                            <input type="hidden" name="item_index[]" value="{{ loop.index0 }}">
+                            <input type="hidden" name="item_name[]" value="{{ item.name }}">
+                            <input type="hidden" name="ordered_qty[]" value="{{ item.ordered_qty }}">
+                            <input type="hidden" name="unit_price[]" value="{{ item.unit_price }}" id="price_{{ loop.index0 }}" data-price="{{ item.unit_price }}">
 
-            <div class="space-y-4">
+                            <td class="px-4 py-3">
+                                <p class="font-semibold text-slate-900">{{ item.name }}</p>
+                                {% if item.description %}
+                                <p class="text-xs text-slate-500 mt-0.5">{{ item.description }}</p>
+                                {% endif %}
+                            </td>
+                            <td class="px-4 py-3 text-center font-mono font-semibold text-slate-700">
+                                {{ item.ordered_qty }}
+                            </td>
+                            <td class="px-4 py-3 text-center">
+                                <input type="number" name="received_qty[]" min="0"
+                                       max="{{ item.ordered_qty }}" step="any"
+                                       value="{{ item.ordered_qty }}"
+                                       onchange="calcRow({{ loop.index0 }})"
+                                       oninput="calcRow({{ loop.index0 }})"
+                                       class="w-24 px-2 py-1 border border-slate-200 rounded-lg text-sm text-center font-mono focus:outline-none focus:ring-2 focus:ring-brand-500">
+                            </td>
+                            <td class="px-4 py-3 text-center">
+                                <span id="rejected_{{ loop.index0 }}" class="font-mono font-semibold text-red-600">0</span>
+                                <input type="hidden" name="rejected_qty[]" id="rejected_input_{{ loop.index0 }}" value="0">
+                            </td>
+                            <td class="px-4 py-3 text-right font-mono text-slate-700">
+                                {{ "%.2f"|format(item.unit_price|float(0)) }}
+                            </td>
+                            <td class="px-4 py-3 text-right">
+                                <span id="total_{{ loop.index0 }}" class="font-mono font-semibold text-slate-900">
+                                    {{ "%.2f"|format((item.ordered_qty|float(0)) * (item.unit_price|float(0))) }}
+                                </span>
+                            </td>
+                            <td class="px-4 py-3">
+                                <input type="text" name="rejection_reason[]" placeholder="Optional"
+                                       class="w-full px-2 py-1 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-brand-500">
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot class="border-t-2 border-slate-200 bg-slate-50">
+                        <tr>
+                            <td colspan="5" class="px-4 py-3 text-right font-bold text-slate-700">Invoice Total:</td>
+                            <td class="px-4 py-3 text-right">
+                                <span id="grand_total" class="font-bold text-lg text-slate-900 font-mono">0.00</span>
+                                <input type="hidden" name="grand_total" id="grand_total_input" value="0">
+                            </td>
+                            <td></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+
+        <!-- Delivery Photo -->
+        <div class="bg-white rounded-2xl border border-slate-200 p-5 mb-5 shadow-sm">
+            <h2 class="text-sm font-bold text-slate-900 mb-4">Delivery Documentation</h2>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-xs font-semibold text-slate-700 mb-1.5">Delivery Photo Proof (Real Camera / Gallery)</label>
-                    
-                    <!-- Native Camera & File Input -->
-                    <input type="file" id="cameraInput" name="delivery_photo" accept="image/*" capture="environment" class="hidden" onchange="handleDeliveryPhoto(this)">
-                    
-                    <div class="grid grid-cols-2 gap-2.5 mb-2">
-                        <button type="button" onclick="document.getElementById('cameraInput').click()" class="py-3 px-3 bg-brand-50 border border-brand-200/80 text-brand-700 rounded-xl text-xs font-bold hover:bg-brand-100 transition flex items-center justify-center gap-2 active:scale-[0.98]">
-                            <svg class="w-4 h-4 text-brand-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                            📸 Open Camera
-                        </button>
-                        <button type="button" onclick="document.getElementById('cameraInput').removeAttribute('capture');document.getElementById('cameraInput').click();document.getElementById('cameraInput').setAttribute('capture','environment')" class="py-3 px-3 bg-slate-100 border border-slate-200 text-slate-700 rounded-xl text-xs font-bold hover:bg-slate-200 transition flex items-center justify-center gap-2 active:scale-[0.98]">
-                            <svg class="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                            Choose File
-                        </button>
-                    </div>
-
-                    <!-- Live Image Preview Card -->
-                    <div id="photoPreviewContainer" class="{% if not req.delivery_image_url %}hidden{% endif %} mb-3 p-3 bg-slate-50 border border-slate-200 rounded-xl">
-                        <div class="flex items-center justify-between mb-2">
-                            <span id="photoPreviewLabel" class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                                <span class="w-2 h-2 rounded-full bg-emerald-500"></span> Photo Selected
-                            </span>
-                            <button type="button" onclick="clearDeliveryPhoto()" class="text-xs text-red-600 hover:text-red-700 font-semibold">Remove</button>
-                        </div>
-                        <img id="photoPreviewImg" src="{{ req.delivery_image_url or '' }}" alt="Delivery Preview" class="w-full max-h-56 object-cover rounded-lg border border-slate-200 shadow-2xs">
-                    </div>
-
-                    <input type="url" name="delivery_image_url" id="deliveryUrlInput"
-                           value="{{ req.delivery_image_url or '' }}"
-                           placeholder="Or paste image URL: https://..."
-                        class="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-600 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition">
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">Delivery Photo</label>
+                    <input type="file" name="delivery_photo" accept="image/*" capture="environment"
+                           class="w-full text-sm text-slate-600 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-brand-50 file:text-brand-700 hover:file:bg-brand-100">
                 </div>
-
-                <!-- QC CHECKBOX -->
-                <div class="pt-2">
-                    <label class="flex items-start gap-3 cursor-pointer group p-3.5 border border-slate-200 rounded-xl hover:bg-slate-50 transition {% if is_qc_mode %}bg-emerald-50/50 border-emerald-200{% endif %}">
-                        <div class="flex items-center h-5">
-                            <input type="checkbox" name="qc_done" value="true"
-                                   {% if req.qc_done or is_qc_mode %}checked{% endif %}
-                                   class="w-5 h-5 rounded border-slate-300 text-brand-600 focus:ring-brand-500 transition cursor-pointer">
-                        </div>
-                        <div class="flex-1">
-                            <div class="text-sm font-bold text-slate-900 group-hover:text-brand-700 transition">Quality Check Passed</div>
-                            <div class="text-xs text-slate-500 mt-0.5">
-                                I, <strong>{{ user.full_name }}</strong> ({{ user.role | replace('_', ' ') | upper }}), confirm physical goods received match order specifications.
-                                <span class="block mt-1 text-amber-600 font-medium">⚠ Check this box to mark Quality Control as passed and close the requisition ticket.</span>
-                            </div>
-                        </div>
-                    </label>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">Invoice File (PDF)</label>
+                    <input type="file" name="invoice_file" accept=".pdf,.jpg,.png"
+                           class="w-full text-sm text-slate-600 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-brand-50 file:text-brand-700 hover:file:bg-brand-100">
                 </div>
             </div>
         </div>
 
-        <button type="submit" class="w-full {% if is_qc_mode %}bg-emerald-600 hover:bg-emerald-700{% else %}bg-brand-600 hover:bg-brand-700{% endif %} text-white font-semibold rounded-xl h-14 text-sm shadow-sm hover:shadow-md transition active:scale-[0.98] flex items-center justify-center gap-2">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-            {% if is_qc_mode %}Complete QC Inspection &amp; Close Ticket{% else %}Record Delivery Arrival{% endif %}
+        <!-- QC Confirmation -->
+        <div class="bg-white rounded-2xl border border-slate-200 p-5 mb-6 shadow-sm">
+            <label class="flex items-center gap-3 cursor-pointer">
+                <input type="checkbox" name="qc_done" value="true"
+                       class="w-5 h-5 rounded text-brand-600 border-slate-300">
+                <div>
+                    <p class="text-sm font-bold text-slate-900">Mark as QC Complete</p>
+                    <p class="text-xs text-slate-500 mt-0.5">Check this to finalize the order, generate the invoice, and close the requisition.</p>
+                </div>
+            </label>
+        </div>
+
+        <button type="submit"
+                class="w-full bg-brand-600 text-white py-3.5 rounded-2xl text-sm font-bold hover:bg-brand-700 transition shadow-sm active:scale-[0.98]">
+            Submit Receiving Report & Generate Invoice
         </button>
-
     </form>
 </div>
 
 <script>
-function handleDeliveryPhoto(input) {
-    if (input.files && input.files[0]) {
-        const file = input.files[0];
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const previewContainer = document.getElementById('photoPreviewContainer');
-            const previewImg = document.getElementById('photoPreviewImg');
-            const previewLabel = document.getElementById('photoPreviewLabel');
-            
-            previewImg.src = e.target.result;
-            previewLabel.innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-500"></span> Captured: ' + file.name + ' (' + (file.size / 1024).toFixed(0) + ' KB)';
-            previewContainer.classList.remove('hidden');
-        };
-        reader.readAsDataURL(file);
-    }
-}
+    function calcRow(idx) {
+        const orderedEl = document.querySelector(`[name="ordered_qty[]"]`);
+        // Get ordered qty from hidden input
+        const orderedInputs = document.querySelectorAll('[name="ordered_qty[]"]');
+        const receivedInputs = document.querySelectorAll('[name="received_qty[]"]');
+        const priceEls = document.querySelectorAll('[id^="price_"]');
 
-function clearDeliveryPhoto() {
-    const input = document.getElementById('cameraInput');
-    input.value = '';
-    const previewContainer = document.getElementById('photoPreviewContainer');
-    const previewImg = document.getElementById('photoPreviewImg');
-    previewImg.src = '';
-    previewContainer.classList.add('hidden');
-    document.getElementById('deliveryUrlInput').value = '';
-}
+        const ordered = parseFloat(orderedInputs[idx]?.value || 0);
+        const received = parseFloat(receivedInputs[idx]?.value || 0);
+        const price = parseFloat(priceEls[idx]?.dataset.price || 0);
+        const rejected = Math.max(0, ordered - received);
+        const lineTotal = received * price;
 
-function handleInvoiceFile(input) {
-    if (input.files && input.files[0]) {
-        const file = input.files[0];
-        document.getElementById('invoiceFileStatus').innerHTML = '<span class="font-bold text-emerald-700">✓ ' + file.name + '</span> (' + (file.size / 1024).toFixed(0) + ' KB)';
+        const rejectedEl = document.getElementById(`rejected_${idx}`);
+        const rejectedInput = document.getElementById(`rejected_input_${idx}`);
+        const totalEl = document.getElementById(`total_${idx}`);
+
+        if (rejectedEl) rejectedEl.textContent = rejected.toFixed(received % 1 === 0 && ordered % 1 === 0 ? 0 : 2);
+        if (rejectedInput) rejectedInput.value = rejected;
+        if (totalEl) totalEl.textContent = lineTotal.toFixed(2);
+
+        // Recalculate grand total
+        let grand = 0;
+        document.querySelectorAll('[id^="total_"]').forEach(el => {
+            const v = parseFloat(el.textContent || 0);
+            if (!isNaN(v)) grand += v;
+        });
+        const grandEl = document.getElementById('grand_total');
+        const grandInput = document.getElementById('grand_total_input');
+        if (grandEl) grandEl.textContent = grand.toFixed(2);
+        if (grandInput) grandInput.value = grand.toFixed(2);
     }
-}
+
+    // Initialize all rows on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        const receivedInputs = document.querySelectorAll('[name="received_qty[]"]');
+        receivedInputs.forEach((_, idx) => calcRow(idx));
+    });
 </script>
 {% endblock %}
