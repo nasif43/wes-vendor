@@ -353,6 +353,54 @@ async def start_negotiation(
         import logging as _logging
         _logging.getLogger(__name__).exception("Failed to send v2 negotiation emails: %s", e)
 
+    # Transition to NEGOTIATING status
+    from app.requisitions.service import transition_requisition_status, InvalidStateTransitionError
+    from app.requisitions.models import RequisitionStatus
+    import logging
+    logger = logging.getLogger(__name__)
+    try:
+        await transition_requisition_status(
+            db,
+            requisition=req,
+            target_status=RequisitionStatus.NEGOTIATING,
+            actor=user,
+            action_name="NEGOTIATION_STARTED",
+            notes=f"v2 links generated for {len(v2_links)} supplier(s). Non-shortlisted suppliers will be notified.",
+        )
+    except InvalidStateTransitionError as e:
+        logger.warning("Could not transition to NEGOTIATING: %s", e)
+
+    # Send rejection notifications to non-shortlisted v1 vendors
+    try:
+        from app.email.resend import send_batch
+        non_shortlisted_res = await db.execute(
+            select(RequisitionVendor).where(
+                RequisitionVendor.requisition_id == req_id,
+                RequisitionVendor.is_shortlisted == False,
+                RequisitionVendor.negotiation_version == 1,
+                RequisitionVendor.status == "submitted",
+            )
+        )
+        non_shortlisted = non_shortlisted_res.scalars().all()
+        rejection_params = []
+        for lnk in non_shortlisted:
+            vendor = lnk.vendor
+            if vendor and vendor.contact_email:
+                from app.email.resend import build_decision_notification
+                param = await build_decision_notification(
+                    to=vendor.contact_email,
+                    vendor_name=vendor.contact_person or vendor.company_name,
+                    requisition_title=req.title,
+                    approved=False,
+                )
+                if param:
+                    rejection_params.append(param)
+        if rejection_params:
+            await send_batch(rejection_params)
+    except Exception as _e:
+        import logging as _logging
+        _logging.getLogger(__name__).warning("Failed to send rejection emails: %s", _e)
+
     await log_action(
         db,
         actor=user,

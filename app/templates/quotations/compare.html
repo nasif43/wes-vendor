@@ -6,6 +6,7 @@
 {% block nav_quotations_label %}text-brand-600 font-semibold{% endblock %}
 {% block content %}
 {% set blind = user and user.is_procurement_blind %}
+{% set is_locked = req.status.value in ('awarded', 'work_order_issued', 'receiving', 'received', 'closed') if req.status.value is defined else req.status|string in ('awarded', 'work_order_issued', 'receiving', 'received', 'closed') %}
 <div class="slide-up">
 
     <div class="flex items-center gap-3 mb-5">
@@ -23,6 +24,16 @@
         <p class="text-sm text-slate-700 leading-relaxed">{{ req.item_description }}</p>
     </div>
 
+{% if is_locked %}
+<div class="bg-emerald-50 border border-emerald-200 rounded-2xl px-4 py-3 mb-5 flex items-center gap-3">
+    <svg class="w-5 h-5 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/></svg>
+    <div>
+        <p class="text-sm font-bold text-emerald-800">Winner Selected — Comparison Locked</p>
+        <p class="text-xs text-emerald-600 mt-0.5">This requisition is in <strong>{{ req.status.value if req.status.value is defined else req.status }}</strong> status. The comparison view is read-only.</p>
+    </div>
+</div>
+{% endif %}
+
     {% if blind %}
     <div class="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 mb-5 text-xs text-amber-700 font-semibold flex items-center gap-2">
         <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/></svg>
@@ -34,6 +45,7 @@
     {% if submitted %}
 
     <!-- SHORTLISTING FORM (management/procurement only, no decision yet) -->
+    {% if not is_locked %}
     {% if not decision and user and (user.is_procurement or user.is_management or user.role == 'admin') %}
     <form method="post" action="/requisitions/{{ req.id }}/shortlist" class="mb-6">
         <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm mb-3">
@@ -45,7 +57,7 @@
             </div>
             <div class="space-y-2">
                 {% for link in submitted %}
-                {% if link.negotiation_version == '1' or not link.negotiation_version %}
+                {% if link.negotiation_version == 1 or not link.negotiation_version %}
                 <label class="flex items-center gap-3 p-3 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer transition">
                     <input type="checkbox" name="shortlisted_ids" value="{{ link.id }}"
                         {% if link.is_shortlisted %}checked{% endif %}
@@ -78,10 +90,11 @@
     </form>
     {% endif %}
     {% endif %}
+    {% endif %}
 
     <!-- V1 vs V2 DELTA TABLE -->
-    {% set v1_links = links | selectattr('quotation') | selectattr('negotiation_version', 'equalto', '1') | list %}
-    {% set v2_links = links | selectattr('quotation') | selectattr('negotiation_version', 'equalto', '2') | list %}
+    {% set v1_links = links | selectattr('quotation') | selectattr('negotiation_version', 'equalto', 1) | list %}
+    {% set v2_links = links | selectattr('quotation') | selectattr('negotiation_version', 'equalto', 2) | list %}
     {% if v2_links | length > 0 %}
     <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm mb-5">
         <div class="px-4 py-3 bg-amber-50 border-b border-amber-100">
@@ -151,7 +164,7 @@
                     </div>
                     <div>
                         <span class="font-bold text-sm text-slate-900 truncate">{{ link.vendor.company_name }}</span>
-                        {% if link.negotiation_version == '2' %}
+                        {% if link.negotiation_version == 2 %}
                         <span class="ml-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">v2</span>
                         {% endif %}
                         {% if link.allocated_quantity %}
@@ -254,24 +267,24 @@
                     View Detail
                     <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                 </a>
-                {% if decision %}
-                    {% if decision.winning_vendor_id == link.vendor_id %}
-                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
-                        <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
-                        Winner Selected
-                    </span>
-                    {% else %}
-                    <span class="text-xs font-medium text-slate-400">Not selected</span>
-                    {% endif %}
-                {% else %}
-                    {% if user and (user.is_procurement or user.is_management or user.role == 'admin') %}
-                    <form method="post" action="/decisions/new/{{ req.id }}/{{ link.vendor_id }}" class="inline">
-                        <button type="submit" class="bg-emerald-600 text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-emerald-700 transition shadow-sm active:scale-[0.97] min-h-[36px]">
-                            ✓ Select Winner
-                        </button>
-                    </form>
-                    {% endif %}
-                {% endif %}
+{% if is_locked %}
+    {% if decision and decision.winning_vendor_id == link.vendor_id %}
+    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+        <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+        Winner ✓
+    </span>
+    {% else %}
+    <span class="text-xs font-medium text-slate-400">Not selected</span>
+    {% endif %}
+{% else %}
+    {% if user and (user.is_management or user.role == 'admin') %}
+    <form method="post" action="/decisions/new/{{ req.id }}/{{ link.vendor_id }}" class="inline">
+        <button type="submit" class="bg-emerald-600 text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-emerald-700 transition shadow-sm active:scale-[0.97] min-h-[36px]">
+            ✓ Select as Winner
+        </button>
+    </form>
+    {% endif %}
+{% endif %}
             </div>
         </div>
         {% endfor %}

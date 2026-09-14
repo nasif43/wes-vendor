@@ -19,6 +19,9 @@ class InvalidStateTransitionError(Exception):
 
 # Legal state transition graph
 # Key: current status, Value: set of allowed next statuses
+# NAMING CONVENTION:
+#   vendor  = ORM/DB/Python internal
+#   supplier = UI/Jinja2/HTML user-facing
 ALLOWED_TRANSITIONS: dict[RequisitionStatus, set[RequisitionStatus]] = {
     RequisitionStatus.DRAFT: {
         RequisitionStatus.DRAFT,
@@ -29,26 +32,60 @@ ALLOWED_TRANSITIONS: dict[RequisitionStatus, set[RequisitionStatus]] = {
     RequisitionStatus.NEW: {
         RequisitionStatus.NEW,
         RequisitionStatus.IN_PROGRESS,
-        RequisitionStatus.SUBMITTED,
+        RequisitionStatus.NEGOTIATING,
+        RequisitionStatus.SUBMITTED,   # legacy compat
         RequisitionStatus.CANCELLED,
         RequisitionStatus.REJECTED,
     },
     RequisitionStatus.IN_PROGRESS: {
         RequisitionStatus.IN_PROGRESS,
-        RequisitionStatus.SUBMITTED,
+        RequisitionStatus.NEGOTIATING,
+        RequisitionStatus.AWARDED,
+        RequisitionStatus.SUBMITTED,   # legacy compat — maps to awarded
         RequisitionStatus.CANCELLED,
         RequisitionStatus.REJECTED,
     },
+    RequisitionStatus.NEGOTIATING: {
+        RequisitionStatus.NEGOTIATING,
+        RequisitionStatus.AWARDED,
+        RequisitionStatus.IN_PROGRESS,  # management reverts to re-compare
+        RequisitionStatus.CANCELLED,
+        RequisitionStatus.REJECTED,
+    },
+    RequisitionStatus.AWARDED: {
+        RequisitionStatus.AWARDED,
+        RequisitionStatus.WORK_ORDER_ISSUED,
+        RequisitionStatus.SUBMITTED,   # legacy compat
+        RequisitionStatus.CANCELLED,
+    },
     RequisitionStatus.SUBMITTED: {
+        # Legacy status — treated as AWARDED for new code, kept for backward compat
         RequisitionStatus.SUBMITTED,
-        RequisitionStatus.IN_PROGRESS,  # e.g., management rejection returns order for re-decision
-        RequisitionStatus.RECEIVED,
+        RequisitionStatus.AWARDED,
+        RequisitionStatus.WORK_ORDER_ISSUED,
+        RequisitionStatus.IN_PROGRESS,
+        RequisitionStatus.RECEIVING,
+        RequisitionStatus.RECEIVED,     # legacy compat
         RequisitionStatus.CLOSED,
         RequisitionStatus.CANCELLED,
         RequisitionStatus.REJECTED,
     },
+    RequisitionStatus.WORK_ORDER_ISSUED: {
+        RequisitionStatus.WORK_ORDER_ISSUED,
+        RequisitionStatus.RECEIVING,
+        RequisitionStatus.RECEIVED,     # legacy compat
+        RequisitionStatus.CLOSED,
+        RequisitionStatus.CANCELLED,
+    },
+    RequisitionStatus.RECEIVING: {
+        RequisitionStatus.RECEIVING,
+        RequisitionStatus.CLOSED,
+        RequisitionStatus.CANCELLED,
+    },
     RequisitionStatus.RECEIVED: {
+        # Legacy status — kept for backward compat with existing data
         RequisitionStatus.RECEIVED,
+        RequisitionStatus.RECEIVING,
         RequisitionStatus.CLOSED,
         RequisitionStatus.CANCELLED,
     },
@@ -60,7 +97,7 @@ ALLOWED_TRANSITIONS: dict[RequisitionStatus, set[RequisitionStatus]] = {
     },
     RequisitionStatus.REJECTED: {
         RequisitionStatus.REJECTED,  # Terminal state
-        RequisitionStatus.DRAFT,  # Allow re-opening rejected requisitions
+        RequisitionStatus.DRAFT,     # Allow re-opening rejected requisitions
     },
 }
 
@@ -84,7 +121,10 @@ async def transition_requisition_status(
     """
     current_status = requisition.status
     if isinstance(current_status, str):
-        current_status = RequisitionStatus(current_status)
+        try:
+            current_status = RequisitionStatus(current_status)
+        except ValueError:
+            current_status = RequisitionStatus.DRAFT
 
     allowed = ALLOWED_TRANSITIONS.get(current_status, set())
     if target_status not in allowed:
@@ -113,3 +153,12 @@ async def transition_requisition_status(
 
     await db.flush()
     return requisition
+
+
+async def get_winning_vendor_ids(db: AsyncSession, req_id: str) -> list[str]:
+    """Returns all vendor_ids that have a WorkOrder issued for this requisition."""
+    from app.work_orders.models import WorkOrder
+    result = await db.execute(
+        select(WorkOrder.vendor_id).where(WorkOrder.requisition_id == req_id)
+    )
+    return [row[0] for row in result.all()]
