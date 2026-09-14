@@ -60,7 +60,7 @@
                     <p class="text-xs text-slate-500 mt-0.5">Created by: {{ req.creator.full_name if req.creator else 'Unknown' }}</p>
                 </div>
                 <div>
-                    <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Supplier / Supplier</p>
+                    <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Supplier</p>
                     {% if decision and decision.winning_vendor %}
                     <p class="font-bold text-slate-900">{{ decision.winning_vendor.company_name }}</p>
                     {% if decision.winning_vendor.contact_person %}
