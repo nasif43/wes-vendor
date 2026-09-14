@@ -75,6 +75,8 @@ from app.decisions.routes import router as decisions_router
 from app.quotations.routes_internal import router as quotations_internal_router
 from app.quotations.routes_vendor import router as quotations_vendor_router
 from app.requisitions.routes import router as requisitions_router
+from app.requisitions.routes_selection import router as requisitions_selection_router
+from app.requisitions.routes_receiving import router as requisitions_receiving_router
 from app.settings.routes import router as settings_router
 from app.vendors.routes import router as vendors_router
 from app.reports.routes import router as reports_router
@@ -86,6 +88,8 @@ app.include_router(audit_router, prefix="/audit", tags=["audit"])
 app.include_router(vendors_router, prefix="/vendors", tags=["vendors"])
 app.include_router(categories_router, prefix="/categories", tags=["categories"])
 app.include_router(requisitions_router, prefix="/requisitions", tags=["requisitions"])
+app.include_router(requisitions_selection_router, prefix="/requisitions", tags=["requisitions"])
+app.include_router(requisitions_receiving_router, prefix="/requisitions", tags=["requisitions"])
 app.include_router(quotations_vendor_router, prefix="/vendor-quote", tags=["vendor-quote"])
 app.include_router(quotations_internal_router, prefix="/quotations", tags=["quotations"])
 app.include_router(decisions_router, prefix="/decisions", tags=["decisions"])
