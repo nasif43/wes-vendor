@@ -1,54 +1,125 @@
 {% extends "base.html" %}
-{% block title %}Work Order {{ wo.id[:8]|upper }}{% endblock %}
+{% block title %}Work Order {{ wo.id[:8]|upper }} — WES Supplier Portal{% endblock %}
+{% from "components/status_badge.html" import render_status_badge %}
+
 {% block content %}
-<div class="max-w-3xl mx-auto py-10 px-4">
-  <div class="flex items-center justify-between mb-6">
-    <div>
-      <p class="text-xs text-gray-500 font-mono">REF: {{ wo.id[:8]|upper }}</p>
-      <h1 class="text-2xl font-bold">Work Order</h1>
+<div class="max-w-4xl mx-auto py-8 px-4 sm:px-6 slide-up">
+    
+    <!-- Header & Breadcrumbs -->
+    <div class="flex items-center gap-2 mb-6 text-sm">
+        <a href="/work-orders" class="text-slate-500 hover:text-slate-700 transition font-medium">Work Orders</a>
+        <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+        <span class="text-slate-900 font-mono font-semibold">{{ wo.id[:8]|upper }}</span>
     </div>
-    {% if wo.pdf_url %}
-    <a href="{{ wo.pdf_url }}" target="_blank"
-       class="bg-brand-600 text-white px-4 py-2 rounded text-sm hover:bg-brand-700">
-      Download PDF
-    </a>
-    {% endif %}
-  </div>
 
-  <div class="bg-white rounded-lg border border-gray-200 p-6 space-y-3">
-    <div class="grid grid-cols-2 gap-4 text-sm">
-      <div><span class="font-semibold">Requisition:</span>
-        {{ wo.requisition.title if wo.requisition else '—' }}</div>
-      <div><span class="font-semibold">Supplier:</span>
-        {{ wo.vendor.company_name if wo.vendor else '—' }}</div>
-      <div><span class="font-semibold">Status:</span>
-        <span class="capitalize">{{ wo.status }}</span></div>
-      <div><span class="font-semibold">Issued:</span>
-        {{ wo.issued_at.strftime('%Y-%m-%d %H:%M') if wo.issued_at else '—' }}</div>
-      <div><span class="font-semibold">Issued By:</span>
-        {{ wo.issuer.full_name if wo.issuer else '—' }}</div>
-      <div><span class="font-semibold">Letterhead Slot:</span>
-        {{ wo.letterhead_slot or 'Default' }}</div>
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div class="flex items-center gap-3">
+            <div class="w-12 h-12 rounded-xl bg-brand-50 border border-brand-100 flex items-center justify-center shrink-0">
+                <svg class="w-6 h-6 text-brand-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                </svg>
+            </div>
+            <div>
+                <h1 class="text-2xl font-bold text-slate-900">Work Order <span class="font-mono text-lg text-slate-400 ml-1">#{{ wo.id[:8]|upper }}</span></h1>
+                <div class="mt-1">
+                    {{ render_status_badge(wo.status) }}
+                </div>
+            </div>
+        </div>
+        
+        {% if wo.pdf_url %}
+        <a href="{{ wo.pdf_url }}" target="_blank" class="inline-flex items-center gap-2 bg-white border border-slate-200 text-slate-700 px-4 py-2.5 rounded-xl text-sm font-bold hover:bg-slate-50 transition shadow-sm active:scale-[0.98]">
+            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            Download PDF
+        </a>
+        {% endif %}
     </div>
-    {% if wo.notes %}
-    <div class="text-sm"><span class="font-semibold">Notes:</span> {{ wo.notes }}</div>
-    {% endif %}
-    {% if wo.delivery_started_at %}
-    <div class="text-sm">
-      <span class="font-semibold">Delivery Started:</span>
-      {{ wo.delivery_started_at.strftime('%Y-%m-%d %H:%M') }}
-      {% if wo.delivery_completed_at %}
-      → <span class="font-semibold">Completed:</span>
-      {{ wo.delivery_completed_at.strftime('%Y-%m-%d %H:%M') }}
-      {% else %}
-      <span class="text-amber-600">(In progress)</span>
-      {% endif %}
-    </div>
-    {% endif %}
-  </div>
 
-  <div class="mt-6">
-    <a href="/work-orders" class="text-sm text-gray-500 hover:underline">← Back to Work Orders</a>
-  </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Details Card -->
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden p-6">
+            <h3 class="text-sm font-bold text-slate-900 mb-4 border-b border-slate-100 pb-3">Order Details</h3>
+            <dl class="space-y-4 text-sm">
+                <div class="flex flex-col sm:flex-row sm:justify-between gap-1">
+                    <dt class="text-slate-500">Requisition</dt>
+                    <dd class="font-medium text-slate-900 text-right">
+                        {% if wo.requisition %}
+                        <a href="/requisitions/{{ wo.requisition_id }}" class="text-brand-600 hover:underline">{{ wo.requisition.title }}</a>
+                        {% else %}—{% endif %}
+                    </dd>
+                </div>
+                <div class="flex flex-col sm:flex-row sm:justify-between gap-1">
+                    <dt class="text-slate-500">Supplier</dt>
+                    <dd class="font-medium text-slate-900 text-right">
+                        {% if wo.vendor %}
+                        <a href="/vendors/{{ wo.vendor_id }}" class="text-brand-600 hover:underline">{{ wo.vendor.company_name }}</a>
+                        {% else %}—{% endif %}
+                    </dd>
+                </div>
+                <div class="flex flex-col sm:flex-row sm:justify-between gap-1">
+                    <dt class="text-slate-500">Issued By</dt>
+                    <dd class="font-medium text-slate-900 text-right">{{ wo.issuer.full_name if wo.issuer else '—' }}</dd>
+                </div>
+                <div class="flex flex-col sm:flex-row sm:justify-between gap-1">
+                    <dt class="text-slate-500">Issued On</dt>
+                    <dd class="font-medium text-slate-900 text-right">{{ wo.issued_at.strftime('%b %d, %Y at %I:%M %p') if wo.issued_at else '—' }}</dd>
+                </div>
+                <div class="flex flex-col sm:flex-row sm:justify-between gap-1">
+                    <dt class="text-slate-500">Letterhead Slot</dt>
+                    <dd class="font-medium text-slate-900 text-right">Slot {{ wo.letterhead_slot or 'Default' }}</dd>
+                </div>
+            </dl>
+            {% if wo.notes %}
+            <div class="mt-4 pt-4 border-t border-slate-100">
+                <dt class="text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">Notes</dt>
+                <dd class="text-sm text-slate-700 bg-slate-50 rounded-xl p-3 border border-slate-100">{{ wo.notes }}</dd>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Delivery Tracking Card -->
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden p-6">
+            <h3 class="text-sm font-bold text-slate-900 mb-4 border-b border-slate-100 pb-3">Delivery Tracking</h3>
+            
+            <div class="relative pl-6 space-y-6">
+                <!-- Vertical Line -->
+                <div class="absolute left-[13px] top-[14px] bottom-3 w-[2px] bg-slate-100"></div>
+
+                <!-- Step 1: Issued -->
+                <div class="relative">
+                    <div class="absolute -left-6 top-1 w-2.5 h-2.5 rounded-full bg-brand-500 ring-4 ring-white z-10"></div>
+                    <p class="text-sm font-bold text-slate-900">Work Order Issued</p>
+                    <p class="text-xs text-slate-500 mt-0.5">{{ wo.issued_at.strftime('%b %d, %Y %I:%M %p') if wo.issued_at else '—' }}</p>
+                </div>
+
+                <!-- Step 2: Delivery Started -->
+                <div class="relative">
+                    <div class="absolute -left-6 top-1 w-2.5 h-2.5 rounded-full {% if wo.delivery_started_at %}bg-amber-500{% else %}bg-slate-200{% endif %} ring-4 ring-white z-10"></div>
+                    <p class="text-sm font-bold {% if wo.delivery_started_at %}text-slate-900{% else %}text-slate-400{% endif %}">Delivery Started</p>
+                    <p class="text-xs text-slate-500 mt-0.5">
+                        {% if wo.delivery_started_at %}
+                            {{ wo.delivery_started_at.strftime('%b %d, %Y %I:%M %p') }}
+                        {% else %}
+                            Pending
+                        {% endif %}
+                    </p>
+                </div>
+
+                <!-- Step 3: Delivery Completed / QC -->
+                <div class="relative">
+                    <div class="absolute -left-6 top-1 w-2.5 h-2.5 rounded-full {% if wo.delivery_completed_at %}bg-emerald-500{% else %}bg-slate-200{% endif %} ring-4 ring-white z-10"></div>
+                    <p class="text-sm font-bold {% if wo.delivery_completed_at %}text-slate-900{% else %}text-slate-400{% endif %}">QC & Delivery Completed</p>
+                    <p class="text-xs text-slate-500 mt-0.5">
+                        {% if wo.delivery_completed_at %}
+                            {{ wo.delivery_completed_at.strftime('%b %d, %Y %I:%M %p') }}
+                        {% else %}
+                            Pending
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
 </div>
 {% endblock %}

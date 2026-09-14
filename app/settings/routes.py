@@ -30,6 +30,15 @@ async def settings_page(
     cc_row = await db.get(SystemSettings, SystemSettings.cc_emails_key())
     cc_emails: list[str] = cc_row.get_list() if cc_row else []
 
+    # Load letterhead slots (1–4)
+    letterheads: dict[str, str | None] = {}
+    for slot in ["1", "2", "3", "4"]:
+        row = await db.get(SystemSettings, f"letterhead_{slot}")
+        letterheads[slot] = row.value if row else None
+
+    active_row = await db.get(SystemSettings, "active_letterhead")
+    active_slot = active_row.value if active_row else None
+
     return templates.TemplateResponse(
         request,
         "settings/index.html",
@@ -37,6 +46,9 @@ async def settings_page(
             "user": user,
             "cc_emails": cc_emails,
             "saved": request.query_params.get("saved"),
+            "error": request.query_params.get("error"),
+            "letterheads": letterheads,
+            "active_slot": active_slot,
         },
     )
 
