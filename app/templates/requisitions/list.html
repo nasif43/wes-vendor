@@ -21,6 +21,7 @@
 
             <div class="flex items-center gap-3">
                 <!-- VIEW TOGGLE BUTTONS -->
+                {% if user and (user.is_management or user.role == 'admin') %}
                 <div class="inline-flex p-1 bg-slate-200/80 rounded-xl border border-slate-200">
                     <button type="button" onclick="switchView('table')" id="btn-view-table"
                         class="px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-xs bg-white text-slate-900">
@@ -33,6 +34,7 @@
                         Kanban Board
                     </button>
                 </div>
+                {% endif %}
 
                 {% if not user or user.can_create_requisitions %}
                 <a href="/requisitions/new" class="bg-brand-600 text-white h-9 px-4 rounded-xl text-xs font-bold hover:bg-brand-700 transition shadow-xs flex items-center gap-1.5 active:scale-95 shrink-0">
@@ -474,18 +476,18 @@ function switchView(viewName) {
     const btnTable = document.getElementById('btn-view-table');
     const btnKanban = document.getElementById('btn-view-kanban');
 
-    if (viewName === 'kanban') {
+    if (viewName === 'kanban' && kanbanContainer) {
         tableContainer.classList.add('hidden');
         kanbanContainer.classList.remove('hidden');
 
-        btnKanban.className = 'px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-xs bg-white text-slate-900';
-        btnTable.className = 'px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 text-slate-600 hover:text-slate-900';
+        if (btnKanban) btnKanban.className = 'px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-xs bg-white text-slate-900';
+        if (btnTable) btnTable.className = 'px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 text-slate-600 hover:text-slate-900';
     } else {
-        kanbanContainer.classList.add('hidden');
+        if (kanbanContainer) kanbanContainer.classList.add('hidden');
         tableContainer.classList.remove('hidden');
 
-        btnTable.className = 'px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-xs bg-white text-slate-900';
-        btnKanban.className = 'px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 text-slate-600 hover:text-slate-900';
+        if (btnTable) btnTable.className = 'px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-xs bg-white text-slate-900';
+        if (btnKanban) btnKanban.className = 'px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 text-slate-600 hover:text-slate-900';
     }
 }
 

@@ -23,7 +23,8 @@
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
         
         <!-- CARD 1: ACTIVE REQUISITIONS -->
-        <a href="/requisitions?view=kanban" class="bg-white rounded-2xl border border-slate-200/80 p-4.5 hover:shadow-md hover:border-brand-200 transition group active:scale-[0.99] flex items-center justify-between">
+        {% set kanban_query = "?view=kanban" if user and (user.is_management or user.role == 'admin') else "" %}
+        <a href="/requisitions{{ kanban_query }}" class="bg-white rounded-2xl border border-slate-200/80 p-4.5 hover:shadow-md hover:border-brand-200 transition group active:scale-[0.99] flex items-center justify-between">
             <div class="flex items-center gap-3.5">
                 <div class="w-11 h-11 rounded-2xl bg-blue-50 text-brand-600 flex items-center justify-center shrink-0 shadow-xs">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
@@ -32,14 +33,14 @@
                     <div class="text-2xl font-black text-slate-900 tracking-tight">{{ stats.open_requisitions if stats else 0 }}</div>
                     <div class="text-xs font-semibold text-slate-500 mt-0.5">Active Reqs</div>
                     <span class="text-[10px] font-bold text-brand-600 group-hover:translate-x-0.5 transition inline-flex items-center gap-1 mt-0.5">
-                        Kanban Board &rarr;
+                        {% if user and (user.is_management or user.role == 'admin') %}Kanban Board{% else %}View List{% endif %} &rarr;
                     </span>
                 </div>
             </div>
         </a>
 
         <!-- CARD 2: CONFIRMED ORDERS -->
-        <a href="/requisitions?view=kanban" class="bg-white rounded-2xl border border-slate-200/80 p-4.5 hover:shadow-md hover:border-blue-200 transition group active:scale-[0.99] flex items-center justify-between">
+        <a href="/requisitions{{ kanban_query }}" class="bg-white rounded-2xl border border-slate-200/80 p-4.5 hover:shadow-md hover:border-blue-200 transition group active:scale-[0.99] flex items-center justify-between">
             <div class="flex items-center gap-3.5">
                 <div class="w-11 h-11 rounded-2xl bg-sky-50 text-sky-600 flex items-center justify-center shrink-0 shadow-xs">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
