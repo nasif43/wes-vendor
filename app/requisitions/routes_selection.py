@@ -166,7 +166,7 @@ async def add_temporary_vendor(
         return RedirectResponse(url="/requisitions", status_code=303)
 
     temp_vendor = Vendor(
-        company_name="Temporary Vendor",
+        company_name="Temporary Supplier",
         contact_email="temporary@example.com",
         is_temporary=True,
         is_active=True,
@@ -189,8 +189,8 @@ async def add_temporary_vendor(
         action="TEMPORARY_VENDOR_CREATED",
         entity_type="vendor",
         entity_id=temp_vendor.id,
-        entity_label=f"Unlisted Vendor ({req.title})",
-        notes=f"Unlisted/Temporary vendor link created for Requisition #{req_id} by {user.full_name} ({user.email}).",
+        entity_label=f"Unlisted Supplier ({req.title})",
+        notes=f"Unlisted/Temporary supplier link created for Requisition #{req_id} by {user.full_name} ({user.email}).",
     )
 
     if req.status == RequisitionStatus.DRAFT:
@@ -207,7 +207,7 @@ async def add_temporary_vendor(
     await db.flush()
 
     await db.commit()
-    return RedirectResponse(url=f"/requisitions/{req_id}?success=Temporary+vendor+link+generated", status_code=303)
+    return RedirectResponse(url=f"/requisitions/{req_id}?success=Temporary+supplier+link+generated", status_code=303)
 
 @router.post("/{req_id}/shortlist")
 async def shortlist_vendors(
@@ -355,7 +355,7 @@ async def start_negotiation(
     shortlisted = shortlisted_res.scalars().all()
     if not shortlisted:
         return RedirectResponse(
-        url=f"/quotations/compare/{req_id}?error=No+shortlisted+vendors+found.+Shortlist+vendors+first.",
+        url=f"/quotations/compare/{req_id}?error=No+shortlisted+suppliers+found.+Shortlist+suppliers+first.",
         status_code=303,
         )
 

@@ -1,0 +1,75 @@
+app/templates/quotations/vendor_thanks.html:7: <p class="text-sm text-gray-500 mb-1">Thank you, {{ vendor.company_name }}</p>
+app/templates/quotations/inbox.html:31: <!-- VENDOR ROWS -->
+app/templates/quotations/inbox.html:38: <span class="text-sm text-slate-800 font-medium truncate">{{ link.vendor.company_name }}</span>
+app/templates/quotations/compare.html:81: <span class="text-xs font-bold text-white">{{ link.vendor.company_name[:2] | upper }}</span>
+app/templates/quotations/compare.html:83: <span class="text-[11px] font-bold text-slate-800 leading-tight text-center max-w-[110px] truncate">{{ link.vendor.company_name }}</span>
+app/templates/quotations/compare.html:164: <!-- Fallback if no items: per-vendor checkboxes -->
+app/templates/quotations/compare.html:171: <span class="flex-1 text-sm font-semibold text-slate-900">{{ link.vendor.company_name }}</span>
+app/templates/quotations/compare.html:275: <td class="px-4 py-3 font-semibold text-slate-900">{{ v2.vendor.company_name }}</td>
+app/templates/quotations/compare.html:306: <!-- VENDOR HEADER -->
+app/templates/quotations/compare.html:310: <span class="text-xs font-bold text-white">{{ link.vendor.company_name[:2] | upper }}</span>
+app/templates/quotations/compare.html:313: <span class="font-bold text-sm text-slate-900 truncate">{{ link.vendor.company_name }}</span>
+app/templates/quotations/detail.html:17: <!-- VENDOR HEADER CARD -->
+app/templates/quotations/detail.html:20: <span class="text-white text-sm font-bold">{{ link.vendor.company_name[:2] | upper }}</span>
+app/templates/quotations/detail.html:24: <h2 class="font-bold text-sm text-slate-900 truncate">{{ link.vendor.company_name }}</h2>
+app/templates/quotations/detail.html:33: <p class="text-xs text-slate-400 truncate">{{ link.vendor.contact_email }}</p>
+app/templates/quotations/vendor_form.html:6: <p class="text-blue-200 text-sm text-center mb-2">{% if vendor.is_temporary %}Unlisted Supplier{% else %}{{ vendor.company_name }}{% endif %}</p>
+app/templates/quotations/vendor_form.html:28: <form method="post" action="/vendor-quote/{{ token }}" enctype="multipart/form-data" class="space-y-3">
+app/templates/quotations/vendor_form.html:30: <!-- TEMPORARY VENDOR CONTACT INFO -->
+app/templates/quotations/vendor_form.html:31: {% if vendor.is_temporary %}
+app/templates/quotations/vendor_form.html:97: <td class="px-3 py-2 font-bold text-right text-brand-700 border-t border-slate-300" id="vendor-total">0.00</td>
+app/templates/quotations/vendor_form.html:113: document.getElementById('vendor-total').innerText = total.toFixed(2);
+app/templates/vendors/detail.html:2: {% block title %}{{ vendor.company_name }} — WES Supplier Portal{% endblock %}
+app/templates/vendors/detail.html:17: <span class="text-white text-sm font-bold">{{ vendor.company_name[:2] | upper }}</span>
+app/templates/vendors/detail.html:20: <h1 class="text-xl font-bold text-slate-900 truncate">{{ vendor.company_name }}</h1>
+app/templates/vendors/detail.html:26: <form method="post" action="/vendors/{{ vendor.id }}">
+app/templates/vendors/detail.html:32: <input type="text" name="company_name" value="{{ vendor.company_name }}" required
+app/templates/vendors/detail.html:37: <input type="email" name="contact_email" value="{{ vendor.contact_email }}" required
+app/templates/vendors/detail.html:43: <input type="text" name="contact_person" value="{{ vendor.contact_person or '' }}"
+app/templates/vendors/detail.html:48: <input type="text" name="phone" value="{{ vendor.phone or '' }}"
+app/templates/vendors/detail.html:55: class="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition bg-slate-50 focus:bg-white resize-none">{{ vendor.notes or '' }}</textarea>
+app/templates/vendors/detail.html:57: {% if vendor.creator %}
+app/templates/vendors/detail.html:60: <span class="font-medium text-slate-700">{{ vendor.creator.full_name }} ({{ vendor.creator.email }})</span>
+app/templates/vendors/detail.html:73: <option value="true" {% if vendor.is_active %}selected{% endif %}>Active</option>
+app/templates/vendors/detail.html:74: <option value="false" {% if not vendor.is_active %}selected{% endif %}>Inactive</option>
+app/templates/vendors/detail.html:84: {% if cat in vendor.categories %}checked{% endif %}>
+app/templates/vendors/detail.html:162: <form method="post" action="/vendors/{{ vendor.id }}/delete" onsubmit="return confirm('Delete this supplier and all their quotations? This cannot be undone.')">
+app/templates/vendors/detail.html:170: <a href="/vendors/{{ vendor.id }}/audit" class="flex items-center justify-between bg-white border border-slate-200 rounded-2xl p-4 hover:border-brand-300 hover:shadow-sm transition shadow-sm group active:scale-[0.98] mt-4">
+app/templates/vendors/audit.html:2: {% block title %}{{ vendor.company_name }} — Audit Notes — WES Supplier Portal{% endblock %}
+app/templates/vendors/audit.html:12: <a href="/vendors/{{ vendor.id }}" class="w-9 h-9 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50 transition shadow-sm shrink-0">
+app/templates/vendors/audit.html:17: <span class="text-white text-sm font-bold">{{ vendor.company_name[:2] | upper }}</span>
+app/templates/vendors/audit.html:20: <h1 class="text-xl font-bold text-slate-900 truncate">{{ vendor.company_name }}</h1>
+app/templates/vendors/audit.html:30: <form method="post" action="/vendors/{{ vendor.id }}/reject-note" class="space-y-3">
+app/templates/vendors/list.html:24: {% for vendor in vendors %}
+app/templates/vendors/list.html:25: <a href="/vendors/{{ vendor.id }}" class="bg-white rounded-2xl border border-slate-200 p-4 hover:shadow-md hover:border-brand-200 transition group active:scale-[0.98]">
+app/templates/vendors/list.html:29: <span class="text-sm font-bold text-white">{{ vendor.company_name[:2] | upper }}</span>
+app/templates/vendors/list.html:32: <h3 class="font-bold text-sm text-slate-900 truncate">{{ vendor.company_name }}</h3>
+app/templates/vendors/list.html:33: <p class="text-xs text-slate-400 truncate">{{ vendor.contact_email }}</p>
+app/templates/vendors/list.html:34: {% if vendor.contact_person %}
+app/templates/vendors/list.html:35: <p class="text-xs text-slate-400 truncate">{{ vendor.contact_person }}</p>
+app/templates/vendors/list.html:41: {% if vendor.categories %}
+app/templates/vendors/list.html:43: {% for cat in vendor.categories %}
+app/templates/work_orders/detail.html:54: {% if wo.vendor %}
+app/templates/work_orders/detail.html:55: <a href="/vendors/{{ wo.vendor_id }}" class="text-brand-600 hover:underline">{{ wo.vendor.company_name }}</a>
+app/templates/work_orders/list.html:47: {% if wo.vendor %}
+app/templates/work_orders/list.html:49: <span class="text-[10px] font-bold text-white">{{ wo.vendor.company_name[:2] | upper }}</span>
+app/templates/work_orders/list.html:51: <span class="font-medium text-slate-700 text-sm">{{ wo.vendor.company_name }}</span>
+app/templates/requisitions/select_vendors.html:45: <input type="text" id="vendor-search" placeholder="Search suppliers…"
+app/templates/requisitions/select_vendors.html:60: <!-- VENDOR LIST -->
+app/templates/requisitions/select_vendors.html:61: <div class="space-y-1.5" id="vendor-list">
+app/templates/requisitions/select_vendors.html:62: {% for vendor in vendors %}
+app/templates/requisitions/select_vendors.html:63: <label class="vendor-item flex items-center gap-3 rounded-xl border border-slate-100 p-3.5 hover:bg-brand-50 hover:border-brand-200 cursor-pointer transition active:scale-[0.99] min-h-[56px]" data-categories="{{ vendor.categories | map(attribute='id') | list }}">
+app/templates/requisitions/select_vendors.html:64: <input type="checkbox" name="vendor_ids" value="{{ vendor.id }}" class="rounded text-brand-600 w-4 h-4 border-slate-300 shrink-0">
+app/templates/requisitions/select_vendors.html:66: <div class="font-semibold text-slate-900 text-sm truncate">{{ vendor.company_name }}</div>
+app/templates/requisitions/select_vendors.html:67: <div class="text-xs text-slate-400 truncate">{{ vendor.contact_email }}</div>
+app/templates/requisitions/select_vendors.html:69: {% if vendor.categories %}
+app/templates/requisitions/select_vendors.html:71: {% for cat in vendor.categories[:2] %}
+app/templates/requisitions/select_vendors.html:101: <form method="post" action="/requisitions/{{ req.id }}/add-temporary-vendor">
+app/templates/requisitions/select_vendors.html:114: document.querySelectorAll('.vendor-item').forEach(item => {
+app/templates/requisitions/select_vendors.html:129: document.querySelectorAll('.vendor-item').forEach(item => {
+app/templates/requisitions/detail.html:184: <div class="font-semibold text-sm text-slate-900 truncate">{{ link.vendor.company_name }}
+app/templates/requisitions/detail.html:187: <div class="text-xs text-slate-400 truncate">{{ link.vendor.contact_email }}</div>
+app/templates/requisitions/detail.html:193: onclick="navigator.clipboard.writeText('{{ request.base_url }}vendor-quote/{{ link.unique_link_token }}');const t=this;const o=t.innerHTML;t.innerHTML='Copied!';setTimeout(()=>t.innerHTML=o,2000)"
+app/templates/requisitions/detail.html:217: <!-- TEMPORARY VENDOR CARD — hidden once any supplier has submitted a quote -->
+app/templates/requisitions/detail.html:222: <form method="post" action="/requisitions/{{ req.id }}/add-temporary-vendor">
+app/templates/requisitions/list.html:259: <!-- COLUMN 4: SUBMITTED (VENDOR SELECTED / DECISION APPROVED) -->

@@ -268,13 +268,13 @@ async def submit_quotation(
                 target_status=RequisitionStatus.IN_PROGRESS,
                 actor=None,
                 action_name="QUOTATION_RECEIVED",
-                notes=f"Quotation submitted by vendor {link.vendor.company_name if link.vendor else 'Vendor'}",
+                notes=f"Quotation submitted by supplier {link.vendor.company_name if link.vendor else 'Supplier'}",
             )
     await db.flush()
 
     # ── Audit log for Quotation Submission ─────────────────────────────────────
     from app.audit.models import AuditLog
-    vendor_display = link.vendor.company_name if link.vendor else "Vendor"
+    vendor_display = link.vendor.company_name if link.vendor else "Supplier"
     vendor_email = link.vendor.contact_email if link.vendor else "vendor@external"
     db.add(
         AuditLog(

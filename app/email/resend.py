@@ -179,7 +179,7 @@ async def build_submission_notification(
     cc = await get_cc_emails()
     html = f"""
     <h2>Quotation Submitted</h2>
-    <p>Vendor <strong>{vendor_name}</strong> has submitted a quotation for your requisition: <strong>{requisition_title}</strong>.</p>
+    <p>Supplier <strong>{vendor_name}</strong> has submitted a quotation for your requisition: <strong>{requisition_title}</strong>.</p>
     <p><a href="{view_url}">Click here to view the quotation details in the portal</a></p>
     """
     payload = {
