@@ -79,10 +79,19 @@ async def receive_requisition_form(
                 "unit_price": 0,  # No price data available
             })
 
+    # Fetch letterheads for the invoice generator dropdown
+    from app.settings.models import SystemSettings
+    letterheads = {}
+    for slot in ["1", "2", "3", "4"]:
+        url_row = await db.get(SystemSettings, f"letterhead_{slot}")
+        if url_row and url_row.value:
+            name_row = await db.get(SystemSettings, f"letterhead_{slot}_name")
+            letterheads[slot] = name_row.value if name_row else f"Letterhead {slot}"
+
     return templates.TemplateResponse(
         request,
         "requisitions/receive.html",
-        {"req": req, "user": user, "receive_items": receive_items}
+        {"req": req, "user": user, "receive_items": receive_items, "letterheads": letterheads}
     )
 
 
