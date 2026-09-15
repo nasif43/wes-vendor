@@ -51,7 +51,7 @@ class Requisition(Base):
     unit: Mapped[str | None] = mapped_column(String(50), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[RequisitionStatus] = mapped_column(
-        String(50), default=RequisitionStatus.DRAFT
+        Enum(RequisitionStatus, native_enum=False, length=50), default=RequisitionStatus.DRAFT
     )
     created_by: Mapped[str] = mapped_column(String(36), ForeignKey("user_profiles.id"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
