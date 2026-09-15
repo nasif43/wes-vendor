@@ -24,15 +24,16 @@ from app.categories.models import Category
 from app.database import Base
 from app.decisions.models import Decision
 from app.quotations.models import Quotation
-from app.requisitions.models import Requisition, RequisitionStatus, RequisitionVendor
+from app.requisitions.models import Requisition, RequisitionStatus, RequisitionVendor, ShortlistedItem, ReceivedItem
 from app.vendors.models import Vendor
+from app.work_orders.models import WorkOrder, SupplierRating
+from app.settings.models import SystemSettings
 
 random.seed(42)
 
-# Obtain DB URL from environment or default to local SQLite
-DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite+aiosqlite:///./wes_dev.db")
-if DATABASE_URL.startswith("postgresql://"):
-    DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
+from app.config import get_settings
+settings = get_settings()
+DATABASE_URL = settings.database_url
 
 
 def now_minus(days: int) -> datetime:
