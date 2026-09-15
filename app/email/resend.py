@@ -158,7 +158,9 @@ async def build_vendor_invitation(
         "html": html,
     }
     if pdf_bytes:
-        payload["attachments"] = [{"filename": f"RFQ_{requisition_title.replace(' ', '_')}.pdf", "content": list(pdf_bytes)}]
+        import base64
+        b64_content = base64.b64encode(pdf_bytes).decode("ascii")
+        payload["attachments"] = [{"filename": f"RFQ_{requisition_title.replace(' ', '_')}.pdf", "content": b64_content, "content_type": "application/pdf"}]
     return _apply_cc(payload, cc)
 
 
@@ -207,7 +209,9 @@ async def build_submission_notification(
         "html": html,
     }
     if pdf_bytes:
-        payload["attachments"] = [{"filename": f"Quotation_{vendor_name}.pdf", "content": list(pdf_bytes)}]
+        import base64
+        b64_content = base64.b64encode(pdf_bytes).decode("ascii")
+        payload["attachments"] = [{"filename": f"Quotation_{vendor_name}.pdf", "content": b64_content, "content_type": "application/pdf"}]
     return _apply_cc(payload, cc)
 
 
@@ -331,7 +335,9 @@ async def build_negotiation_invitation(
         "html": html,
     }
     if pdf_bytes:
-        payload["attachments"] = [{"filename": f"Revised_RFQ_{requisition_title.replace(' ', '_')}.pdf", "content": list(pdf_bytes)}]
+        import base64
+        b64_content = base64.b64encode(pdf_bytes).decode("ascii")
+        payload["attachments"] = [{"filename": f"Revised_RFQ_{requisition_title.replace(' ', '_')}.pdf", "content": b64_content, "content_type": "application/pdf"}]
     return _apply_cc(payload, cc)
 
 
