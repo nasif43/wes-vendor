@@ -257,8 +257,22 @@
         {% else %}
             {# ── NORMAL VIEW: full list with send actions ── #}
             {% set winning_vid = decision.winning_vendor_id if decision else none %}
+            {% set active_vendors = [] %}
+            {% set vendor_history = {} %}
+            {% set seen = [] %}
+            {% for link in sorted_links %}
+                {% if link.vendor_id not in seen %}
+                    {% set _ = seen.append(link.vendor_id) %}
+                    {% set _ = active_vendors.append(link) %}
+                {% else %}
+                    {% set cur_hist = vendor_history.get(link.vendor_id, []) %}
+                    {% set _ = cur_hist.append(link) %}
+                    {% set _ = vendor_history.update({link.vendor_id: cur_hist}) %}
+                {% endif %}
+            {% endfor %}
+
             <div class="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100 overflow-hidden shadow-sm mb-4">
-                {% for link in sorted_links %}
+                {% for link in active_vendors %}
                 <div class="flex items-center justify-between px-4 py-3.5 min-h-[56px]">
                     <div class="flex items-center gap-3 min-w-0">
                         <div class="w-2 h-2 rounded-full shrink-0
@@ -317,6 +331,28 @@
                         </span>
                     </div>
                 </div>
+                
+                {# Historical versions (e.g. v1 when v2 exists) #}
+                {% set cur_hist = vendor_history.get(link.vendor_id, []) %}
+                {% if cur_hist %}
+                <div class="bg-slate-50/50 border-t border-slate-100">
+                    {% for h_link in cur_hist %}
+                    <div class="flex items-center justify-between px-4 py-2 opacity-60">
+                        <div class="flex items-center gap-3 min-w-0 pl-5 border-l-2 border-slate-200 ml-[3px]">
+                            <div class="min-w-0">
+                                <div class="font-medium text-xs text-slate-500 truncate">Previous Version
+                                    <span class="text-[10px] text-slate-500 font-bold ml-1">v{{ h_link.negotiation_version }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide bg-slate-200 text-slate-500 shrink-0">
+                            {{ h_link.status }}
+                        </span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                
                 {% endfor %}
             </div>
         {% endif %}
