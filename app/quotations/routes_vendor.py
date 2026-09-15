@@ -317,28 +317,17 @@ async def submit_quotation(
         from app.email.resend import build_submission_notification, build_submission_confirmation, send_batch
         email_params = []
 
-        # Generate PDF (best-effort, email sends even without it)
-        pdf_bytes = _generate_quotation_pdf(
-            form_data,
-            req_title=link.requisition.title if link.requisition else "Quotation",
-            vendor_name=link.vendor.company_name if link.vendor else "Supplier",
-        )
-
         if link.requisition and link.requisition.creator and link.requisition.creator.email:
             view_url = f"{str(request.base_url).rstrip('/')}/quotations/detail/{link.id}"
-            
-            # Enforce blind bidding: do not send the PDF attachment if the creator is blind to pricing
-            is_blind = False
-            if hasattr(link.requisition.creator, "is_procurement_blind"):
-                is_blind = link.requisition.creator.is_procurement_blind
-                
+            # Never attach pricing PDF to the notification email — blind bidding must be
+            # enforced for all recipients including CC. Authorized users view pricing in the portal.
             email_params.append(
                 await build_submission_notification(
                     to=link.requisition.creator.email,
                     vendor_name=link.vendor.company_name if link.vendor else "Supplier",
                     requisition_title=link.requisition.title,
                     view_url=view_url,
-                    pdf_bytes=None if is_blind else pdf_bytes,
+                    pdf_bytes=None,
                 )
             )
 
