@@ -102,8 +102,20 @@ async def send_requisition(
     vendors_res = await db.execute(select(Vendor).where(Vendor.id.in_(vendor_ids)))
     vendors_map = {v.id: v for v in vendors_res.scalars().all()}
 
+    # Check for existing links to prevent sending multiple RFQs to the same supplier (v1)
+    existing_links_res = await db.execute(
+        select(RequisitionVendor.vendor_id).where(
+            RequisitionVendor.requisition_id == req_id,
+            RequisitionVendor.vendor_id.in_(vendor_ids)
+        )
+    )
+    existing_vendor_ids = set(existing_links_res.scalars().all())
+
     links = []
     for vendor_id in vendor_ids:
+        if vendor_id in existing_vendor_ids:
+            continue  # Skip if this vendor was already invited to this requisition
+            
         link = RequisitionVendor(
             requisition_id=req_id,
             vendor_id=vendor_id,
