@@ -44,16 +44,16 @@ async def list_requisitions(
     # ── Status filter ─────────────────────────────────────────────────────────
     if status_filter:
         try:
-            stmt = stmt.where(Requisition.status == RequisitionStatus(status_filter))
+            stmt = stmt.where(Requisition.status == RequisitionStatus(status_filter).value)
         except ValueError:
             pass
 
     # ── Role-based visibility ──────────────────────────────────────────────────
     if user.role == UserRole.QC_RECEIVER and not user.can_view_all_requisitions:
         stmt = stmt.where(Requisition.status.in_([
-            RequisitionStatus.SUBMITTED,
-            RequisitionStatus.RECEIVED,
-            RequisitionStatus.CLOSED,
+            RequisitionStatus.SUBMITTED.value,
+            RequisitionStatus.RECEIVED.value,
+            RequisitionStatus.CLOSED.value,
         ]))
     elif not user.can_see_all_requisitions:
         stmt = stmt.where(Requisition.created_by == user.id)
