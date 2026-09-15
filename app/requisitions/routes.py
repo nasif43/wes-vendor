@@ -11,7 +11,8 @@ from app.categories.models import Category
 from app.database import get_db
 from app.dependencies import get_current_user
 from app.requisitions.models import Requisition, RequisitionStatus
-from app.settings.models import SystemSettings, RequisitionVendor
+from app.settings.models import SystemSettings
+from app.requisitions.models import RequisitionVendor
 
 router = APIRouter()
 
