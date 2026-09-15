@@ -109,29 +109,29 @@ async def send_batch(params: list[dict]) -> bool:
             html_content = p.get("html", "")
             with open(f"local_emails/{email_id}.html", "w") as f_out:
                 f_out.write(html_content)
-            
-            if "attachments" in p:
-                for att in p["attachments"]:
-                    if att.get("content"):
-                        with open(f"local_emails/{email_id}_{att['filename']}", "wb") as f_pdf:
-                            f_pdf.write(bytes(att["content"]))
             logger.info("--> Saved mock email to local_emails/%s.html", email_id)
         return False
     if not params:
         return False
 
-    def _send() -> dict:
-        return resend.Batch.send(params)
-
+    import httpx
+    headers = {
+        "Authorization": f"Bearer {settings.resend_api_key}",
+        "Content-Type": "application/json"
+    }
+    
     try:
-        result = await asyncio.to_thread(_send)
-        if "data" in result:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            resp = await client.post("https://api.resend.com/emails/batch", json=params, headers=headers)
+        
+        if resp.status_code == 200:
             logger.info("Batch email sent: %d message(s)", len(params))
             return True
-        logger.error("Batch send returned unexpected response: %s", result)
-        return False
+        else:
+            logger.error("Batch send failed: %s - %s", resp.status_code, resp.text)
+            return False
     except Exception as e:
-        logger.error("Batch email failed: %s", e)
+        logger.error("Batch email exception: %s", e)
         return False
 
 
@@ -158,7 +158,9 @@ async def build_vendor_invitation(
         "html": html,
     }
     if pdf_bytes:
-        payload["attachments"] = [{"filename": f"RFQ_{requisition_title.replace(' ', '_')}.pdf", "content": list(pdf_bytes), "content_type": "application/pdf"}]
+        import base64
+        b64_content = base64.b64encode(pdf_bytes).decode("utf-8")
+        payload["attachments"] = [{"filename": f"RFQ_{requisition_title.replace(' ', '_')}.pdf", "content": b64_content, "content_type": "application/pdf"}]
     return _apply_cc(payload, cc)
 
 
@@ -207,7 +209,9 @@ async def build_submission_notification(
         "html": html,
     }
     if pdf_bytes:
-        payload["attachments"] = [{"filename": f"Quotation_{vendor_name}.pdf", "content": list(pdf_bytes), "content_type": "application/pdf"}]
+        import base64
+        b64_content = base64.b64encode(pdf_bytes).decode("utf-8")
+        payload["attachments"] = [{"filename": f"Quotation_{vendor_name}.pdf", "content": b64_content, "content_type": "application/pdf"}]
     return _apply_cc(payload, cc)
 
 
@@ -331,7 +335,9 @@ async def build_negotiation_invitation(
         "html": html,
     }
     if pdf_bytes:
-        payload["attachments"] = [{"filename": f"Revised_RFQ_{requisition_title.replace(' ', '_')}.pdf", "content": list(pdf_bytes), "content_type": "application/pdf"}]
+        import base64
+        b64_content = base64.b64encode(pdf_bytes).decode("utf-8")
+        payload["attachments"] = [{"filename": f"Revised_RFQ_{requisition_title.replace(' ', '_')}.pdf", "content": b64_content, "content_type": "application/pdf"}]
     return _apply_cc(payload, cc)
 
 
