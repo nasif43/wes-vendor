@@ -89,6 +89,13 @@ async def issue_work_order(
     if not rv or rv.requisition_id != req_id:
         return RedirectResponse(url=f"/requisitions/{req_id}?error=Supplier+link+not+found", status_code=303)
 
+    # Only shortlisted (awarded) suppliers can receive a work order
+    if not rv.is_shortlisted:
+        return RedirectResponse(
+            url=f"/requisitions/{req_id}?error=Work+orders+can+only+be+issued+to+selected+award+winners",
+            status_code=303
+        )
+
     # Check if WO already issued for this link
     existing = await db.execute(
         select(WorkOrder).where(WorkOrder.requisition_vendor_id == rv_id)

@@ -189,7 +189,7 @@
                     </div>
                 </div>
                 <div class="flex items-center gap-2 shrink-0 ml-3">
-                                        {% if req.status.value == 'awarded' and (user.is_procurement or user.role == 'admin') %}
+                                        {% if req.status.value == 'awarded' and link.is_shortlisted and (user.is_procurement or user.role == 'admin') %}
                     <form method="post" action="/work-orders/issue/{{ req.id }}/{{ link.id }}" class="flex items-center gap-2">
                         <select name="letterhead_slot" class="text-xs border-slate-300 rounded px-2 py-1 bg-white">
                             {% for slot, name in letterheads.items() %}
