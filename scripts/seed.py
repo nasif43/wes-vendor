@@ -52,8 +52,8 @@ USERS = [
         is_management=False,
     ),
     dict(
-        email="mizanur.rahman@wenerbd.com",
-        full_name="Mizanur Rahman",
+        email="management@wenerbd.com",
+        full_name="Operations Director",
         role=UserRole.MANAGEMENT,
         can_view_quotations=True,
         can_do_qc=True,
