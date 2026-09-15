@@ -58,7 +58,7 @@
             <select name="status_filter" onchange="this.form.submit()"
                 class="text-sm border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition bg-slate-50 focus:bg-white text-slate-600 font-medium">
                 <option value="">All statuses</option>
-                {% for s in RequisitionStatus %}
+                {% for s in ui_status_list %}
                 <option value="{{ s.value }}" {% if status_filter == s.value %}selected{% endif %}>{{ s.value.replace('_', ' ').title() }}</option>
                 {% endfor %}
             </select>

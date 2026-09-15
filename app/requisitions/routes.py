@@ -127,7 +127,23 @@ async def list_requisitions(
             "lead_time_days": lead_time_days,
         })
 
+
+    # UI status filter order (excludes legacy aliases)
+    ui_status_list = [
+        RequisitionStatus.DRAFT,
+        RequisitionStatus.NEW,
+        RequisitionStatus.IN_PROGRESS,
+        RequisitionStatus.NEGOTIATING,
+        RequisitionStatus.AWARDED,
+        RequisitionStatus.WORK_ORDER_ISSUED,
+        RequisitionStatus.RECEIVING,
+        RequisitionStatus.CLOSED,
+        RequisitionStatus.CANCELLED,
+        RequisitionStatus.REJECTED,
+    ]
+
     return templates.TemplateResponse(
+
         request,
         "requisitions/list.html",
         {
@@ -141,6 +157,7 @@ async def list_requisitions(
             "search": search,
             "status_filter": status_filter,
             "RequisitionStatus": RequisitionStatus,
+            "ui_status_list": ui_status_list,
         },
     )
 
@@ -158,7 +175,23 @@ async def edit_requisition_page(
     if not req:
         return RedirectResponse(url="/requisitions", status_code=303)
         
+
+    # UI status filter order (excludes legacy aliases)
+    ui_status_list = [
+        RequisitionStatus.DRAFT,
+        RequisitionStatus.NEW,
+        RequisitionStatus.IN_PROGRESS,
+        RequisitionStatus.NEGOTIATING,
+        RequisitionStatus.AWARDED,
+        RequisitionStatus.WORK_ORDER_ISSUED,
+        RequisitionStatus.RECEIVING,
+        RequisitionStatus.CLOSED,
+        RequisitionStatus.CANCELLED,
+        RequisitionStatus.REJECTED,
+    ]
+
     return templates.TemplateResponse(
+
         request, "requisitions/edit.html", {"user": user, "req": req}
     )
 
@@ -220,7 +253,23 @@ async def new_requisition_page(
 
     result = await db.execute(select(Category).order_by(Category.name))
     categories = result.scalars().all()
+
+    # UI status filter order (excludes legacy aliases)
+    ui_status_list = [
+        RequisitionStatus.DRAFT,
+        RequisitionStatus.NEW,
+        RequisitionStatus.IN_PROGRESS,
+        RequisitionStatus.NEGOTIATING,
+        RequisitionStatus.AWARDED,
+        RequisitionStatus.WORK_ORDER_ISSUED,
+        RequisitionStatus.RECEIVING,
+        RequisitionStatus.CLOSED,
+        RequisitionStatus.CANCELLED,
+        RequisitionStatus.REJECTED,
+    ]
+
     return templates.TemplateResponse(
+
         request, "requisitions/create.html", {"user": user, "categories": categories}
     )
 
@@ -301,7 +350,23 @@ async def view_requisition(
             name_row = await db.get(SystemSettings, f"letterhead_{slot}_name")
             letterheads[slot] = name_row.value if name_row else f"Letterhead {slot}"
 
+
+    # UI status filter order (excludes legacy aliases)
+    ui_status_list = [
+        RequisitionStatus.DRAFT,
+        RequisitionStatus.NEW,
+        RequisitionStatus.IN_PROGRESS,
+        RequisitionStatus.NEGOTIATING,
+        RequisitionStatus.AWARDED,
+        RequisitionStatus.WORK_ORDER_ISSUED,
+        RequisitionStatus.RECEIVING,
+        RequisitionStatus.CLOSED,
+        RequisitionStatus.CANCELLED,
+        RequisitionStatus.REJECTED,
+    ]
+
     return templates.TemplateResponse(
+
         request, "requisitions/detail.html", {"user": user, "req": req, "letterheads": letterheads}
     )
 
