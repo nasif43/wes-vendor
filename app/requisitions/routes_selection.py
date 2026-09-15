@@ -442,7 +442,6 @@ async def start_negotiation(
                 # Build items specifically for this supplier's v2 negotiation
                 shortlisted = []
                 from app.requisitions.models import ShortlistedItem
-                from sqlalchemy import select
                 s_res = await db.execute(select(ShortlistedItem).where(ShortlistedItem.requisition_vendor_id == v2_lnk.id))
                 s_items = s_res.scalars().all()
                 for s_item in s_items:
