@@ -528,3 +528,82 @@ async def start_negotiation(
         url=f"/quotations/compare/{req_id}?success=Negotiation+links+sent", status_code=303
     )
 
+
+
+@router.post("/{req_id}/resend-link/{link_id}")
+async def resend_supplier_link(
+    request: Request,
+    req_id: str,
+    link_id: str,
+    user: UserProfile = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    from app.auth.models import UserRole
+    if not (user.is_procurement or user.has_management_authority or user.role == UserRole.ADMIN):
+        return RedirectResponse(url=f"/requisitions/{req_id}?error=Permission+denied", status_code=303)
+
+    result = await db.execute(select(RequisitionVendor).where(RequisitionVendor.id == link_id))
+    link = result.scalar_one_or_none()
+    
+    if not link or link.requisition_id != req_id:
+        return RedirectResponse(url=f"/requisitions/{req_id}?error=Link+not+found", status_code=303)
+        
+    if link.status == 'submitted':
+        return RedirectResponse(url=f"/requisitions/{req_id}?error=Supplier+already+submitted", status_code=303)
+        
+    vendor = link.vendor
+    req = link.requisition
+    
+    if not vendor or not vendor.contact_email:
+        return RedirectResponse(url=f"/requisitions/{req_id}?error=Supplier+has+no+email", status_code=303)
+
+    quote_url = f"{str(request.base_url).rstrip('/')}/vendor-quote/{link.unique_link_token}"
+    email_params = []
+    
+    from app.reports.pdf_service import generate_rfq_pdf
+    from app.email.resend import send_batch, build_vendor_invitation, build_negotiation_invitation
+    
+    if link.negotiation_version == 2:
+        # Re-build shortlisted items
+        shortlisted = []
+        for s_item in link.shortlisted_items:
+            desc = ""
+            if req.items and s_item.item_index < len(req.items):
+                desc = req.items[s_item.item_index].get("description", "")
+            shortlisted.append({
+                "name": s_item.item_name,
+                "description": desc,
+                "shortlisted_qty": s_item.shortlisted_qty
+            })
+        pdf_bytes = generate_rfq_pdf(req, vendor.company_name, shortlisted)
+        email_params.append(
+            await build_negotiation_invitation(
+                to=vendor.contact_email,
+                supplier_name=vendor.contact_person or vendor.company_name,
+                requisition_title=req.title,
+                quote_url=quote_url,
+                pdf_bytes=pdf_bytes,
+            )
+        )
+    else:
+        pdf_bytes = generate_rfq_pdf(req, vendor.company_name, req.items or [])
+        email_params.append(
+            await build_vendor_invitation(
+                to=vendor.contact_email,
+                vendor_name=vendor.contact_person or vendor.company_name,
+                requisition_title=req.title,
+                quote_url=quote_url,
+                pdf_bytes=pdf_bytes,
+            )
+        )
+
+    if email_params:
+        try:
+            await send_batch(email_params)
+            return RedirectResponse(url=f"/requisitions/{req_id}?success=Email+sent+to+{vendor.company_name}", status_code=303)
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).error("Failed to resend email: %s", e)
+            return RedirectResponse(url=f"/requisitions/{req_id}?error=Failed+to+send+email", status_code=303)
+            
+    return RedirectResponse(url=f"/requisitions/{req_id}", status_code=303)

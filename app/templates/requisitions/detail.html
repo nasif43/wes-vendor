@@ -172,7 +172,8 @@
 
         {% if req.vendor_links %}
         <div class="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100 overflow-hidden shadow-sm mb-4">
-            {% for link in req.vendor_links %}
+            {% set sorted_links = req.vendor_links | sort(attribute='negotiation_version', reverse=true) %}
+            {% for link in sorted_links %}
             <div class="flex items-center justify-between px-4 py-3.5 min-h-[56px]">
                 <div class="flex items-center gap-3 min-w-0">
                     <div class="w-2 h-2 rounded-full shrink-0
@@ -199,12 +200,20 @@
                     </form>
                     {% endif %}
                     {% if link.status != 'submitted' %}
-                    <button type="button"
-                        onclick="navigator.clipboard.writeText('{{ request.base_url }}vendor-quote/{{ link.unique_link_token }}');const t=this;const o=t.innerHTML;t.innerHTML='Copied!';setTimeout(()=>t.innerHTML=o,2000)"
-                        class="text-xs text-brand-600 bg-brand-50 hover:bg-brand-100 px-2.5 py-1.5 rounded-lg border border-brand-100 transition active:scale-95 flex items-center gap-1 min-h-[36px]">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
-                        Link
-                    </button>
+                    <div class="flex items-center gap-1">
+                        <form method="post" action="/requisitions/{{ req.id }}/resend-link/{{ link.id }}" class="inline">
+                            <button type="submit" class="text-xs text-amber-600 bg-amber-50 hover:bg-amber-100 px-2.5 py-1.5 rounded-lg border border-amber-100 transition active:scale-95 flex items-center gap-1 min-h-[36px]" title="Resend Email">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                                Email
+                            </button>
+                        </form>
+                        <button type="button"
+                            onclick="navigator.clipboard.writeText('{{ request.base_url }}vendor-quote/{{ link.unique_link_token }}');const t=this;const o=t.innerHTML;t.innerHTML='Copied!';setTimeout(()=>t.innerHTML=o,2000)"
+                            class="text-xs text-brand-600 bg-brand-50 hover:bg-brand-100 px-2.5 py-1.5 rounded-lg border border-brand-100 transition active:scale-95 flex items-center gap-1 min-h-[36px]" title="Copy Link">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+                            Link
+                        </button>
+                    </div>
                     {% endif %}
                     <span class="text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wide
                         {% if link.status == 'pending' %}bg-amber-100 text-amber-700
