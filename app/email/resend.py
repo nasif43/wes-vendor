@@ -189,23 +189,49 @@ async def build_decision_notification(
 
 
 async def build_submission_notification(
-    to: str, vendor_name: str, requisition_title: str, view_url: str, pdf_bytes: bytes | None = None
-) -> dict:
+    to: str, vendor_name: str, requisition_title: str, view_url: str, pdf_bytes: bytes | None = None, is_blind: bool = False
+) -> list[dict]:
     cc = await get_cc_emails()
     html = f"""
     <h2>Quotation Submitted</h2>
     <p>Supplier <strong>{vendor_name}</strong> has submitted a quotation for your requisition: <strong>{requisition_title}</strong>.</p>
     <p><a href="{view_url}">Click here to view the quotation details in the portal</a></p>
     """
-    payload = {
+    
+    payloads = []
+    
+    # 1. Primary email for the TO address (Procurement)
+    to_payload = {
         "from": f"Wener Supplier Management <{settings.mail_from}>",
         "to": [to],
         "subject": f"{requisition_title} - {vendor_name}",
         "html": html,
     }
-    if pdf_bytes:
-        payload["attachments"] = [{"filename": f"Quotation_{vendor_name}.pdf", "content": list(pdf_bytes), "content_type": "application/pdf"}]
-    return _apply_cc(payload, cc)
+    
+    if not is_blind and pdf_bytes:
+        to_payload["attachments"] = [{"filename": f"Quotation_{vendor_name}.pdf", "content": list(pdf_bytes), "content_type": "application/pdf"}]
+        
+    if not is_blind:
+        # If not blind, CC everyone on the same email
+        to_payload = _apply_cc(to_payload, cc)
+        payloads.append(to_payload)
+    else:
+        # If blind, do NOT attach CCs to the procurement email
+        payloads.append(to_payload)
+        
+        # 2. Separate email for CCs (Management) so they get the PDF
+        if cc:
+            cc_payload = {
+                "from": f"Wener Supplier Management <{settings.mail_from}>",
+                "to": cc,
+                "subject": f"Management Copy: {requisition_title} - {vendor_name}",
+                "html": html,
+            }
+            if pdf_bytes:
+                cc_payload["attachments"] = [{"filename": f"Quotation_{vendor_name}.pdf", "content": list(pdf_bytes), "content_type": "application/pdf"}]
+            payloads.append(cc_payload)
+            
+    return payloads
 
 
 async def build_submission_confirmation(
