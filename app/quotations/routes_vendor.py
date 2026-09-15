@@ -190,6 +190,7 @@ async def submit_quotation(
         link.vendor.contact_person = contact_person
         link.vendor.phone = phone
         link.vendor.contact_email = contact_email
+        link.vendor.is_temporary = False  # They've identified themselves — no longer unlisted
         await db.flush()
 
     image_url = None
