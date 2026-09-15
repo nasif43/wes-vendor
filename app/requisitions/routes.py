@@ -350,6 +350,9 @@ async def view_requisition(
             name_row = await db.get(SystemSettings, f"letterhead_{slot}_name")
             letterheads[slot] = name_row.value if name_row else f"Letterhead {slot}"
 
+    from app.decisions.models import Decision
+    decision_res = await db.execute(select(Decision).where(Decision.requisition_id == req_id))
+    decision = decision_res.scalar_one_or_none()
 
     # UI status filter order (excludes legacy aliases)
     ui_status_list = [
@@ -366,8 +369,7 @@ async def view_requisition(
     ]
 
     return templates.TemplateResponse(
-
-        request, "requisitions/detail.html", {"user": user, "req": req, "letterheads": letterheads}
+        request, "requisitions/detail.html", {"user": user, "req": req, "letterheads": letterheads, "decision": decision}
     )
 
 

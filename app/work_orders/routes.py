@@ -89,8 +89,12 @@ async def issue_work_order(
     if not rv or rv.requisition_id != req_id:
         return RedirectResponse(url=f"/requisitions/{req_id}?error=Supplier+link+not+found", status_code=303)
 
-    # Only shortlisted (awarded) suppliers can receive a work order
-    if not rv.is_shortlisted:
+    # Fetch the decision to verify this is the actual winner
+    from app.decisions.models import Decision
+    decision_res = await db.execute(select(Decision).where(Decision.requisition_id == req_id))
+    decision = decision_res.scalar_one_or_none()
+    
+    if not decision or decision.winning_vendor_id != rv.vendor_id:
         return RedirectResponse(
             url=f"/requisitions/{req_id}?error=Work+orders+can+only+be+issued+to+selected+award+winners",
             status_code=303

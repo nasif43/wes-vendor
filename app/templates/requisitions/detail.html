@@ -178,12 +178,24 @@
 
         {% if is_awarded and user.is_procurement_blind %}
             {# ── PROCUREMENT POST-AWARD: winners only ── #}
-            {% set winners = sorted_links | selectattr('is_shortlisted') | list %}
-            {% set non_winners = sorted_links | rejectattr('is_shortlisted') | list %}
+            {% set winning_vid = decision.winning_vendor_id if decision else none %}
+            {% set winners = sorted_links | selectattr('vendor_id', 'equalto', winning_vid) | list %}
+            {% set winner_active_link = winners | first if winners else none %}
+            
+            {# Deduplicate non-winners (only highest version per vendor) #}
+            {% set non_winners = [] %}
+            {% set seen = [] %}
+            {% for link in sorted_links %}
+                {% if link.vendor_id != winning_vid and link.vendor_id not in seen %}
+                    {% set _ = seen.append(link.vendor_id) %}
+                    {% set _ = non_winners.append(link) %}
+                {% endif %}
+            {% endfor %}
 
             <div class="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100 overflow-hidden shadow-sm mb-4">
                 {# Winner rows #}
-                {% for link in winners %}
+                {% if winner_active_link %}
+                {% set link = winner_active_link %}
                 <div class="flex items-center justify-between px-4 py-3.5 min-h-[56px]">
                     <div class="flex items-center gap-3 min-w-0">
                         <div class="w-2 h-2 rounded-full bg-emerald-400 shrink-0"></div>
@@ -211,7 +223,7 @@
                         </span>
                     </div>
                 </div>
-                {% endfor %}
+                {% endif %}
 
                 {# Collapsed non-winners #}
                 {% if non_winners %}
@@ -244,6 +256,7 @@
 
         {% else %}
             {# ── NORMAL VIEW: full list with send actions ── #}
+            {% set winning_vid = decision.winning_vendor_id if decision else none %}
             <div class="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100 overflow-hidden shadow-sm mb-4">
                 {% for link in sorted_links %}
                 <div class="flex items-center justify-between px-4 py-3.5 min-h-[56px]">
@@ -256,13 +269,13 @@
                         <div class="min-w-0">
                             <div class="font-semibold text-sm text-slate-900 truncate">{{ link.vendor.company_name }}
                                 {% if link.negotiation_version == 2 %}<span class="text-xs text-amber-600 font-bold ml-1">v2</span>{% endif %}
-                                {% if is_awarded and link.is_shortlisted %}<span class="ml-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700">Winner</span>{% endif %}
+                                {% if is_awarded and link.vendor_id == winning_vid %}<span class="ml-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700">Winner</span>{% endif %}
                             </div>
                             <div class="text-xs text-slate-400 truncate">{{ link.vendor.contact_email }}</div>
                         </div>
                     </div>
                     <div class="flex items-center gap-2 shrink-0 ml-3">
-                        {% if req_status_str == 'awarded' and link.is_shortlisted and (user.is_procurement or user.role == 'admin') %}
+                        {% if req_status_str == 'awarded' and link.vendor_id == winning_vid and (user.is_procurement or user.role == 'admin') %}
                         <form method="post" action="/work-orders/issue/{{ req.id }}/{{ link.id }}" class="flex items-center gap-2">
                             <select name="letterhead_slot" class="text-xs border-slate-300 rounded px-2 py-1 bg-white">
                                 {% for slot, name in letterheads.items() %}
