@@ -403,9 +403,9 @@ async def generate_invoice(
             select(RequisitionVendor).where(
                 RequisitionVendor.requisition_id == req_id,
                 RequisitionVendor.vendor_id == decision.winning_vendor_id,
-            )
+            ).order_by(RequisitionVendor.created_at.desc())
         )
-        winning_link = wv_res.scalar_one_or_none()
+        winning_link = wv_res.scalars().first()
         if winning_link:
             winning_quotation = winning_link.quotation
 
