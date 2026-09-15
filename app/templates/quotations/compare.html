@@ -41,7 +41,7 @@
     </div>
     {% endif %}
 
-    {% set submitted = links | selectattr('quotation') | list %}
+    {% set submitted = active_links %}
     {% if submitted %}
 
     <!-- SHORTLISTING FORM (management/procurement only, no decision yet) -->
@@ -293,9 +293,12 @@ document.addEventListener('DOMContentLoaded', () => {
     </div>
     {% endif %}
 
+
     <!-- Mobile: stacked cards. Desktop: 2-col grid -->
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {% for link in submitted %}
+        {% for entry in vendor_entries %}
+        {% set link = entry.active %}
+        {% set history = entry.history %}
         <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
 
             <!-- VENDOR HEADER -->
@@ -428,6 +431,71 @@ document.addEventListener('DOMContentLoaded', () => {
     {% endif %}
 {% endif %}
             </div>
+
+            <!-- COLLAPSIBLE QUOTE HISTORY (only shown if multiple versions exist) -->
+            {% if history | length > 1 %}
+            {% set hist_id = "hist_" ~ link.vendor_id | replace("-","") %}
+            <div class="border-t border-slate-100">
+                <button type="button"
+                    onclick="const el=document.getElementById('{{ hist_id }}');const icon=document.getElementById('{{ hist_id }}_icon');el.classList.toggle('hidden');icon.classList.toggle('rotate-180');"
+                    class="w-full flex items-center justify-between px-4 py-2.5 text-xs font-semibold text-slate-500 hover:bg-slate-50 transition">
+                    <span class="flex items-center gap-1.5">
+                        <svg class="w-3.5 h-3.5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        Quote History ({{ history | length }} versions)
+                    </span>
+                    <svg id="{{ hist_id }}_icon" class="w-3.5 h-3.5 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                </button>
+                <div id="{{ hist_id }}" class="hidden divide-y divide-slate-100 bg-slate-50/60">
+                    {% for h_link in history %}
+                    {% set hq = h_link.quotation %}
+                    <div class="px-4 py-3 text-xs">
+                        <div class="flex items-center justify-between mb-1.5">
+                            <span class="font-bold text-slate-700 flex items-center gap-1.5">
+                                {% if h_link.negotiation_version == 2 %}
+                                <span class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 font-bold text-[10px]">v2</span>
+                                {% else %}
+                                <span class="px-1.5 py-0.5 rounded bg-slate-200 text-slate-600 font-bold text-[10px]">v1</span>
+                                {% endif %}
+                                {% if h_link.id == link.id %}<span class="text-brand-600 font-semibold">(current)</span>{% endif %}
+                            </span>
+                            {% if hq and hq.submitted_at %}
+                            <span class="text-slate-400">{{ hq.submitted_at.strftime('%d %b %Y, %H:%M') }}</span>
+                            {% endif %}
+                        </div>
+                        {% if hq and hq.form_data %}
+                            {% if hq.form_data.get('items') %}
+                            <div class="space-y-1">
+                                {% for item in hq.form_data.get('items') %}
+                                <div class="flex justify-between text-slate-600">
+                                    <span>{{ item.name }}</span>
+                                    {% if blind %}<span class="text-slate-400">— (hidden)</span>{% else %}<span class="font-mono font-semibold text-slate-800">৳{{ "%.2f"|format(item.price|float(0)) }}</span>{% endif %}
+                                </div>
+                                {% endfor %}
+                                {% if not blind %}
+                                <div class="flex justify-between font-bold text-slate-800 border-t border-slate-200 pt-1 mt-1">
+                                    <span>Total</span>
+                                    <span class="font-mono">৳{{ "%.2f"|format(hq.form_data.price|float(0)) }}</span>
+                                </div>
+                                {% endif %}
+                            </div>
+                            {% elif not blind %}
+                            <div class="flex justify-between text-slate-600">
+                                <span>Unit Rate</span>
+                                <span class="font-mono font-semibold text-slate-800">৳{{ hq.form_data.price or '—' }}</span>
+                            </div>
+                            {% endif %}
+                            {% if hq.form_data.get('notes') %}
+                            <p class="text-slate-400 italic mt-1.5">{{ hq.form_data.notes }}</p>
+                            {% endif %}
+                        {% elif hq and hq.image_url %}
+                        <a href="{{ hq.image_url }}" target="_blank" class="text-brand-600 underline">View submitted image</a>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
         </div>
         {% endfor %}
     </div>

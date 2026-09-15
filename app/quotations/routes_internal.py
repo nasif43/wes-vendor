@@ -124,8 +124,15 @@ async def compare_quotations(
 
     from app.decisions.models import Decision
 
+    from sqlalchemy.orm import selectinload
     result = await db.execute(
-        select(RequisitionVendor).where(RequisitionVendor.requisition_id == req_id)
+        select(RequisitionVendor)
+        .options(
+            selectinload(RequisitionVendor.vendor),
+            selectinload(RequisitionVendor.quotations),
+            selectinload(RequisitionVendor.shortlisted_items),
+        )
+        .where(RequisitionVendor.requisition_id == req_id)
     )
     links = result.scalars().all()
 
@@ -133,6 +140,43 @@ async def compare_quotations(
         select(Decision).where(Decision.requisition_id == req_id)
     )
     decision = dec_res.scalar_one_or_none()
+
+    # Build deduplicated vendor map: prefer v2 over v1 as the "active" card.
+    # Also attach full quote history (all versions) per vendor_id for the collapsible panel.
+    vendor_map: dict = {}  # vendor_id -> {"active": link, "history": [link, ...]}
+    for link in links:
+        if not link.quotation:
+            continue  # skip pending / non-submitted
+        vid = link.vendor_id
+        if vid not in vendor_map:
+            vendor_map[vid] = {"active": link, "history": [link]}
+        else:
+            vendor_map[vid]["history"].append(link)
+            # v2 always wins as the active card
+            if link.negotiation_version > vendor_map[vid]["active"].negotiation_version:
+                vendor_map[vid]["active"] = link
+
+    # Sort each vendor's history newest-first, then sort vendors by latest submission date desc
+    def latest_submitted_at(entry):
+        dates = [
+            q.submitted_at
+            for lnk in entry["history"]
+            for q in lnk.quotations
+            if q.submitted_at
+        ]
+        return max(dates) if dates else None
+
+    for entry in vendor_map.values():
+        entry["history"].sort(key=lambda l: l.negotiation_version, reverse=True)
+
+    vendor_entries = sorted(
+        vendor_map.values(),
+        key=lambda e: latest_submitted_at(e) or __import__('datetime').datetime.min,
+        reverse=True,
+    )
+
+    # Flat list of active links (for the shortlist matrix, backward-compat)
+    active_links = [e["active"] for e in vendor_entries]
 
     # Fetch letterheads
     letterheads = {}
@@ -143,6 +187,14 @@ async def compare_quotations(
             letterheads[slot] = name_row.value if name_row else f"Letterhead {slot}"
 
     return templates.TemplateResponse(
-        request, "quotations/compare.html", {"user": user, "req": req, "links": links, "decision": decision, "letterheads": letterheads}
+        request, "quotations/compare.html", {
+            "user": user,
+            "req": req,
+            "links": links,
+            "vendor_entries": vendor_entries,
+            "active_links": active_links,
+            "decision": decision,
+            "letterheads": letterheads,
+        }
     )
 
