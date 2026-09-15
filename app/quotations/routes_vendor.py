@@ -234,8 +234,7 @@ async def submit_quotation(
             "warranty": warranty or None,
         }
 
-    # Determine quote version based on negotiation_version of the link
-    quote_ver = 2 if str(link.negotiation_version or "1") == "2" else 1
+    quote_ver = 2 if link.negotiation_version == 2 else 1
 
     # Parse optional quoted quantity
     quoted_qty = None

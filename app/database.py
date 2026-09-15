@@ -148,7 +148,7 @@ async def init_db() -> None:
             for col, defn in [
                 ("is_shortlisted", "BOOLEAN DEFAULT FALSE"),
                 ("allocated_quantity", "NUMERIC"),
-                ("negotiation_version", "VARCHAR(10) DEFAULT '1'"),
+                ("negotiation_version", "INTEGER DEFAULT 1"),
             ]:
                 if not col_exists("requisition_vendors", col):
                     await conn.execute(text(f"ALTER TABLE requisition_vendors ADD COLUMN {col} {defn}"))
@@ -242,7 +242,7 @@ async def init_db() -> None:
 
             for col, defn in [
                 ("is_shortlisted", "BOOLEAN DEFAULT 0"), ("allocated_quantity", "NUMERIC"),
-                ("negotiation_version", "VARCHAR(10) DEFAULT '1'"),
+                ("negotiation_version", "INTEGER DEFAULT 1"),
             ]:
                 if not col_exists("requisition_vendors", col):
                     await conn.execute(text(f"ALTER TABLE requisition_vendors ADD COLUMN {col} {defn}"))

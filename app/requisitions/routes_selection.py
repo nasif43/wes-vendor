@@ -349,7 +349,7 @@ async def start_negotiation(
         select(RequisitionVendor).where(
             RequisitionVendor.requisition_id == req_id,
             RequisitionVendor.is_shortlisted == True,
-            RequisitionVendor.negotiation_version == "1",
+            RequisitionVendor.negotiation_version == 1,
         )
     )
     shortlisted = shortlisted_res.scalars().all()
@@ -366,7 +366,7 @@ async def start_negotiation(
             select(RequisitionVendor).where(
                 RequisitionVendor.requisition_id == req_id,
                 RequisitionVendor.vendor_id == lnk.vendor_id,
-                RequisitionVendor.negotiation_version == "2",
+                RequisitionVendor.negotiation_version == 2,
             )
         )
         existing_v2 = existing_v2_res.scalar_one_or_none()
@@ -380,7 +380,7 @@ async def start_negotiation(
             status="pending",
             is_shortlisted=True,
             allocated_quantity=lnk.allocated_quantity,
-            negotiation_version="2",
+            negotiation_version=2,
             link_sent_at=datetime.now(UTC),
         )
         db.add(v2_link)

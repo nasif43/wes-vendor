@@ -4,7 +4,7 @@
 <div class="slide-up">
     <h1 class="text-2xl font-bold text-white text-center mb-1">Submit Quotation</h1>
     <p class="text-blue-200 text-sm text-center mb-2">{% if vendor.is_temporary %}Unlisted Supplier{% else %}{{ vendor.company_name }}{% endif %}</p>
-    {% if link.negotiation_version == '2' %}
+    {% if link.negotiation_version == 2 %}
     <p class="text-amber-300 text-xs text-center mb-4 font-semibold">⟳ Revised Quote (v2 Negotiation)</p>
     {% endif %}
 
@@ -173,7 +173,7 @@
         </div>
 
         <button type="submit" class="w-full bg-white text-brand-700 py-4 rounded-xl text-sm font-bold hover:bg-blue-50 transition shadow-lg active:scale-[0.98] min-h-[52px]">
-            {% if link.negotiation_version == '2' %}Submit Revised Quote (v2){% else %}Submit Quotation{% endif %}
+            {% if link.negotiation_version == 2 %}Submit Revised Quote (v2){% else %}Submit Quotation{% endif %}
         </button>
     </form>
 </div>

@@ -39,27 +39,36 @@ deactivate
 echo "4. Setting up pgAdmin4 natively..."
 if [ ! -d "pgadmin_env" ]; then
     python3 -m venv pgadmin_env
-    source pgadmin_env/bin/activate
-    pip install pgadmin4
+fi
+source pgadmin_env/bin/activate
+pip install pgadmin4
 
-    # Setup local config to bind to a standard port
-    config_path=$(find pgadmin_env -name "config_local.py" -o -path "*/pgadmin4/config_local.py" 2>/dev/null | head -n 1)
-    if [ -z "$config_path" ]; then
-        config_path="pgadmin_env/lib/python3.13/site-packages/pgadmin4/config_local.py"
-    fi
-    mkdir -p $(dirname "$config_path")
-    
-    cat <<EOF > "$config_path"
+# Setup local config to bind to a standard port and use local paths
+config_path=$(find pgadmin_env -name "config_local.py" -o -path "*/pgadmin4/config_local.py" 2>/dev/null | head -n 1)
+if [ -z "$config_path" ]; then
+    config_path="pgadmin_env/lib/python3.13/site-packages/pgadmin4/config_local.py"
+fi
+mkdir -p $(dirname "$config_path")
+
+cat <<EOF > "$config_path"
 import os
 DEFAULT_SERVER = '0.0.0.0'
 DEFAULT_SERVER_PORT = 5050
+DATA_DIR = os.path.join(os.getcwd(), 'pgadmin_env')
+LOG_FILE = os.path.join(DATA_DIR, 'pgadmin4.log')
+SQLITE_PATH = os.path.join(DATA_DIR, 'pgadmin4.db')
+SESSION_DB_PATH = os.path.join(DATA_DIR, 'sessions')
+STORAGE_DIR = os.path.join(DATA_DIR, 'storage')
+AZURE_CREDENTIAL_CACHE_DIR = os.path.join(DATA_DIR, 'azurecredentialcache')
 EOF
 
-    export PGADMIN_SETUP_EMAIL="admin@local"
-    export PGADMIN_SETUP_PASSWORD="admin"
+export PGADMIN_SETUP_EMAIL="admin@local"
+export PGADMIN_SETUP_PASSWORD="admin"
+# Initialize if DB doesn't exist
+if [ ! -f "pgadmin_env/pgadmin4.db" ]; then
     yes "Y" | pgadmin4 setup
-    deactivate
 fi
+deactivate
 
 echo ""
 echo "================================================="
