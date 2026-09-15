@@ -121,7 +121,18 @@ async def send_requisition(
         if vendor and vendor.contact_email:
             quote_url = f"{str(request.base_url).rstrip('/')}/vendor-quote/{link.unique_link_token}"
             from app.reports.pdf_service import generate_rfq_pdf
+            import os
+            from app.config import get_settings
+            
             pdf_bytes = generate_rfq_pdf(req, vendor.company_name, req.items or [])
+            if pdf_bytes:
+                settings = get_settings()
+                rfq_dir = os.path.join(settings.upload_dir, "rfqs")
+                os.makedirs(rfq_dir, exist_ok=True)
+                pdf_path = os.path.join(rfq_dir, f"RFQ_{req.id}_{vendor.id}_v1.pdf")
+                with open(pdf_path, "wb") as f:
+                    f.write(pdf_bytes)
+
             email_params.append(
                 await build_vendor_invitation(
                     to=vendor.contact_email,
@@ -416,7 +427,18 @@ async def start_negotiation(
                     })
                 
                 from app.reports.pdf_service import generate_rfq_pdf
+                import os
+                from app.config import get_settings
+                
                 pdf_bytes = generate_rfq_pdf(req, vendor.company_name, shortlisted)
+                if pdf_bytes:
+                    settings = get_settings()
+                    rfq_dir = os.path.join(settings.upload_dir, "rfqs")
+                    os.makedirs(rfq_dir, exist_ok=True)
+                    pdf_path = os.path.join(rfq_dir, f"RFQ_{req.id}_{vendor.id}_v2.pdf")
+                    with open(pdf_path, "wb") as f:
+                        f.write(pdf_bytes)
+
                 
                 email_params.append(
                     await build_negotiation_invitation(
