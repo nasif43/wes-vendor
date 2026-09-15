@@ -15,6 +15,7 @@ from datetime import UTC, datetime
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.audit.service import log_action
@@ -372,7 +373,9 @@ async def start_negotiation(
 
     # Find shortlisted vendor links (v1 only, not already v2)
     shortlisted_res = await db.execute(
-        select(RequisitionVendor).where(
+        select(RequisitionVendor)
+        .options(selectinload(RequisitionVendor.shortlisted_items))
+        .where(
             RequisitionVendor.requisition_id == req_id,
             RequisitionVendor.is_shortlisted == True,
             RequisitionVendor.negotiation_version == 1,
@@ -427,9 +430,6 @@ async def start_negotiation(
         v2_links.append(v2_link)
 
     await db.flush()
-    # Refresh all v2 links to ensure relationship properties like shortlisted_items are populated
-    for v2_link in v2_links:
-        await db.refresh(v2_link, ["shortlisted_items"])
 
     # Send v2 invitation emails
     try:
@@ -441,7 +441,11 @@ async def start_negotiation(
                 
                 # Build items specifically for this supplier's v2 negotiation
                 shortlisted = []
-                for s_item in v2_lnk.shortlisted_items:
+                from app.requisitions.models import ShortlistedItem
+                from sqlalchemy import select
+                s_res = await db.execute(select(ShortlistedItem).where(ShortlistedItem.requisition_vendor_id == v2_lnk.id))
+                s_items = s_res.scalars().all()
+                for s_item in s_items:
                     # Find original description if available
                     desc = ""
                     if req.items:
@@ -559,7 +563,15 @@ async def resend_supplier_link(
     if not (user.is_procurement or user.has_management_authority or user.role == UserRole.ADMIN):
         return RedirectResponse(url=f"/requisitions/{req_id}?error=Permission+denied", status_code=303)
 
-    result = await db.execute(select(RequisitionVendor).where(RequisitionVendor.id == link_id))
+    result = await db.execute(
+        select(RequisitionVendor)
+        .options(
+            selectinload(RequisitionVendor.vendor),
+            selectinload(RequisitionVendor.requisition),
+            selectinload(RequisitionVendor.shortlisted_items),
+        )
+        .where(RequisitionVendor.id == link_id)
+    )
     link = result.scalar_one_or_none()
     
     if not link or link.requisition_id != req_id:
