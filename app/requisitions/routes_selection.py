@@ -410,9 +410,26 @@ async def start_negotiation(
             link_sent_at=datetime.now(UTC),
         )
         db.add(v2_link)
+        await db.flush()  # Need ID for ShortlistedItems
+        
+        # Copy shortlisted items from v1 link to v2 link
+        from app.requisitions.models import ShortlistedItem
+        for s_item in lnk.shortlisted_items:
+            db.add(
+                ShortlistedItem(
+                    requisition_vendor_id=v2_link.id,
+                    item_index=s_item.item_index,
+                    item_name=s_item.item_name,
+                    shortlisted_qty=s_item.shortlisted_qty,
+                )
+            )
+            
         v2_links.append(v2_link)
 
     await db.flush()
+    # Refresh all v2 links to ensure relationship properties like shortlisted_items are populated
+    for v2_link in v2_links:
+        await db.refresh(v2_link, ["shortlisted_items"])
 
     # Send v2 invitation emails
     try:
