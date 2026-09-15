@@ -102,6 +102,20 @@ def _apply_cc(payload: dict, cc: list[str]) -> dict:
 async def send_batch(params: list[dict]) -> bool:
     if not settings.resend_api_key or settings.resend_api_key == "re_xxxxxxxxx":
         logger.warning("Resend API key not configured — skipping %d email(s)", len(params))
+        import os, uuid
+        os.makedirs("local_emails", exist_ok=True)
+        for p in params:
+            email_id = str(uuid.uuid4())[:8]
+            html_content = p.get("html", "")
+            with open(f"local_emails/{email_id}.html", "w") as f_out:
+                f_out.write(html_content)
+            
+            if "attachments" in p:
+                for att in p["attachments"]:
+                    if att.get("content"):
+                        with open(f"local_emails/{email_id}_{att['filename']}", "wb") as f_pdf:
+                            f_pdf.write(bytes(att["content"]))
+            logger.info("--> Saved mock email to local_emails/%s.html", email_id)
         return False
     if not params:
         return False
