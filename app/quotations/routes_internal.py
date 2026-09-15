@@ -7,6 +7,7 @@ from app.auth.models import UserProfile
 from app.database import get_db
 from app.dependencies import get_current_user
 from app.requisitions.models import Requisition, RequisitionVendor
+from app.settings.models import SystemSettings
 
 router = APIRouter()
 
@@ -133,7 +134,15 @@ async def compare_quotations(
     )
     decision = dec_res.scalar_one_or_none()
 
+    # Fetch letterheads
+    letterheads = {}
+    for slot in ["1", "2", "3", "4"]:
+        url_row = await db.get(SystemSettings, f"letterhead_{slot}")
+        if url_row and url_row.value:
+            name_row = await db.get(SystemSettings, f"letterhead_{slot}_name")
+            letterheads[slot] = name_row.value if name_row else f"Letterhead {slot}"
+
     return templates.TemplateResponse(
-        request, "quotations/compare.html", {"user": user, "req": req, "links": links, "decision": decision}
+        request, "quotations/compare.html", {"user": user, "req": req, "links": links, "decision": decision, "letterheads": letterheads}
     )
 

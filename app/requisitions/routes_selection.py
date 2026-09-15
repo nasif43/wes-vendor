@@ -147,16 +147,16 @@ async def send_requisition(
     if email_params:
         email_sent = await send_batch(email_params)
 
-    req_target_status = RequisitionStatus.NEW
-    from app.requisitions.service import transition_requisition_status
-    await transition_requisition_status(
-        db,
-        requisition=req,
-        target_status=req_target_status,
-        actor=user,
-        action_name="VENDORS_INVITED",
-        notes=f"{len(vendor_ids)} vendor(s) invited via quote link",
-    )
+    if req.status == RequisitionStatus.DRAFT:
+        from app.requisitions.service import transition_requisition_status
+        await transition_requisition_status(
+            db,
+            requisition=req,
+            target_status=RequisitionStatus.NEW,
+            actor=user,
+            action_name="VENDORS_INVITED",
+            notes=f"{len(vendor_ids)} vendor(s) invited via quote link",
+        )
 
     if not email_sent:
         await db.commit()
