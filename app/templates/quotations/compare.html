@@ -46,11 +46,6 @@
 
     <!-- SHORTLISTING FORM (management/procurement only, no decision yet) -->
     {% if not is_locked %}
-    {% if not decision and user and (user.is_procurement or user.is_management or user.role == 'admin') %}
-    <form method="post" action="/requisitions/{{ req.id }}/shortlist" class="mb-6">
-        <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm mb-3">
-            <div class="flex items-center justify-between mb-3">
-                <h2 class="text-sm font-bold text-slate-900">Shortlist Suppliers <span class="text-slate-400 font-normal text-xs">(max 3 for split order)</span></h2>
     {% if not decision and user and (user.is_management or user.role == 'admin') %}
     <form method="post" action="/requisitions/{{ req.id }}/shortlist" class="mb-6" id="shortlistForm">
         <div class="bg-white rounded-2xl border border-slate-200 shadow-sm mb-3 overflow-hidden">
