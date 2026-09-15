@@ -92,7 +92,7 @@ async def vendor_quote_form(
             request, "quotations/vendor_invalid.html", status_code=404
         )
         
-    if link.requisition and link.requisition.status.value in ('cancelled', 'rejected'):
+    if link.requisition and (link.requisition.status.value if hasattr(link.requisition.status, 'value') else link.requisition.status) in ('cancelled', 'rejected'):
         return templates.TemplateResponse(
             request, "quotations/vendor_invalid.html", status_code=403
         )
@@ -159,7 +159,7 @@ async def submit_quotation(
             request, "quotations/vendor_invalid.html", status_code=404
         )
         
-    if link.requisition and link.requisition.status.value in ('cancelled', 'rejected'):
+    if link.requisition and (link.requisition.status.value if hasattr(link.requisition.status, 'value') else link.requisition.status) in ('cancelled', 'rejected'):
         return templates.TemplateResponse(
             request, "quotations/vendor_invalid.html", status_code=403
         )
