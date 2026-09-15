@@ -513,3 +513,21 @@ async def get_resend_health_data() -> dict:
             "checked_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
         }
 
+
+async def build_cancellation_notification(
+    to: str, supplier_name: str, requisition_title: str
+) -> dict:
+    cc = await get_cc_emails()
+    html = f'''
+    <h2>Update: Quotation Request Cancelled</h2>
+    <p>Dear {supplier_name},</p>
+    <p>This is to inform you that the Request for Quotation (RFQ) for <strong>{requisition_title}</strong> has been cancelled by our management team.</p>
+    <p>If you were preparing a quotation for this request, please do not submit it, as the submission link has been deactivated.</p>
+    <p>We apologize for any inconvenience this may cause and look forward to working with you on future opportunities.</p>
+    '''
+    return _apply_cc({
+        "from": f"Wener Supplier Management <{settings.mail_from}>",
+        "to": [to],
+        "subject": f"Update: RFQ Cancelled - {requisition_title}",
+        "html": html,
+    }, cc)

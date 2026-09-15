@@ -408,8 +408,31 @@ async def cancel_requisition(
         action_name="REQUISITION_CANCELLED",
         notes=f"Cancelled by {user.full_name}. Reason: {reason or 'No reason given'}",
     )
+
+    # Cancel all pending links and notify suppliers
+    from app.email.resend import build_cancellation_notification, send_batch
+    email_params = []
+    if req.vendor_links:
+        for link in req.vendor_links:
+            if link.status == 'pending':
+                link.status = 'cancelled'
+                if link.vendor and link.vendor.contact_email:
+                    email_params.append(
+                        await build_cancellation_notification(
+                            to=link.vendor.contact_email,
+                            supplier_name=link.vendor.contact_person or link.vendor.company_name,
+                            requisition_title=req.title,
+                        )
+                    )
     await db.flush()
     await db.commit()
+    
+    if email_params:
+        try:
+            await send_batch(email_params)
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).error("Failed to send cancellation emails: %s", e)
     return RedirectResponse(url=f"/requisitions/{req_id}?success=Requisition+cancelled", status_code=303)
 
 
@@ -440,8 +463,31 @@ async def reject_requisition(
         action_name="REQUISITION_REJECTED",
         notes=f"Rejected by {user.full_name}. Reason: {reason or 'No reason given'}",
     )
+    
+    # Cancel all pending links and notify suppliers
+    from app.email.resend import build_cancellation_notification, send_batch
+    email_params = []
+    if req.vendor_links:
+        for link in req.vendor_links:
+            if link.status == 'pending':
+                link.status = 'cancelled'
+                if link.vendor and link.vendor.contact_email:
+                    email_params.append(
+                        await build_cancellation_notification(
+                            to=link.vendor.contact_email,
+                            supplier_name=link.vendor.contact_person or link.vendor.company_name,
+                            requisition_title=req.title,
+                        )
+                    )
     await db.flush()
     await db.commit()
+
+    if email_params:
+        try:
+            await send_batch(email_params)
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).error("Failed to send rejection cancellation emails: %s", e)
     return RedirectResponse(url=f"/requisitions/{req_id}?success=Requisition+rejected", status_code=303)
 
 

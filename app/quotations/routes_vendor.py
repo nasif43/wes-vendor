@@ -91,6 +91,16 @@ async def vendor_quote_form(
         return templates.TemplateResponse(
             request, "quotations/vendor_invalid.html", status_code=404
         )
+        
+    if link.requisition and link.requisition.status.value in ('cancelled', 'rejected'):
+        return templates.TemplateResponse(
+            request, "quotations/vendor_invalid.html", status_code=403
+        )
+        
+    if link.status == 'cancelled':
+        return templates.TemplateResponse(
+            request, "quotations/vendor_invalid.html", status_code=403
+        )
 
     supplier_items = None  # None means show all items
     if link.negotiation_version == 2 and link.shortlisted_items:
@@ -147,6 +157,16 @@ async def submit_quotation(
     if not link:
         return templates.TemplateResponse(
             request, "quotations/vendor_invalid.html", status_code=404
+        )
+        
+    if link.requisition and link.requisition.status.value in ('cancelled', 'rejected'):
+        return templates.TemplateResponse(
+            request, "quotations/vendor_invalid.html", status_code=403
+        )
+        
+    if link.status == 'cancelled':
+        return templates.TemplateResponse(
+            request, "quotations/vendor_invalid.html", status_code=403
         )
 
     if link.quotation:
