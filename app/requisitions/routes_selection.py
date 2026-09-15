@@ -600,6 +600,9 @@ async def resend_supplier_link(
     if email_params:
         try:
             await send_batch(email_params)
+            from datetime import datetime, UTC
+            link.link_sent_at = datetime.now(UTC)
+            await db.commit()
             return RedirectResponse(url=f"/requisitions/{req_id}?success=Email+sent+to+{vendor.company_name}", status_code=303)
         except Exception as e:
             import logging

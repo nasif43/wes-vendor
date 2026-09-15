@@ -201,12 +201,19 @@
                     {% endif %}
                     {% if link.status != 'submitted' %}
                     <div class="flex items-center gap-1">
+                        {% if link.negotiation_version == 2 and link.link_sent_at %}
+                        <span class="text-xs text-slate-400 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-200 flex items-center gap-1 min-h-[36px]" title="Email Sent on {{ link.link_sent_at.strftime('%Y-%m-%d %H:%M') }}">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                            Sent
+                        </span>
+                        {% else %}
                         <form method="post" action="/requisitions/{{ req.id }}/resend-link/{{ link.id }}" class="inline">
                             <button type="submit" class="text-xs text-amber-600 bg-amber-50 hover:bg-amber-100 px-2.5 py-1.5 rounded-lg border border-amber-100 transition active:scale-95 flex items-center gap-1 min-h-[36px]" title="Resend Email">
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
                                 Email
                             </button>
                         </form>
+                        {% endif %}
                         <button type="button"
                             onclick="navigator.clipboard.writeText('{{ request.base_url }}vendor-quote/{{ link.unique_link_token }}');const t=this;const o=t.innerHTML;t.innerHTML='Copied!';setTimeout(()=>t.innerHTML=o,2000)"
                             class="text-xs text-brand-600 bg-brand-50 hover:bg-brand-100 px-2.5 py-1.5 rounded-lg border border-brand-100 transition active:scale-95 flex items-center gap-1 min-h-[36px]" title="Copy Link">
