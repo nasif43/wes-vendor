@@ -114,20 +114,22 @@ async def send_batch(params: list[dict]) -> bool:
     if not params:
         return False
 
-    success = True
-    for p in params:
+    async def _send_async(p):
         def _send():
             return resend.Emails.send(p)
         try:
             result = await asyncio.to_thread(_send)
-            if "id" not in result:
-                success = False
+            return "id" in result
         except Exception as e:
             logger.error("Failed to send email: %s", e)
-            success = False
-            
+            return False
+
+    # Execute all email requests concurrently to prevent hindering the user's workflow
+    results = await asyncio.gather(*[_send_async(p) for p in params])
+    success = all(results)
+    
     if success:
-        logger.info("Sent %d email(s) successfully using Emails.send", len(params))
+        logger.info("Sent %d email(s) concurrently using Emails.send", len(params))
     return success
 
 # ──────────────────────────────────────────────────────────────────────────────
