@@ -188,6 +188,16 @@
                     </div>
                 </div>
                 <div class="flex items-center gap-2 shrink-0 ml-3">
+                                        {% if req.status.value == 'awarded' and (user.is_procurement or user.role == 'admin') %}
+                    <form method="post" action="/work-orders/issue/{{ req.id }}/{{ link.id }}" class="flex items-center gap-2">
+                        <select name="letterhead_slot" class="text-xs border-slate-300 rounded px-2 py-1 bg-white">
+                            {% for slot, name in letterheads.items() %}
+                            <option value="{{ slot }}">{{ name }}</option>
+                            {% endfor %}
+                        </select>
+                        <button type="submit" class="bg-brand-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-brand-700 transition">Issue WO</button>
+                    </form>
+                    {% endif %}
                     {% if link.status != 'submitted' %}
                     <button type="button"
                         onclick="navigator.clipboard.writeText('{{ request.base_url }}vendor-quote/{{ link.unique_link_token }}');const t=this;const o=t.innerHTML;t.innerHTML='Copied!';setTimeout(()=>t.innerHTML=o,2000)"

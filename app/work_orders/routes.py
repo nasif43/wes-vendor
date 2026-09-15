@@ -62,6 +62,7 @@ async def issue_work_order(
     req_id: str,
     rv_id: str,
     notes: str = Form(""),
+    letterhead_slot: str = Form(None),
     user: UserProfile = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -98,9 +99,6 @@ async def issue_work_order(
             status_code=303
         )
 
-    # Get active letterhead slot
-    active_slot_row = await db.get(SystemSettings, "active_letterhead")
-    letterhead_slot = active_slot_row.value if active_slot_row else None
     letterhead_url = None
     if letterhead_slot:
         lh_row = await db.get(SystemSettings, f"letterhead_{letterhead_slot}")

@@ -10,7 +10,8 @@ from app.auth.models import UserProfile, UserRole
 from app.categories.models import Category
 from app.database import get_db
 from app.dependencies import get_current_user
-from app.requisitions.models import Requisition, RequisitionStatus, RequisitionVendor
+from app.requisitions.models import Requisition, RequisitionStatus
+from app.settings.models import SystemSettings, RequisitionVendor
 
 router = APIRouter()
 
@@ -291,8 +292,16 @@ async def view_requisition(
         await db.commit()
         return RedirectResponse(url="/requisitions", status_code=303)
 
+    # Fetch letterheads
+    letterheads = {}
+    for slot in ["1", "2", "3", "4"]:
+        url_row = await db.get(SystemSettings, f"letterhead_{slot}")
+        if url_row and url_row.value:
+            name_row = await db.get(SystemSettings, f"letterhead_{slot}_name")
+            letterheads[slot] = name_row.value if name_row else f"Letterhead {slot}"
+
     return templates.TemplateResponse(
-        request, "requisitions/detail.html", {"user": user, "req": req}
+        request, "requisitions/detail.html", {"user": user, "req": req, "letterheads": letterheads}
     )
 
 
