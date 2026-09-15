@@ -32,9 +32,12 @@ async def settings_page(
 
     # Load letterhead slots (1–4)
     letterheads: dict[str, str | None] = {}
+    letterhead_names: dict[str, str] = {}
     for slot in ["1", "2", "3", "4"]:
         row = await db.get(SystemSettings, f"letterhead_{slot}")
         letterheads[slot] = row.value if row else None
+        name_row = await db.get(SystemSettings, f'letterhead_{slot}_name')
+        letterhead_names[slot] = name_row.value if name_row else f'Slot {slot}'
 
     active_row = await db.get(SystemSettings, "active_letterhead")
     active_slot = active_row.value if active_row else None
@@ -48,6 +51,7 @@ async def settings_page(
             "saved": request.query_params.get("saved"),
             "error": request.query_params.get("error"),
             "letterheads": letterheads,
+            "letterhead_names": letterhead_names,
             "active_slot": active_slot,
         },
     )
@@ -149,5 +153,26 @@ async def activate_letterhead(
         db.add(row)
     else:
         row.value = slot
+    await db.commit()
+    return RedirectResponse("/settings?saved=1", status_code=303)
+
+@router.post("/letterhead/rename")
+async def rename_letterhead(
+    request: Request,
+    slot: str = Form(...),
+    name: str = Form(...),
+    user: UserProfile = Depends(require_role(*_MANAGEMENT_ROLES)),
+    db: AsyncSession = Depends(get_db),
+):
+    if slot not in ['1', '2', '3', '4']:
+        return RedirectResponse("/settings?error=invalid_slot", status_code=303)
+        
+    key = f"letterhead_{slot}_name"
+    row = await db.get(SystemSettings, key)
+    if not row:
+        row = SystemSettings(key=key, value=name.strip())
+        db.add(row)
+    else:
+        row.value = name.strip()
     await db.commit()
     return RedirectResponse("/settings?saved=1", status_code=303)

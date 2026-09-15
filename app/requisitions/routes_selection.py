@@ -120,12 +120,15 @@ async def send_requisition(
         vendor = vendors_map.get(link.vendor_id)
         if vendor and vendor.contact_email:
             quote_url = f"{str(request.base_url).rstrip('/')}/vendor-quote/{link.unique_link_token}"
+            from app.reports.pdf_service import generate_rfq_pdf
+            pdf_bytes = generate_rfq_pdf(req, vendor.company_name, req.items or [])
             email_params.append(
                 await build_vendor_invitation(
                     to=vendor.contact_email,
                     vendor_name=vendor.contact_person or vendor.company_name,
                     requisition_title=req.title,
                     quote_url=quote_url,
+                    pdf_bytes=pdf_bytes,
                 )
             )
 
@@ -395,12 +398,33 @@ async def start_negotiation(
             vendor = v2_lnk.vendor
             if vendor and vendor.contact_email:
                 quote_url = f"{str(request.base_url).rstrip('/')}/vendor-quote/{v2_lnk.unique_link_token}"
+                
+                # Build items specifically for this supplier's v2 negotiation
+                shortlisted = []
+                for s_item in v2_lnk.shortlisted_items:
+                    # Find original description if available
+                    desc = ""
+                    if req.items:
+                        try:
+                            desc = req.items[s_item.item_index].get("description", "")
+                        except (IndexError, TypeError):
+                            pass
+                    shortlisted.append({
+                        "name": s_item.item_name,
+                        "description": desc,
+                        "shortlisted_qty": s_item.shortlisted_qty
+                    })
+                
+                from app.reports.pdf_service import generate_rfq_pdf
+                pdf_bytes = generate_rfq_pdf(req, vendor.company_name, shortlisted)
+                
                 email_params.append(
                     await build_negotiation_invitation(
                         to=vendor.contact_email,
                         supplier_name=vendor.contact_person or vendor.company_name,
                         requisition_title=req.title,
                         quote_url=quote_url,
+                        pdf_bytes=pdf_bytes,
                     )
                 )
         if email_params:

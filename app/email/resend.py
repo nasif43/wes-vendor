@@ -126,22 +126,26 @@ async def send_batch(params: list[dict]) -> bool:
 # ──────────────────────────────────────────────────────────────────────────────
 
 async def build_vendor_invitation(
-    to: str, vendor_name: str, requisition_title: str, quote_url: str
+    to: str, vendor_name: str, requisition_title: str, quote_url: str, pdf_bytes: bytes | None = None
 ) -> dict:
     cc = await get_cc_emails()
     html = f"""
-    <h2>You have a new quotation request</h2>
+    <h2>Quotation Request</h2>
     <p>Dear {vendor_name},</p>
-    <p>You have been invited to submit a quotation for: <strong>{requisition_title}</strong></p>
-    <p><a href="{quote_url}">Click here to submit your quotation</a></p>
-    <p>If you have any questions, please contact us directly.</p>
+    <p>You have been invited to submit a quotation for: <strong>{requisition_title}</strong>.</p>
+    <p>Please review the attached Request for Quotation (RFQ) document.</p>
+    <p><a href="{quote_url}">Click here to submit your quotation online</a></p>
+    <p>This link is unique to you. Do not share it.</p>
     """
-    return _apply_cc({
+    payload = {
         "from": f"Wener Supplier Management <{settings.mail_from}>",
         "to": [to],
         "subject": f"Quotation Request: {requisition_title}",
         "html": html,
-    }, cc)
+    }
+    if pdf_bytes:
+        payload["attachments"] = [{"filename": f"RFQ_{requisition_title.replace(' ', '_')}.pdf", "content": list(pdf_bytes)}]
+    return _apply_cc(payload, cc)
 
 
 async def build_decision_notification(
@@ -285,6 +289,7 @@ async def build_negotiation_invitation(
     supplier_name: str,
     requisition_title: str,
     quote_url: str,
+    pdf_bytes: bytes | None = None
 ) -> dict:
     """v2 negotiation invitation — clearly labeled as a revision request.
     
@@ -297,22 +302,23 @@ async def build_negotiation_invitation(
     <p>You have been shortlisted for the next round of evaluation for:
     <strong>{requisition_title}</strong>.</p>
     <p>We invite you to submit a <strong>revised quotation</strong> for the specific
-    items allocated to you. Please note that this round covers only a subset of the
-    original items.</p>
+    items allocated to you. Please review the attached Request for Quotation (RFQ) document.</p>
     <p><a href="{quote_url}" style="display:inline-block;background:#1d4ed8;color:white;
     padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:600;
-    margin-top:8px;">Submit Revised Quotation &rarr;</a></p>
-    <p style="margin-top:16px;font-size:12px;color:#888;">
-    This is Round 2 of the quotation process. Only items specifically allocated
-    to your company will be shown in the form.
-    </p>
+    margin:20px 0;">Submit Revised Quotation</a></p>
+    <p>This link is unique to you. Do not share it.</p>
+    <hr>
+    <p style="font-size: 12px; color: #666;">This is an automated system notification.</p>
     """
-    return _apply_cc({
+    payload = {
         "from": f"Wener Supplier Management <{settings.mail_from}>",
         "to": [to],
         "subject": f"Revised Quotation Request (Round 2): {requisition_title}",
         "html": html,
-    }, cc)
+    }
+    if pdf_bytes:
+        payload["attachments"] = [{"filename": f"Revised_RFQ_{requisition_title.replace(' ', '_')}.pdf", "content": list(pdf_bytes)}]
+    return _apply_cc(payload, cc)
 
 
 async def build_rejection_notification(
