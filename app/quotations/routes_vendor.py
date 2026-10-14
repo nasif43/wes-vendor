@@ -15,13 +15,16 @@ def _generate_quotation_pdf(form_data: dict | None, req_title: str, vendor_name:
     try:
         from weasyprint import HTML
         table_html = ""
+        grand_total = 0.0
         if form_data and form_data.get("items"):
             rows = []
-            grand_total = 0.0
             for item in form_data["items"]:
                 qty = item.get("qty", 0)
                 item_price = item.get("price", 0)
-                total = float(qty) * float(item_price)
+                try:
+                    total = float(qty) * float(item_price)
+                except (ValueError, TypeError):
+                    total = 0.0
                 grand_total += total
                 rows.append(
                     f"<tr>"
@@ -47,6 +50,14 @@ def _generate_quotation_pdf(form_data: dict | None, req_title: str, vendor_name:
                 f"<td style='border:1px solid #ccc;padding:6px;text-align:right;font-family:monospace;font-weight:700;'>৳{grand_total:.2f}</td>"
                 f"</tr></tfoot></table>"
             )
+
+        raw_price = (form_data or {}).get("price", grand_total)
+        try:
+            total_price = float(raw_price)
+        except (ValueError, TypeError):
+            total_price = grand_total
+
+        delivery_days = (form_data or {}).get("delivery_days", "—")
 
         from datetime import datetime as _dt, timezone as _tz
         now = _dt.now(_tz.utc)

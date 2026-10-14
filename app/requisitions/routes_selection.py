@@ -734,7 +734,7 @@ async def forward_all_quotes_to_cc(
     links = links_res.scalars().all()
     submitted_links = [
         l for l in links
-        if l.status == "submitted" or l.quote_submitted or (l.quotation and l.quotation.form_data) or l.quote_data
+        if l.status == "submitted" or l.quotation is not None
     ]
 
     if not submitted_links:
@@ -747,7 +747,7 @@ async def forward_all_quotes_to_cc(
     payloads = []
     forwarded_vendors = []
     for link in submitted_links:
-        form_data = link.quotation.form_data if link.quotation else (link.quote_data or {})
+        form_data = link.quotation.form_data if (link.quotation and link.quotation.form_data) else {}
         vendor_name = link.vendor.company_name if link.vendor else "Supplier"
         view_url = f"{str(request.base_url).rstrip('/')}/quotations/detail/{link.id}"
 

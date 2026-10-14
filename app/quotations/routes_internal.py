@@ -141,13 +141,13 @@ async def forward_quotation_to_cc(
         )
 
     # Check if quote is submitted
-    form_data = link.quotation.form_data if link.quotation else (link.quote_data or {})
-    if not form_data:
+    if not link.quotation and link.status != "submitted":
         await db.commit()
         return RedirectResponse(
-            url=f"/quotations/detail/{requisition_vendor_id}?error=No+quotation+data+submitted+by+this+supplier+yet.",
+            url=f"/quotations/detail/{requisition_vendor_id}?error=No+quotation+submitted+by+this+supplier+yet.",
             status_code=303,
         )
+    form_data = link.quotation.form_data if (link.quotation and link.quotation.form_data) else {}
 
     vendor_name = link.vendor.company_name if link.vendor else "Supplier"
     req_title = link.requisition.title if link.requisition else "Quotation"
