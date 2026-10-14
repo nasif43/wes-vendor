@@ -691,3 +691,125 @@ async def resend_supplier_link(
             return RedirectResponse(url=f"/requisitions/{req_id}?error=Failed+to+send+email", status_code=303)
             
     return RedirectResponse(url=f"/requisitions/{req_id}", status_code=303)
+
+
+@router.post("/{req_id}/forward-quotes-cc")
+async def forward_all_quotes_to_cc(
+    req_id: str,
+    request: Request,
+    user: UserProfile = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    from sqlalchemy.orm import selectinload
+    from app.email.resend import get_cc_emails, send_batch, settings as email_settings
+    from app.quotations.routes_vendor import _generate_quotation_pdf
+    from app.audit.service import log_action
+
+    if not user.can_see_quotes:
+        await db.commit()
+        return RedirectResponse(url=f"/requisitions/{req_id}?error=Permission+denied", status_code=303)
+
+    result = await db.execute(select(Requisition).where(Requisition.id == req_id))
+    req = result.scalar_one_or_none()
+    if not req:
+        await db.commit()
+        return RedirectResponse(url="/requisitions?error=Requisition+not+found", status_code=303)
+
+    cc = await get_cc_emails()
+    if not cc:
+        await db.commit()
+        return RedirectResponse(
+            url=f"/requisitions/{req_id}?error=No+CC+recipients+configured.+Add+management+emails+in+Settings+first.",
+            status_code=303,
+        )
+
+    links_res = await db.execute(
+        select(RequisitionVendor)
+        .options(
+            selectinload(RequisitionVendor.vendor),
+            selectinload(RequisitionVendor.quotations),
+        )
+        .where(RequisitionVendor.requisition_id == req_id)
+    )
+    links = links_res.scalars().all()
+    submitted_links = [
+        l for l in links
+        if l.status == "submitted" or l.quote_submitted or (l.quotation and l.quotation.form_data) or l.quote_data
+    ]
+
+    if not submitted_links:
+        await db.commit()
+        return RedirectResponse(
+            url=f"/requisitions/{req_id}?error=No+submitted+quotations+found+to+forward.",
+            status_code=303,
+        )
+
+    payloads = []
+    forwarded_vendors = []
+    for link in submitted_links:
+        form_data = link.quotation.form_data if link.quotation else (link.quote_data or {})
+        vendor_name = link.vendor.company_name if link.vendor else "Supplier"
+        view_url = f"{str(request.base_url).rstrip('/')}/quotations/detail/{link.id}"
+
+        pdf_bytes = _generate_quotation_pdf(
+            form_data,
+            req_title=req.title,
+            vendor_name=vendor_name,
+        )
+
+        submitted_str = link.quotation.submitted_at.strftime("%Y-%m-%d %I:%M %p") if (link.quotation and link.quotation.submitted_at) else "Recent"
+        html = f"""
+        <h2>Quotation Copy: {vendor_name}</h2>
+        <p>Submitted quotation copy forwarded for requisition: <strong>{req.title}</strong>.</p>
+        <table style="font-family:sans-serif;font-size:13px;margin:16px 0;line-height:1.6;">
+          <tr><td style="padding:4px 8px;color:#666;">Supplier:</td><td style="padding:4px 8px;font-weight:bold;">{vendor_name}</td></tr>
+          <tr><td style="padding:4px 8px;color:#666;">Contact:</td><td style="padding:4px 8px;">{link.vendor.contact_person or '—'} ({link.vendor.contact_email or '—'})</td></tr>
+          <tr><td style="padding:4px 8px;color:#666;">Negotiation Round:</td><td style="padding:4px 8px;font-weight:bold;">Round {link.negotiation_version}</td></tr>
+          <tr><td style="padding:4px 8px;color:#666;">Submitted At:</td><td style="padding:4px 8px;">{submitted_str}</td></tr>
+          <tr><td style="padding:4px 8px;color:#666;">Forwarded By:</td><td style="padding:4px 8px;">{user.full_name} ({user.email})</td></tr>
+        </table>
+        <p><a href="{view_url}" style="display:inline-block;background:#1d4ed8;color:white;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:600;font-size:13px;margin:12px 0;">View Quotation Details in Portal</a></p>
+        <p style="font-size:12px;color:#888;margin-top:20px;">The official quotation summary PDF is attached.</p>
+        """
+
+        p = {
+            "from": f"Wener Supplier Management <{email_settings.mail_from}>",
+            "to": cc,
+            "subject": f"Quotation Copy: {req.title} - {vendor_name}",
+            "html": html,
+        }
+        if pdf_bytes:
+            p["attachments"] = [{
+                "filename": f"Quotation_{vendor_name.replace(' ', '_')}.pdf",
+                "content": list(pdf_bytes),
+                "content_type": "application/pdf"
+            }]
+        payloads.append(p)
+        forwarded_vendors.append(vendor_name)
+
+    if payloads:
+        sent = await send_batch(payloads)
+        if not sent:
+            await db.commit()
+            return RedirectResponse(
+                url=f"/requisitions/{req_id}?error=Failed+to+forward+emails+via+Resend.+Check+Resend+API+key+or+quota.",
+                status_code=303,
+            )
+
+    await log_action(
+        db,
+        actor=user,
+        action="QUOTATIONS_BATCH_FORWARDED_TO_CC",
+        entity_type="requisition",
+        entity_id=req.id,
+        entity_label=req.title,
+        notes=f"Forwarded {len(payloads)} quotation copies and PDFs ({', '.join(forwarded_vendors)}) to CCs: {', '.join(cc)} by {user.full_name}.",
+    )
+    await db.flush()
+    await db.commit()
+
+    return RedirectResponse(
+        url=f"/requisitions/{req_id}?success=Forwarded+{len(payloads)}+quotation+copies+and+PDFs+to+management+CCs",
+        status_code=303,
+    )
+

@@ -46,3 +46,33 @@ async def test_vendor_invitation_with_pdf():
     )
     assert "attachments" in invite
     assert invite["attachments"][0]["filename"] == "RFQ_Test_Tender.pdf"
+
+
+@pytest.mark.anyio
+async def test_user_rename_reflects_in_issuer_and_pdf():
+    from app.auth.models import UserProfile, UserRole
+
+    user = UserProfile(
+        email="procurement_test@wenerbd.com",
+        username="proc1",
+        full_name="Procurement",
+        role=UserRole.PROCUREMENT,
+    )
+    assert (user.full_name or user.username) == "Procurement"
+
+    # Sysadmin renames user to actual human name
+    user.full_name = "Md. Rafiqul Islam"
+    assert (user.full_name or user.username) == "Md. Rafiqul Islam"
+
+    class DummyReq:
+        title = "Office Supplies Requisition"
+
+    pdf = generate_rfq_pdf(
+        DummyReq(),
+        supplier_name="Bengal Traders",
+        items=[{"name": "A4 Paper", "qty": 10}],
+        issuer_name=user.full_name or user.username,
+    )
+    assert pdf is not None
+    assert pdf.startswith(b"%PDF-")
+

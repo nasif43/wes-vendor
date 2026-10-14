@@ -126,11 +126,95 @@ async def create_user(
     )
 
 
+@router.post("/{target_user_id}/edit")
+async def edit_user_profile(
+    target_user_id: str,
+    request: Request,
+    full_name: str = Form(...),
+    email: str = Form(...),
+    username: str = Form(None),
+    user: UserProfile = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    from sqlalchemy import func
+
+    if not user.has_management_authority and user.role != UserRole.ADMIN:
+        await db.commit()
+        return RedirectResponse(url="/users?error=Permission+denied", status_code=303)
+
+    result = await db.execute(select(UserProfile).where(UserProfile.id == target_user_id))
+    target_user = result.scalar_one_or_none()
+    if not target_user:
+        await db.commit()
+        return RedirectResponse(url="/users?error=User+not+found", status_code=303)
+
+    clean_full_name = full_name.strip()
+    clean_email = email.strip().lower()
+    clean_username = username.strip().lower().replace("@", "") if username and username.strip() else None
+
+    if not clean_full_name:
+        await db.commit()
+        return RedirectResponse(url="/users?error=Full+name+cannot+be+empty", status_code=303)
+
+    if not clean_email or "@" not in clean_email:
+        await db.commit()
+        return RedirectResponse(url="/users?error=A+valid+email+is+required", status_code=303)
+
+    # Check if email is taken by another user
+    email_check = await db.execute(
+        select(UserProfile).where(
+            func.lower(UserProfile.email) == clean_email,
+            UserProfile.id != target_user.id
+        )
+    )
+    if email_check.scalar_one_or_none():
+        await db.commit()
+        return RedirectResponse(url="/users?error=Email+already+registered+by+another+account", status_code=303)
+
+    # Check if username is taken by another user
+    if clean_username:
+        user_check = await db.execute(
+            select(UserProfile).where(
+                func.lower(UserProfile.username) == clean_username,
+                UserProfile.id != target_user.id
+            )
+        )
+        if user_check.scalar_one_or_none():
+            await db.commit()
+            return RedirectResponse(url="/users?error=Username+already+taken", status_code=303)
+
+    old_name = target_user.full_name
+    old_email = target_user.email
+    old_user = target_user.username
+
+    target_user.full_name = clean_full_name
+    target_user.email = clean_email
+    target_user.username = clean_username
+
+    await log_action(
+        db,
+        actor=user,
+        action="USER_PROFILE_UPDATED",
+        entity_type="user_profile",
+        entity_id=target_user.id,
+        entity_label=clean_full_name,
+        notes=f"Updated account info for {old_name} -> {clean_full_name} (@{clean_username or 'none'}, {clean_email}) by {user.full_name} ({user.email}).",
+    )
+
+    await db.flush()
+    await db.commit()
+    return RedirectResponse(
+        url=f"/users?success=User+{clean_full_name.replace(' ', '+')}+details+updated+successfully",
+        status_code=303,
+    )
+
+
 @router.post("/{target_user_id}/permissions")
 async def update_user_permissions(
     target_user_id: str,
     request: Request,
     role: str = Form(None),
+    full_name: str = Form(None),
     can_view_quotations: bool = Form(False),
     can_do_qc: bool = Form(False),
     can_view_all_requisitions: bool = Form(False),
@@ -148,11 +232,15 @@ async def update_user_permissions(
         await db.commit()
         return RedirectResponse(url="/users?error=User+not+found", status_code=303)
 
+    old_name = target_user.full_name
     old_role = str(target_user.role.value if hasattr(target_user.role, "value") else target_user.role)
     old_view_quotes = target_user.can_view_quotations
     old_do_qc = target_user.can_do_qc
     old_view_all = target_user.can_view_all_requisitions
     old_is_mgmt = target_user.is_management
+
+    if full_name and full_name.strip():
+        target_user.full_name = full_name.strip()
 
     target_user.can_view_quotations = can_view_quotations
     target_user.can_do_qc = can_do_qc
@@ -167,6 +255,8 @@ async def update_user_permissions(
 
     # ── Audit log ──────────────────────────────────────────────────────────────
     changes = []
+    if full_name and full_name.strip() and old_name != target_user.full_name:
+        changes.append(f"Name: {old_name} -> {target_user.full_name}")
     if role and old_role != str(target_user.role.value if hasattr(target_user.role, "value") else target_user.role):
         changes.append(f"Role: {target_user.role.value}")
     if old_view_quotes != can_view_quotations:

@@ -102,6 +102,125 @@ async def update_quotation_status(
     )
 
 
+@router.post("/detail/{requisition_vendor_id}/forward-cc")
+async def forward_quotation_to_cc(
+    requisition_vendor_id: str,
+    request: Request,
+    user: UserProfile = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    from sqlalchemy.orm import selectinload
+    from app.email.resend import get_cc_emails, send_batch, settings as email_settings
+    from app.quotations.routes_vendor import _generate_quotation_pdf
+    from app.audit.service import log_action
+
+    if not user.can_see_quotes:
+        await db.commit()
+        return RedirectResponse(url="/quotations/inbox?error=Permission+denied", status_code=303)
+
+    result = await db.execute(
+        select(RequisitionVendor)
+        .options(
+            selectinload(RequisitionVendor.vendor),
+            selectinload(RequisitionVendor.requisition),
+            selectinload(RequisitionVendor.quotations),
+        )
+        .where(RequisitionVendor.id == requisition_vendor_id)
+    )
+    link = result.scalar_one_or_none()
+    if not link:
+        await db.commit()
+        return RedirectResponse(url="/quotations/inbox?error=Quotation+link+not+found", status_code=303)
+
+    cc = await get_cc_emails()
+    if not cc:
+        await db.commit()
+        return RedirectResponse(
+            url=f"/quotations/detail/{requisition_vendor_id}?error=No+CC+recipients+configured.+Add+management+emails+in+Settings+first.",
+            status_code=303,
+        )
+
+    # Check if quote is submitted
+    form_data = link.quotation.form_data if link.quotation else (link.quote_data or {})
+    if not form_data:
+        await db.commit()
+        return RedirectResponse(
+            url=f"/quotations/detail/{requisition_vendor_id}?error=No+quotation+data+submitted+by+this+supplier+yet.",
+            status_code=303,
+        )
+
+    vendor_name = link.vendor.company_name if link.vendor else "Supplier"
+    req_title = link.requisition.title if link.requisition else "Quotation"
+    view_url = f"{str(request.base_url).rstrip('/')}/quotations/detail/{link.id}"
+
+    pdf_bytes = _generate_quotation_pdf(
+        form_data,
+        req_title=req_title,
+        vendor_name=vendor_name,
+    )
+
+    submitted_str = link.quotation.submitted_at.strftime("%Y-%m-%d %I:%M %p") if (link.quotation and link.quotation.submitted_at) else "Recent"
+    html = f"""
+    <h2>Quotation Copy: {vendor_name}</h2>
+    <p>Submitted quotation copy forwarded for requisition: <strong>{req_title}</strong>.</p>
+    <table style="font-family:sans-serif;font-size:13px;margin:16px 0;line-height:1.6;">
+      <tr><td style="padding:4px 8px;color:#666;">Supplier:</td><td style="padding:4px 8px;font-weight:bold;">{vendor_name}</td></tr>
+      <tr><td style="padding:4px 8px;color:#666;">Contact:</td><td style="padding:4px 8px;">{link.vendor.contact_person or '—'} ({link.vendor.contact_email or '—'})</td></tr>
+      <tr><td style="padding:4px 8px;color:#666;">Negotiation Round:</td><td style="padding:4px 8px;font-weight:bold;">Round {link.negotiation_version}</td></tr>
+      <tr><td style="padding:4px 8px;color:#666;">Submitted At:</td><td style="padding:4px 8px;">{submitted_str}</td></tr>
+      <tr><td style="padding:4px 8px;color:#666;">Forwarded By:</td><td style="padding:4px 8px;">{user.full_name} ({user.email})</td></tr>
+    </table>
+    <p><a href="{view_url}" style="display:inline-block;background:#1d4ed8;color:white;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:600;font-size:13px;margin:12px 0;">View Quotation Details in Portal</a></p>
+    <p style="font-size:12px;color:#888;margin-top:20px;">The official quotation summary PDF is attached.</p>
+    """
+
+    payload = {
+        "from": f"Wener Supplier Management <{email_settings.mail_from}>",
+        "to": cc,
+        "subject": f"Quotation Copy: {req_title} - {vendor_name}",
+        "html": html,
+    }
+    if pdf_bytes:
+        payload["attachments"] = [{
+            "filename": f"Quotation_{vendor_name.replace(' ', '_')}.pdf",
+            "content": list(pdf_bytes),
+            "content_type": "application/pdf"
+        }]
+
+    sent = await send_batch([payload])
+    if not sent:
+        await db.commit()
+        return RedirectResponse(
+            url=f"/quotations/detail/{requisition_vendor_id}?error=Failed+to+forward+email+via+Resend.+Check+Resend+API+key+or+quota.",
+            status_code=303,
+        )
+
+    await log_action(
+        db,
+        actor=user,
+        action="QUOTATION_FORWARDED_TO_CC",
+        entity_type="requisition_vendor",
+        entity_id=link.id,
+        entity_label=req_title,
+        notes=f"Forwarded quotation copy for {vendor_name} to CCs: {', '.join(cc)} by {user.full_name}.",
+    )
+    await db.flush()
+    await db.commit()
+
+    referer = request.headers.get("referer") or ""
+    if link.requisition_id and f"/requisitions/{link.requisition_id}" in referer:
+        return RedirectResponse(
+            url=f"/requisitions/{link.requisition_id}?success=Quotation+copy+and+PDF+for+{vendor_name.replace(' ', '+')}+forwarded+to+CCs",
+            status_code=303,
+        )
+
+    return RedirectResponse(
+        url=f"/quotations/detail/{requisition_vendor_id}?success=Quotation+copy+and+PDF+forwarded+to+CCs",
+        status_code=303,
+    )
+
+
+
 
 @router.get("/compare/{req_id}", response_class=HTMLResponse)
 async def compare_quotations(
