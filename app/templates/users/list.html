@@ -219,14 +219,23 @@
                         </form>
 
                                 <!-- EDIT USER DETAILS BUTTON -->
-                                <button type="button" onclick="openEditUserModal('{{ target.id }}', '{{ target.full_name|replace(\"'\", \"\\'\") }}', '{{ (target.username or '')|replace(\"'\", \"\\'\") }}', '{{ target.email|replace(\"'\", \"\\'\") }}')"
+                                <button type="button"
+                                        data-user-id="{{ target.id }}"
+                                        data-full-name="{{ target.full_name }}"
+                                        data-username="{{ target.username or '' }}"
+                                        data-email="{{ target.email }}"
+                                        onclick="openEditUserModal(this.dataset.userId, this.dataset.fullName, this.dataset.username, this.dataset.email)"
                                         title="Edit User Name & Account Details (printed on PDF footers)"
                                         class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-lg text-xs font-semibold transition active:scale-95 flex items-center gap-1">
                                     ✏️ Edit
                                 </button>
 
                                 <!-- CHANGE PASSWORD BUTTON -->
-                                <button type="button" onclick="openPasswordModal('{{ target.id }}', '{{ target.full_name|replace(\"'\", \"\\'\") }}', '{{ (target.username or target.email)|replace(\"'\", \"\\'\") }}')"
+                                <button type="button"
+                                        data-user-id="{{ target.id }}"
+                                        data-full-name="{{ target.full_name }}"
+                                        data-identifier="{{ target.username or target.email }}"
+                                        onclick="openPasswordModal(this.dataset.userId, this.dataset.fullName, this.dataset.identifier)"
                                         title="Change User Password"
                                         class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-lg text-xs font-semibold transition active:scale-95">
                                     🔑 Password
