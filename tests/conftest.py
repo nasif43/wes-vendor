@@ -32,6 +32,7 @@ def db_session():
     import app.decisions.models     # noqa: F401
     import app.settings.models      # noqa: F401
     import app.audit.models         # noqa: F401
+    import app.cash_purchases.models  # noqa: F401
 
     engine = create_engine("sqlite:///:memory:", echo=False)
     Base.metadata.create_all(bind=engine)
@@ -55,6 +56,7 @@ async def async_db():
     import app.decisions.models     # noqa: F401
     import app.settings.models      # noqa: F401
     import app.audit.models         # noqa: F401
+    import app.cash_purchases.models  # noqa: F401
 
     engine = create_async_engine("sqlite+aiosqlite:///:memory:", echo=False)
     async with engine.begin() as conn:

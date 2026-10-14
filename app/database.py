@@ -82,6 +82,7 @@ async def init_db() -> None:
     from app.work_orders.models import WorkOrder, SupplierRating  # noqa: F401
     from app.requisitions.models import ShortlistedItem, ReceivedItem  # noqa: F401
     from app.vendors.models import Vendor, vendor_categories  # noqa: F401
+    from app.cash_purchases.models import CashPurchase  # noqa: F401
 
     from sqlalchemy import text
     async with engine.begin() as conn:

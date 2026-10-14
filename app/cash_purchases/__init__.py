@@ -1,0 +1,1 @@
+"""Cash Purchases module."""

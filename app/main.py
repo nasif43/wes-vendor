@@ -87,12 +87,14 @@ from app.vendors.routes import router as vendors_router
 from app.reports.routes import router as reports_router
 from app.users.routes import router as users_router
 from app.work_orders.routes import router as work_orders_router
+from app.cash_purchases.routes import router as cash_purchases_router
 
 app.include_router(auth_router, prefix="/auth", tags=["auth"])
 app.include_router(audit_router, prefix="/audit", tags=["audit"])
 app.include_router(vendors_router, prefix="/vendors", tags=["vendors"])
 app.include_router(categories_router, prefix="/categories", tags=["categories"])
 app.include_router(requisitions_router, prefix="/requisitions", tags=["requisitions"])
+app.include_router(cash_purchases_router, prefix="/cash-purchases", tags=["cash-purchases"])
 app.include_router(requisitions_selection_router, prefix="/requisitions", tags=["requisitions"])
 app.include_router(requisitions_receiving_router, prefix="/requisitions", tags=["requisitions"])
 app.include_router(quotations_vendor_router, prefix="/vendor-quote", tags=["vendor-quote"])

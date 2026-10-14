@@ -1,0 +1,236 @@
+{% extends "base.html" %}
+{% block title %}{% if purchase %}Edit Cash Purchase #{{ purchase.reference_number }}{% else %}New Cash Purchase{% endif %} — WES Supplier Portal{% endblock %}
+{% block nav_side_cash %}text-brand-400 bg-slate-800/80 font-bold{% endblock %}
+
+{% block content %}
+<div class="slide-up max-w-3xl mx-auto pb-12">
+
+    <!-- BREADCRUMB / HEADER -->
+    <div class="flex items-center gap-3 mb-6">
+        <a href="/cash-purchases" class="w-9 h-9 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50 transition shadow-xs shrink-0">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+        </a>
+        <div>
+            <h1 class="text-xl font-bold text-slate-900">
+                {% if purchase %}Edit Cash Purchase <span class="font-mono text-brand-600">#{{ purchase.reference_number }}</span>{% else %}Log New Cash Purchase{% endif %}
+            </h1>
+            <p class="text-xs text-slate-500 font-medium mt-0.5">
+                {% if purchase %}Update recorded purchase details or replace physical slip.{% else %}Record off-portal cash purchases with mandatory physical receipt proof.{% endif %}
+            </p>
+        </div>
+    </div>
+
+    <!-- ERROR BANNER -->
+    {% if error %}
+    <div class="mb-5 p-4 rounded-xl bg-red-50 border border-red-200 text-red-800 text-xs font-semibold flex items-center gap-2.5">
+        <svg class="w-4 h-4 text-red-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <span>{{ error }}</span>
+    </div>
+    {% endif %}
+
+    <!-- FORM CARD -->
+    <div class="bg-white rounded-2xl border border-slate-200 p-6 sm:p-8 shadow-xs">
+        <form method="post" action="{% if purchase %}/cash-purchases/{{ purchase.id }}/edit{% else %}/cash-purchases/new{% endif %}" enctype="multipart/form-data" class="space-y-6">
+
+            <!-- 1. MANDATORY RECEIPT UPLOAD HERO (Placed prominently) -->
+            <div class="bg-amber-50/60 rounded-2xl p-5 border-2 border-dashed border-amber-300">
+                <div class="flex items-center justify-between mb-2">
+                    <label class="block text-xs font-bold text-slate-900 uppercase tracking-wide">
+                        Physical Cash Receipt / Store Slip <span class="text-red-500">* Mandatory</span>
+                    </label>
+                    {% if purchase and purchase.receipt_url %}
+                    <span class="text-[11px] font-semibold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+                        Current Slip Attached
+                    </span>
+                    {% endif %}
+                </div>
+                <p class="text-xs text-slate-500 mb-4">
+                    Take a clear photo or upload the scanned cash memo, invoice slip, or voucher received from the store.
+                </p>
+
+                <!-- Current file display if editing -->
+                {% if purchase and purchase.receipt_url %}
+                <div class="mb-4 p-3 bg-white rounded-xl border border-amber-200 flex items-center justify-between gap-3">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <div class="w-10 h-10 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 shrink-0">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                        </div>
+                        <div class="min-w-0">
+                            <span class="block text-xs font-bold text-slate-800 truncate">Existing Receipt Slip</span>
+                            <a href="{{ purchase.receipt_url }}" target="_blank" class="text-[11px] text-brand-600 hover:underline">Click to view current slip &rarr;</a>
+                        </div>
+                    </div>
+                    <span class="text-[11px] text-slate-400">Upload new image below to replace</span>
+                </div>
+                {% endif %}
+
+                <!-- File input container with live image preview -->
+                <div>
+                    <input type="file" name="receipt_image" id="receipt_image" accept="image/*,application/pdf"
+                           {% if not purchase %}required{% endif %}
+                           onchange="handleReceiptPreview(this)"
+                           class="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-brand-600 file:text-white hover:file:bg-brand-700 file:cursor-pointer cursor-pointer border border-slate-300 rounded-xl bg-white p-1.5 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                    <span class="block text-[11px] text-slate-400 mt-1.5">Supported formats: JPG, PNG, WEBP, PDF (Max 10MB)</span>
+                </div>
+
+                <!-- Live Preview Canvas -->
+                <div id="preview-box" class="mt-4 hidden">
+                    <div class="p-3 bg-white rounded-xl border border-slate-200 inline-block">
+                        <span class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">New Image Preview</span>
+                        <img id="preview-img" src="" alt="Receipt Preview" class="max-h-56 max-w-full rounded-lg border border-slate-200 object-contain shadow-xs">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. CORE PURCHASE DETAILS -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <!-- Title / Short Description -->
+                <div class="sm:col-span-2">
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                        Purchase Title / Purpose <span class="text-red-500">*</span>
+                    </label>
+                    <input type="text" name="title" required value="{{ purchase.title if purchase else '' }}"
+                           placeholder="e.g. 5x Master Cartons & Packaging Straps from Local Market"
+                           class="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition">
+                </div>
+
+                <!-- Total Amount in BDT -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                        Total Amount (BDT ৳) <span class="text-red-500">*</span>
+                    </label>
+                    <div class="relative">
+                        <span class="absolute left-3.5 top-1/2 -translate-y-1/2 font-mono font-bold text-slate-400 text-xs">BDT</span>
+                        <input type="number" step="0.01" min="0.01" name="amount" required
+                               value="{{ '%.2f'|format(purchase.amount|float) if purchase else '' }}"
+                               placeholder="0.00"
+                               class="w-full pl-12 pr-4 py-2.5 border border-slate-300 rounded-xl text-sm font-mono font-bold focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition">
+                    </div>
+                    <span class="text-[11px] text-slate-400 mt-1 block">Positive decimal amount paid in cash</span>
+                </div>
+
+                <!-- Purchase Date -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                        Purchase Date <span class="text-red-500">*</span>
+                    </label>
+                    <input type="date" name="purchase_date" required
+                           value="{{ purchase.purchase_date.strftime('%Y-%m-%d') if purchase else today_str }}"
+                           class="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition">
+                    <span class="text-[11px] text-slate-400 mt-1 block">When the purchase actually took place</span>
+                </div>
+            </div>
+
+            <!-- 3. SUPPLIER & MEMO IDENTIFICATION -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 pt-4 border-t border-slate-100">
+                <!-- Select from Registered Suppliers -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                        Registered Supplier (Optional)
+                    </label>
+                    <select name="vendor_id" id="vendor_select" onchange="autoFillSupplierName(this)"
+                            class="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition bg-white text-slate-700">
+                        <option value="">— Choose registered supplier or leave blank —</option>
+                        {% for v in vendors %}
+                        <option value="{{ v.id }}" data-name="{{ v.company_name }}" {% if purchase and purchase.vendor_id == v.id %}selected{% endif %}>
+                            {{ v.company_name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Store / Shop Name -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                        Store / Shop / Vendor Name
+                    </label>
+                    <input type="text" name="supplier_name" id="supplier_name_input"
+                           value="{{ purchase.supplier_name if purchase else '' }}"
+                           placeholder="e.g. New Market Plastic Corner"
+                           class="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition">
+                </div>
+
+                <!-- Cash Memo / Receipt Number -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                        Cash Memo / Receipt Slip # (Optional)
+                    </label>
+                    <input type="text" name="receipt_number"
+                           value="{{ purchase.receipt_number if purchase and purchase.receipt_number else '' }}"
+                           placeholder="e.g. CM-88912"
+                           class="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs font-mono focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition">
+                    <span class="text-[11px] text-slate-400 mt-1 block">Printed receipt number helps avoid duplicate entries</span>
+                </div>
+
+                <!-- Category / Group -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                        Expense Group / Category (Optional)
+                    </label>
+                    <select name="category_id"
+                            class="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition bg-white text-slate-700">
+                        <option value="">— Uncategorized —</option>
+                        {% for c in categories %}
+                        <option value="{{ c.id }}" {% if purchase and purchase.category_id == c.id %}selected{% endif %}>{{ c.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <!-- 4. NOTES / MEMO -->
+            <div class="pt-4 border-t border-slate-100">
+                <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Notes / Remarks (Optional)
+                </label>
+                <textarea name="notes" rows="3" placeholder="Enter any extra details, quantities bought, payment remarks, or justifications…"
+                          class="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition">{{ purchase.notes if purchase and purchase.notes else '' }}</textarea>
+            </div>
+
+            <!-- ACTION BUTTONS -->
+            <div class="flex items-center justify-end gap-3 pt-6 border-t border-slate-100">
+                <a href="{% if purchase %}/cash-purchases/{{ purchase.id }}{% else %}/cash-purchases{% endif %}"
+                   class="px-5 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition">
+                    Cancel
+                </a>
+                <button type="submit"
+                        class="px-6 py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition shadow-xs active:scale-95">
+                    {% if purchase %}Update Cash Purchase{% else %}Record Cash Purchase{% endif %}
+                </button>
+            </div>
+
+        </form>
+    </div>
+
+</div>
+
+<script>
+function handleReceiptPreview(input) {
+    const box = document.getElementById('preview-box');
+    const img = document.getElementById('preview-img');
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+        if (file.type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                img.src = e.target.result;
+                box.classList.remove('hidden');
+            };
+            reader.readAsDataURL(file);
+        } else {
+            box.classList.add('hidden');
+        }
+    } else {
+        box.classList.add('hidden');
+    }
+}
+
+function autoFillSupplierName(select) {
+    const selectedOption = select.options[select.selectedIndex];
+    const name = selectedOption.getAttribute('data-name');
+    const input = document.getElementById('supplier_name_input');
+    if (name && (!input.value || input.value === '')) {
+        input.value = name;
+    }
+}
+</script>
+{% endblock %}
