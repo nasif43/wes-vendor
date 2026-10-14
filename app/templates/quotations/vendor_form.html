@@ -1,11 +1,32 @@
 {% extends "public_base.html" %}
-{% block title %}Submit Quotation — WES Supplier Portal{% endblock %}
+{% block title %}দরপত্র জমা দিন — WES Supplier Portal{% endblock %}
 {% block content %}
 <div class="slide-up">
-    <h1 class="text-2xl font-bold text-white text-center mb-1">Submit Quotation</h1>
-    <p class="text-blue-200 text-sm text-center mb-2">{% if vendor.is_temporary %}Unlisted Supplier{% else %}{{ vendor.company_name }}{% endif %}</p>
+    <!-- LANGUAGE TOGGLE -->
+    <div class="flex justify-between items-center mb-3">
+        <span class="text-xs font-semibold text-blue-200 tracking-wide uppercase" data-i18n-bn="সরবরাহকারী পোর্টাল" data-i18n-en="Supplier Portal">সরবরাহকারী পোর্টাল</span>
+        <div class="inline-flex bg-white/20 backdrop-blur rounded-xl p-1 border border-white/25 text-xs font-bold shadow-xs">
+            <button type="button" id="btn-lang-bn" onclick="setLanguage('bn')" class="px-3 py-1 rounded-lg transition bg-white text-brand-700 shadow-xs">বাংলা</button>
+            <button type="button" id="btn-lang-en" onclick="setLanguage('en')" class="px-3 py-1 rounded-lg transition text-white hover:text-blue-100">English</button>
+        </div>
+    </div>
+
+    <h1 class="text-2xl font-bold text-white text-center mb-1" id="page-title"
+        data-i18n-bn="দরপত্র জমা দিন" data-i18n-en="Submit Quotation">দরপত্র জমা দিন</h1>
+    
+    <p class="text-blue-200 text-sm text-center mb-2">
+        {% if vendor.is_temporary %}
+            <span data-i18n-bn="অনিবন্ধিত সরবরাহকারী" data-i18n-en="Unlisted Supplier">অনিবন্ধিত সরবরাহকারী</span>
+        {% else %}
+            {{ vendor.company_name }}
+        {% endif %}
+    </p>
+
     {% if link.negotiation_version == 2 %}
-    <p class="text-amber-300 text-xs text-center mb-4 font-semibold">⟳ Revised Quote (v2 Negotiation)</p>
+    <p class="text-amber-300 text-xs text-center mb-4 font-semibold"
+       data-i18n-bn="⟳ সংশোধিত দরপত্র (আলোচনা রাউন্ড ২)" data-i18n-en="⟳ Revised Quote (v2 Negotiation)">
+       ⟳ সংশোধিত দরপত্র (আলোচনা রাউন্ড ২)
+    </p>
     {% endif %}
 
     {% if error %}
@@ -15,48 +36,55 @@
     </div>
     {% endif %}
 
-    <!-- REQUISITION SUMMARY -->
+    <!-- REQUISITION SUMMARY (User-typed title & description remain in original language) -->
     <div class="bg-white/10 backdrop-blur border border-white/20 rounded-2xl p-4 mb-4">
         <h2 class="font-bold text-white text-base">{{ req.title }}</h2>
         <p class="text-blue-100 text-sm mt-1 leading-relaxed">{{ req.item_description }}</p>
-        <p class="text-blue-200 text-xs mt-2">Requested Qty: <strong class="text-white">{{ link.allocated_quantity or req.quantity }} {{ req.unit or '' }}</strong></p>
+        <p class="text-blue-200 text-xs mt-2">
+            <span data-i18n-bn="চাহিদাকৃত পরিমাণ:" data-i18n-en="Requested Qty:">চাহিদাকৃত পরিমাণ:</span> 
+            <strong class="text-white">{{ link.allocated_quantity or req.quantity }} {{ req.unit or '' }}</strong>
+        </p>
         {% if req.notes %}
-        <p class="text-blue-300 text-xs mt-1 italic">Note: {{ req.notes }}</p>
+        <p class="text-blue-300 text-xs mt-1 italic">
+            <span data-i18n-bn="বিশেষ দ্রষ্টব্য:" data-i18n-en="Note:">বিশেষ দ্রষ্টব্য:</span> {{ req.notes }}
+        </p>
         {% endif %}
     </div>
 
-    <form method="post" action="/vendor-quote/{{ token }}" enctype="multipart/form-data" class="space-y-3">
+    <form method="post" action="/vendor-quote/{{ token }}" enctype="multipart/form-data" class="space-y-3" id="quoteForm">
 
         <!-- TEMPORARY VENDOR CONTACT INFO -->
         {% if vendor.is_temporary %}
         <div class="bg-white/10 backdrop-blur border border-white/20 rounded-2xl p-4 space-y-3">
-            <h3 class="font-bold text-white text-sm">Your Contact Information</h3>
+            <h3 class="font-bold text-white text-sm" data-i18n-bn="আপনার যোগাযোগের তথ্য" data-i18n-en="Your Contact Information">আপনার যোগাযোগের তথ্য</h3>
             <div>
-                <label class="block text-xs font-semibold text-blue-200 uppercase tracking-wider mb-1.5">Company Name *</label>
+                <label class="block text-xs font-semibold text-blue-200 uppercase tracking-wider mb-1.5"
+                       data-i18n-bn="প্রতিষ্ঠানের নাম *" data-i18n-en="Company Name *">প্রতিষ্ঠানের নাম *</label>
                 <input type="text" name="company_name" required
                     class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-sm text-white placeholder-blue-300 focus:outline-none focus:ring-2 focus:ring-white/40 transition">
             </div>
             <div>
-                <label class="block text-xs font-semibold text-blue-200 uppercase tracking-wider mb-1.5">Contact Person *</label>
+                <label class="block text-xs font-semibold text-blue-200 uppercase tracking-wider mb-1.5"
+                       data-i18n-bn="যোগাযোগকারী ব্যক্তি *" data-i18n-en="Contact Person *">যোগাযোগকারী ব্যক্তি *</label>
                 <input type="text" name="contact_person" required
                     class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-sm text-white placeholder-blue-300 focus:outline-none focus:ring-2 focus:ring-white/40 transition">
             </div>
             <div class="grid grid-cols-2 gap-3">
                 <div>
-                    <label class="block text-xs font-semibold text-blue-200 uppercase tracking-wider mb-1.5">Phone *</label>
+                    <label class="block text-xs font-semibold text-blue-200 uppercase tracking-wider mb-1.5"
+                           data-i18n-bn="মোবাইল / ফোন *" data-i18n-en="Phone *">মোবাইল / ফোন *</label>
                     <input type="tel" name="phone" required
                         class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-sm text-white placeholder-blue-300 focus:outline-none focus:ring-2 focus:ring-white/40 transition">
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold text-blue-200 uppercase tracking-wider mb-1.5">Email *</label>
+                    <label class="block text-xs font-semibold text-blue-200 uppercase tracking-wider mb-1.5"
+                           data-i18n-bn="ইমেইল *" data-i18n-en="Email *">ইমেইল *</label>
                     <input type="email" name="contact_email" required
                         class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-sm text-white placeholder-blue-300 focus:outline-none focus:ring-2 focus:ring-white/40 transition">
                 </div>
             </div>
         </div>
         {% endif %}
-
-
 
         <input type="hidden" name="submission_type" id="submission_type" value="form">
         <!-- Currency is locked globally to BDT -->
@@ -66,23 +94,23 @@
         <div id="form-fields" class="space-y-4">
             {% set items_to_show = supplier_items if supplier_items is not none else (req.items if req and req.items else []) %}
             {% if items_to_show %}
-            <div class="bg-white border border-slate-300 shadow-sm overflow-hidden" style="border-radius: 4px;">
-                <table class="w-full text-left text-sm border-collapse text-slate-800" style="font-family: Arial, sans-serif;">
+            <div class="bg-white border border-slate-300 shadow-sm overflow-hidden" style="border-radius: 6px;">
+                <table class="w-full text-left text-sm border-collapse text-slate-800" style="font-family: inherit;">
                     <thead class="bg-slate-100 border-b border-slate-300 text-xs text-slate-700">
                         <tr>
-                            <th class="px-3 py-2 border-r border-slate-300 font-bold">Item Name</th>
-                            <th class="px-3 py-2 border-r border-slate-300 font-bold">Description</th>
-                            <th class="px-3 py-2 border-r border-slate-300 font-bold text-center w-16">Qty</th>
-                            <th class="px-3 py-2 font-bold text-right w-28">Unit Price</th>
+                            <th class="px-3 py-2.5 border-r border-slate-300 font-bold" data-i18n-bn="পণ্যের নাম" data-i18n-en="Item Name">পণ্যের নাম</th>
+                            <th class="px-3 py-2.5 border-r border-slate-300 font-bold" data-i18n-bn="বিবরণ" data-i18n-en="Description">বিবরণ</th>
+                            <th class="px-3 py-2.5 border-r border-slate-300 font-bold text-center w-16" data-i18n-bn="পরিমাণ" data-i18n-en="Qty">পরিমাণ</th>
+                            <th class="px-3 py-2.5 font-bold text-right w-32" data-i18n-bn="একক মূল্য (৳)" data-i18n-en="Unit Price (৳)">একক মূল্য (৳)</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for item in items_to_show %}
                         <tr class="border-b border-slate-200">
                             <input type="hidden" name="item_original_index[]" value="{{ item.original_index if item.original_index is defined else loop.index0 }}">
-                            <td class="px-3 py-2 border-r border-slate-300">{{ item.name }}</td>
+                            <td class="px-3 py-2 border-r border-slate-300 font-medium">{{ item.name }}</td>
                             <td class="px-3 py-2 border-r border-slate-300 text-xs text-slate-500">{{ item.description }}</td>
-                            <td class="px-3 py-2 border-r border-slate-300 text-center">{{ item.shortlisted_qty if item.shortlisted_qty is defined else item.qty }}</td>
+                            <td class="px-3 py-2 border-r border-slate-300 text-center font-bold text-slate-700">{{ item.shortlisted_qty if item.shortlisted_qty is defined else item.qty }}</td>
                             <td class="px-2 py-1 bg-yellow-50">
                                 <input type="number" name="item_price[]" required min="0" step="any" placeholder="0.00"
                                     class="w-full px-2 py-1 bg-transparent border border-slate-300 rounded-sm text-sm text-right item-price-input focus:outline-none focus:border-blue-500 focus:bg-white transition-colors"
@@ -93,8 +121,9 @@
                     </tbody>
                     <tfoot class="bg-slate-50">
                         <tr>
-                            <td colspan="3" class="px-3 py-2 font-bold text-right border-r border-slate-300 border-t border-slate-300">Grand Total (৳):</td>
-                            <td class="px-3 py-2 font-bold text-right text-brand-700 border-t border-slate-300" id="vendor-total">0.00</td>
+                            <td colspan="3" class="px-3 py-2.5 font-bold text-right border-r border-slate-300 border-t border-slate-300"
+                                data-i18n-bn="সর্বমোট (৳):" data-i18n-en="Grand Total (৳):">সর্বমোট (৳):</td>
+                            <td class="px-3 py-2.5 font-bold text-right text-brand-700 border-t border-slate-300" id="vendor-total">0.00</td>
                         </tr>
                     </tfoot>
                 </table>
@@ -116,84 +145,147 @@
             </script>
             {% else %}
             <div>
-                <label class="block text-sm font-semibold text-blue-100 mb-1.5">Unit Rate (৳ BDT) *</label>
+                <label class="block text-sm font-semibold text-blue-100 mb-1.5"
+                       data-i18n-bn="একক দর (৳ BDT) *" data-i18n-en="Unit Rate (৳ BDT) *">একক দর (৳ BDT) *</label>
                 <input type="number" name="price" id="price" required min="0.01" step="any"
                     {% if link.quotation and link.quotation.form_data %}value="{{ link.quotation.form_data.price or '' }}"{% endif %}
                     class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-sm text-white placeholder-blue-300 focus:outline-none focus:ring-2 focus:ring-white/40 transition text-lg font-bold">
             </div>
             <div class="grid grid-cols-2 gap-3">
                 <div>
-                <label class="block text-sm font-semibold text-blue-100 mb-1.5">Quantity Offered</label>
+                <label class="block text-sm font-semibold text-blue-100 mb-1.5"
+                       data-i18n-bn="প্রস্তাবিত পরিমাণ" data-i18n-en="Quantity Offered">প্রস্তাবিত পরিমাণ</label>
                 <input type="number" name="quoted_quantity" min="0.01" step="any"
                     value="{{ link.allocated_quantity or req.quantity }}"
                     class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-sm text-white placeholder-blue-300 focus:outline-none focus:ring-2 focus:ring-white/40 transition">
-                <p class="text-blue-300 text-xs mt-1">Partial qty supported</p>
+                <p class="text-blue-300 text-xs mt-1"
+                   data-i18n-bn="আংশিক পরিমাণ গ্রহণযোগ্য" data-i18n-en="Partial qty supported">আংশিক পরিমাণ গ্রহণযোগ্য</p>
                 </div>
             {% endif %}
                 <div>
-                    <label class="block text-sm font-semibold text-blue-100 mb-1.5">Delivery (days)</label>
+                    <label class="block text-sm font-semibold text-blue-100 mb-1.5"
+                           data-i18n-bn="ডেলিভারি সময় (দিন)" data-i18n-en="Delivery (days)">ডেলিভারি সময় (দিন)</label>
                     <input type="number" name="delivery_days" min="1" step="1"
                         {% if link.quotation and link.quotation.form_data %}value="{{ link.quotation.form_data.delivery_days or '' }}"{% endif %}
                         class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-sm text-white placeholder-blue-300 focus:outline-none focus:ring-2 focus:ring-white/40 transition">
                 </div>
             </div>
             <div>
-                <label class="block text-sm font-semibold text-blue-100 mb-1.5">Payment Terms <span class="text-blue-400 text-xs font-normal">(optional)</span></label>
+                <label class="block text-sm font-semibold text-blue-100 mb-1.5"
+                       data-i18n-bn="বিল পরিশোধের শর্তাবলী (ঐচ্ছিক)" data-i18n-en="Payment Terms (optional)">বিল পরিশোধের শর্তাবলী (ঐচ্ছিক)</label>
                 <input type="text" name="payment_terms"
                     {% if link.quotation and link.quotation.form_data %}value="{{ link.quotation.form_data.payment_terms or '' }}"{% endif %}
                     class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-sm text-white placeholder-blue-300 focus:outline-none focus:ring-2 focus:ring-white/40 transition">
             </div>
             <div>
-                <label class="block text-sm font-semibold text-blue-100 mb-1.5">Warranty <span class="text-blue-400 text-xs font-normal">(optional)</span></label>
+                <label class="block text-sm font-semibold text-blue-100 mb-1.5"
+                       data-i18n-bn="ওয়ারেন্টি (ঐচ্ছিক)" data-i18n-en="Warranty (optional)">ওয়ারেন্টি (ঐচ্ছিক)</label>
                 <input type="text" name="warranty"
                     {% if link.quotation and link.quotation.form_data %}value="{{ link.quotation.form_data.warranty or '' }}"{% endif %}
                     class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-sm text-white placeholder-blue-300 focus:outline-none focus:ring-2 focus:ring-white/40 transition">
             </div>
         </div>
 
-        <!-- IMAGE FIELDS (Optional) -->
+        <!-- IMAGE / DOCUMENT FIELD (MANDATORY) -->
         <div class="bg-white/10 backdrop-blur border border-white/20 rounded-2xl p-4 mt-2">
-            <label class="block text-sm font-semibold text-blue-100 mb-3">Upload Quote Document / Image <span class="text-blue-400 text-xs font-normal">(optional)</span></label>
-            <label class="block w-full border-2 border-dashed border-white/30 rounded-2xl p-8 text-center cursor-pointer hover:border-white/60 transition" id="upload-area">
-                <input type="file" name="quote_image" accept="image/*" capture="environment" class="hidden" onchange="previewImage(this)">
+            <label class="block text-sm font-semibold text-blue-100 mb-3">
+                <span data-i18n-bn="দরপত্রের ছবি বা ডকুমেন্ট আপলোড করুন" data-i18n-en="Upload Quote Document / Image">দরপত্রের ছবি বা ডকুমেন্ট আপলোড করুন</span>
+                <span class="text-amber-300 font-bold">* (<span data-i18n-bn="বাধ্যতামূলক" data-i18n-en="mandatory">বাধ্যতামূলক</span>)</span>
+            </label>
+            <label class="block w-full border-2 border-dashed border-white/40 rounded-2xl p-6 text-center cursor-pointer hover:border-white/70 transition bg-white/5" id="upload-area">
+                <input type="file" name="quote_image" accept="image/*,.pdf" capture="environment" required class="hidden" onchange="previewImage(this)">
                 <div id="upload-prompt">
                     <svg class="w-10 h-10 mx-auto text-blue-200 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                    <p class="text-blue-100 font-semibold">Tap to take photo</p>
-                    <p class="text-blue-300 text-xs mt-1">or choose from gallery</p>
+                    <p class="text-blue-100 font-semibold" data-i18n-bn="ছবি তুলতে ট্যাপ করুন" data-i18n-en="Tap to take photo">ছবি তুলতে ট্যাপ করুন</p>
+                    <p class="text-blue-300 text-xs mt-1" data-i18n-bn="বা গ্যালারি/ফাইল থেকে নির্বাচন করুন (বাধ্যতামূলক)" data-i18n-en="or choose from gallery/files (mandatory)">বা গ্যালারি/ফাইল থেকে নির্বাচন করুন (বাধ্যতামূলক)</p>
                 </div>
                 <img id="image-preview" class="hidden max-h-48 mx-auto rounded-xl">
+                <p id="file-chosen-name" class="text-xs text-emerald-300 font-semibold mt-2 hidden"></p>
             </label>
         </div>
 
         <!-- NOTES -->
         <div class="bg-white/10 backdrop-blur border border-white/20 rounded-2xl p-4">
-            <label class="block text-sm font-semibold text-blue-100 mb-1.5">Additional Notes <span class="text-blue-400 text-xs font-normal">(optional)</span></label>
+            <label class="block text-sm font-semibold text-blue-100 mb-1.5"
+                   data-i18n-bn="অতিরিক্ত মন্তব্য (ঐচ্ছিক)" data-i18n-en="Additional Notes (optional)">অতিরিক্ত মন্তব্য (ঐচ্ছিক)</label>
             <textarea name="notes" rows="2"
                 class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-sm text-white placeholder-blue-300 focus:outline-none focus:ring-2 focus:ring-white/40 transition resize-none"></textarea>
         </div>
 
-        <button type="submit" class="w-full bg-white text-brand-700 py-4 rounded-xl text-sm font-bold hover:bg-blue-50 transition shadow-lg active:scale-[0.98] min-h-[52px]">
-            {% if link.negotiation_version == 2 %}Submit Revised Quote (v2){% else %}Submit Quotation{% endif %}
+        <button type="submit" id="btn-submit-quote"
+            class="w-full bg-white text-brand-700 py-4 rounded-xl text-base font-bold hover:bg-blue-50 transition shadow-lg active:scale-[0.98] min-h-[52px]"
+            {% if link.negotiation_version == 2 %}
+            data-i18n-bn="সংশোধিত দরপত্র দাখিল করুন (v2)" data-i18n-en="Submit Revised Quote (v2)"
+            {% else %}
+            data-i18n-bn="দরপত্র দাখিল করুন" data-i18n-en="Submit Quotation"
+            {% endif %}>
+            {% if link.negotiation_version == 2 %}সংশোধিত দরপত্র দাখিল করুন (v2){% else %}দরপত্র দাখিল করুন{% endif %}
         </button>
     </form>
 </div>
 
 {% block scripts %}
 <script>
+let currentLang = 'bn';
+
+function setLanguage(lang) {
+    currentLang = lang;
+    localStorage.setItem('wes_vendor_lang', lang);
+
+    const btnBn = document.getElementById('btn-lang-bn');
+    const btnEn = document.getElementById('btn-lang-en');
+
+    if (lang === 'en') {
+        btnEn.className = 'px-3 py-1 rounded-lg transition bg-white text-brand-700 shadow-xs';
+        btnBn.className = 'px-3 py-1 rounded-lg transition text-white hover:text-blue-100';
+    } else {
+        btnBn.className = 'px-3 py-1 rounded-lg transition bg-white text-brand-700 shadow-xs';
+        btnEn.className = 'px-3 py-1 rounded-lg transition text-white hover:text-blue-100';
+    }
+
+    document.querySelectorAll('[data-i18n-bn]').forEach(el => {
+        const text = el.getAttribute(`data-i18n-${lang}`);
+        if (text) {
+            el.innerText = text;
+        }
+    });
+
+    document.querySelectorAll('[data-placeholder-bn]').forEach(el => {
+        const ph = el.getAttribute(`data-placeholder-${lang}`);
+        if (ph) {
+            el.setAttribute('placeholder', ph);
+        }
+    });
+}
 
 function previewImage(input) {
     if (input.files && input.files[0]) {
-        const reader = new FileReader();
-        reader.onload = e => {
-            document.getElementById('image-preview').src = e.target.result;
-            document.getElementById('image-preview').classList.remove('hidden');
-            document.getElementById('upload-prompt').classList.add('hidden');
-        };
-        reader.readAsDataURL(input.files[0]);
+        const file = input.files[0];
+        const fileNameEl = document.getElementById('file-chosen-name');
+        if (fileNameEl) {
+            fileNameEl.textContent = '✓ ' + file.name;
+            fileNameEl.classList.remove('hidden');
+        }
+        if (file.type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.onload = e => {
+                document.getElementById('image-preview').src = e.target.result;
+                document.getElementById('image-preview').classList.remove('hidden');
+                document.getElementById('upload-prompt').classList.add('hidden');
+            };
+            reader.readAsDataURL(file);
+        } else {
+            document.getElementById('image-preview').classList.add('hidden');
+            document.getElementById('upload-prompt').classList.remove('hidden');
+        }
     }
 }
+
+// Initialize on page load (default to Bangla)
+document.addEventListener('DOMContentLoaded', () => {
+    const saved = localStorage.getItem('wes_vendor_lang') || 'bn';
+    setLanguage(saved);
+});
 </script>
 {% endblock %}
 {% endblock %}
-
-

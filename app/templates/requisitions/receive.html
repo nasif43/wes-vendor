@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Receive Items — {{ req.title }}{% endblock %}
+{% block title %}Receive Items & Generate Accepted Challan — {{ req.title }}{% endblock %}
 {% block content %}
 <div class="slide-up max-w-5xl mx-auto">
     <div class="flex items-center gap-3 mb-5">
@@ -7,39 +7,41 @@
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
         </a>
         <div class="min-w-0 flex-1">
-            <h1 class="text-xl font-bold text-slate-900 truncate">Receive Items</h1>
+            <h1 class="text-xl font-bold text-slate-900 truncate">Receive Goods &amp; Accepted Challan</h1>
             <p class="text-xs text-slate-400 mt-0.5 truncate">{{ req.title }}</p>
         </div>
     </div>
 
     {% if error %}
-    <div class="bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-5 text-sm text-red-700">
+    <div class="bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-5 text-sm text-red-700 font-medium flex items-center gap-2">
+        <svg class="w-4 h-4 shrink-0 text-red-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
         {{ error }}
     </div>
     {% endif %}
 
     <form method="post" action="/requisitions/{{ req.id }}/receive" enctype="multipart/form-data" id="receiveForm">
 
-        <!-- Invoice & Reference Numbers -->
+        <!-- Challan & Reference Numbers -->
         <div class="bg-white rounded-2xl border border-slate-200 p-5 mb-5 shadow-sm">
-            <h2 class="text-sm font-bold text-slate-900 mb-4">Invoice & Reference</h2>
+            <h2 class="text-sm font-bold text-slate-900 mb-4">Accepted Challan &amp; Reference (চালান ও রেফারেন্স)</h2>
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                    <label class="block text-xs font-semibold text-slate-500 mb-1">Invoice Number *</label>
-                    <input type="text" name="invoice_number" required
-                           class="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-                           placeholder="INV-2024-001">
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Accepted Challan Number *</label>
+                    <input type="text" name="challan_number" id="challan_number" required
+                           class="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 font-mono"
+                           placeholder="CH-2026-001" oninput="document.getElementById('hidden_invoice_number').value = this.value">
+                    <input type="hidden" name="invoice_number" id="hidden_invoice_number">
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold text-slate-500 mb-1">QC Number</label>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">QC Inspection Number</label>
                     <input type="text" name="qc_number"
-                           class="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                           class="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 font-mono"
                            placeholder="QC-001">
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold text-slate-500 mb-1">Receiver Number</label>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">Receiver Reference Number</label>
                     <input type="text" name="receiver_number"
-                           class="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                           class="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 font-mono"
                            placeholder="RCV-001">
                 </div>
             </div>
@@ -48,7 +50,7 @@
         <!-- Per-Item Receiving Table -->
         <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm mb-5">
             <div class="px-5 py-3.5 bg-slate-50 border-b border-slate-200">
-                <h2 class="text-sm font-bold text-slate-900">Item Receipt & QC</h2>
+                <h2 class="text-sm font-bold text-slate-900">Item Receipt &amp; QC (পণ্য গ্রহণ ও মান যাচাই)</h2>
                 <p class="text-xs text-slate-500 mt-0.5">Enter the quantity received for each item. Rejected quantity is calculated automatically.</p>
             </div>
             <div class="overflow-x-auto">
@@ -110,9 +112,9 @@
                     </tbody>
                     <tfoot class="border-t-2 border-slate-200 bg-slate-50">
                         <tr>
-                            <td colspan="5" class="px-4 py-3 text-right font-bold text-slate-700">Invoice Total:</td>
+                            <td colspan="5" class="px-4 py-3 text-right font-bold text-slate-700">Accepted Challan Total:</td>
                             <td class="px-4 py-3 text-right">
-                                <span id="grand_total" class="font-bold text-lg text-slate-900 font-mono">0.00</span>
+                                <span id="grand_total" class="font-bold text-lg text-brand-700 font-mono">0.00</span>
                                 <input type="hidden" name="grand_total" id="grand_total_input" value="0">
                             </td>
                             <td></td>
@@ -122,19 +124,22 @@
             </div>
         </div>
 
-        <!-- Delivery Photo -->
+        <!-- Delivery & Challan Documentation (Mandatory Photo) -->
         <div class="bg-white rounded-2xl border border-slate-200 p-5 mb-5 shadow-sm">
-            <h2 class="text-sm font-bold text-slate-900 mb-4">Delivery Documentation</h2>
+            <h2 class="text-sm font-bold text-slate-900 mb-1">Challan &amp; Delivery Documentation</h2>
+            <p class="text-xs text-slate-500 mb-4">Upload the physical delivery Challan and delivery photos for official records.</p>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-xs font-semibold text-slate-500 mb-1">Delivery Photo</label>
-                    <input type="file" name="delivery_photo" accept="image/*" capture="environment"
+                <div class="p-4 bg-slate-50 rounded-xl border border-slate-200">
+                    <label class="block text-xs font-bold text-slate-800 mb-1">Delivery Photo <span class="text-red-600 font-bold">* (Mandatory)</span></label>
+                    <input type="file" name="delivery_photo" accept="image/*" capture="environment" required
                            class="w-full text-sm text-slate-600 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-brand-50 file:text-brand-700 hover:file:bg-brand-100">
+                    <p class="text-[11px] text-slate-400 mt-1">Photo of delivered items at premises</p>
                 </div>
-                <div>
-                    <label class="block text-xs font-semibold text-slate-500 mb-1">Invoice File (PDF)</label>
-                    <input type="file" name="invoice_file" accept=".pdf,.jpg,.png"
+                <div class="p-4 bg-slate-50 rounded-xl border border-slate-200">
+                    <label class="block text-xs font-bold text-slate-800 mb-1">Upload Supplier Challan / Delivery Slip <span class="text-brand-600 font-semibold">(PDF/Image)</span></label>
+                    <input type="file" name="challan_file" accept=".pdf,image/*"
                            class="w-full text-sm text-slate-600 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-brand-50 file:text-brand-700 hover:file:bg-brand-100">
+                    <p class="text-[11px] text-slate-400 mt-1">Scanned or photo copy of the physical Challan</p>
                 </div>
             </div>
         </div>
@@ -146,69 +151,76 @@
                        class="w-5 h-5 rounded text-brand-600 border-slate-300">
                 <div>
                     <p class="text-sm font-bold text-slate-900">Mark as QC Complete</p>
-                    <p class="text-xs text-slate-500 mt-0.5">Check this to finalize the order, generate the invoice, and close the requisition.</p>
+                    <p class="text-xs text-slate-500 mt-0.5">Check this to finalize the order, generate the Accepted Challan, and close the requisition.</p>
                 </div>
             </label>
         </div>
 
-
         <div class="mb-8">
-            <label class="block text-sm font-bold text-slate-700 mb-2">Invoice Letterhead</label>
+            <label class="block text-sm font-bold text-slate-700 mb-2">Letterhead for Accepted Challan PDF</label>
             <select name="letterhead_slot" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-brand-500 transition-colors">
                 <option value="">-- No Letterhead --</option>
                 {% for slot, name in letterheads.items() %}
                 <option value="{{ slot }}">{{ name }}</option>
                 {% endfor %}
             </select>
-            <p class="text-xs text-slate-500 mt-1">This letterhead will be applied as the background to the final invoice PDF.</p>
+            <p class="text-xs text-slate-500 mt-1">This letterhead will be applied as the background to the Accepted Challan PDF.</p>
         </div>
 
         <button type="submit"
-
                 class="w-full bg-brand-600 text-white py-3.5 rounded-2xl text-sm font-bold hover:bg-brand-700 transition shadow-sm active:scale-[0.98]">
-            Submit Receiving Report & Generate Invoice
+            Submit Receiving Report &amp; Generate Accepted Challan
         </button>
     </form>
 </div>
 
 <script>
     function calcRow(idx) {
-        const orderedEl = document.querySelector(`[name="ordered_qty[]"]`);
-        // Get ordered qty from hidden input
         const orderedInputs = document.querySelectorAll('[name="ordered_qty[]"]');
         const receivedInputs = document.querySelectorAll('[name="received_qty[]"]');
         const priceEls = document.querySelectorAll('[id^="price_"]');
 
-        const ordered = parseFloat(orderedInputs[idx]?.value || 0);
-        const received = parseFloat(receivedInputs[idx]?.value || 0);
-        const price = parseFloat(priceEls[idx]?.dataset.price || 0);
+        const ordered = parseFloat(orderedInputs[idx].value) || 0;
+        let received = parseFloat(receivedInputs[idx].value) || 0;
+
+        // Clamp received between 0 and ordered
+        if (received < 0) received = 0;
+        if (received > ordered) received = ordered;
+        receivedInputs[idx].value = received;
+
         const rejected = Math.max(0, ordered - received);
+        const price = parseFloat(priceEls[idx].dataset.price) || 0;
         const lineTotal = received * price;
 
-        const rejectedEl = document.getElementById(`rejected_${idx}`);
-        const rejectedInput = document.getElementById(`rejected_input_${idx}`);
-        const totalEl = document.getElementById(`total_${idx}`);
+        // Update rejected text and hidden input
+        document.getElementById(`rejected_${idx}`).innerText = rejected.toString();
+        document.getElementById(`rejected_input_${idx}`).value = rejected.toString();
 
-        if (rejectedEl) rejectedEl.textContent = rejected.toFixed(received % 1 === 0 && ordered % 1 === 0 ? 0 : 2);
-        if (rejectedInput) rejectedInput.value = rejected;
-        if (totalEl) totalEl.textContent = lineTotal.toFixed(2);
+        // Update line total text
+        document.getElementById(`total_${idx}`).innerText = lineTotal.toFixed(2);
 
         // Recalculate grand total
-        let grand = 0;
-        document.querySelectorAll('[id^="total_"]').forEach(el => {
-            const v = parseFloat(el.textContent || 0);
-            if (!isNaN(v)) grand += v;
-        });
-        const grandEl = document.getElementById('grand_total');
-        const grandInput = document.getElementById('grand_total_input');
-        if (grandEl) grandEl.textContent = grand.toFixed(2);
-        if (grandInput) grandInput.value = grand.toFixed(2);
+        calcGrandTotal();
     }
 
-    // Initialize all rows on page load
-    document.addEventListener('DOMContentLoaded', function() {
+    function calcGrandTotal() {
         const receivedInputs = document.querySelectorAll('[name="received_qty[]"]');
-        receivedInputs.forEach((_, idx) => calcRow(idx));
+        const priceEls = document.querySelectorAll('[id^="price_"]');
+        let grand = 0;
+
+        receivedInputs.forEach((input, i) => {
+            const qty = parseFloat(input.value) || 0;
+            const price = parseFloat(priceEls[i].dataset.price) || 0;
+            grand += qty * price;
+        });
+
+        document.getElementById("grand_total").innerText = grand.toFixed(2);
+        document.getElementById("grand_total_input").value = grand.toFixed(2);
+    }
+
+    // Run on load
+    document.addEventListener("DOMContentLoaded", () => {
+        calcGrandTotal();
     });
 </script>
 {% endblock %}

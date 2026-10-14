@@ -5,25 +5,37 @@
     <span class="text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wide bg-slate-100 text-slate-600 border border-slate-200">
         Draft
     </span>
-{% elif clean_val == 'new' %}
-    <span class="text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wide bg-blue-100 text-blue-700 border border-blue-200">
-        New RFQ
+{% elif clean_val in ('new', 'rfq', 'tender') %}
+    <span class="text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wide bg-amber-100 text-amber-800 border border-amber-300">
+        Quotation / RFQ
     </span>
-{% elif clean_val == 'in_progress' %}
-    <span class="text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wide bg-amber-100 text-amber-700 border border-amber-200">
-        In Progress
+{% elif clean_val in ('quotation', 'quotations', 'in_progress', 'negotiating') %}
+    <span class="text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wide bg-amber-100 text-amber-800 border border-amber-300">
+        {% if clean_val == 'negotiating' %}Negotiating (v2){% else %}Quotation / In Progress{% endif %}
+    </span>
+{% elif clean_val == 'awarded' %}
+    <span class="text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wide bg-emerald-100 text-emerald-800 border border-emerald-300">
+        Awarded
+    </span>
+{% elif clean_val in ('work_order_issued', 'issued') %}
+    <span class="text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wide bg-purple-100 text-purple-800 border border-purple-300">
+        Work Order Issued
     </span>
 {% elif clean_val == 'submitted' %}
     <span class="text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wide bg-purple-100 text-purple-700 border border-purple-200">
         Submitted
     </span>
-{% elif clean_val == 'received' %}
-    <span class="text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wide bg-sky-100 text-sky-700 border border-sky-200">
-        Received
+{% elif clean_val in ('receiving', 'received') %}
+    <span class="text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wide bg-cyan-100 text-cyan-800 border border-cyan-300">
+        Receiving
     </span>
 {% elif clean_val == 'closed' %}
-    <span class="text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wide bg-emerald-100 text-emerald-700 border border-emerald-200">
+    <span class="text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wide bg-blue-100 text-blue-800 border border-blue-300">
         Closed
+    </span>
+{% elif clean_val in ('cancelled', 'rejected') %}
+    <span class="text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wide bg-rose-100 text-rose-800 border border-rose-300">
+        {{ clean_val | replace('_', ' ') | title }}
     </span>
 {% else %}
     <span class="text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wide bg-slate-100 text-slate-600 border border-slate-200">

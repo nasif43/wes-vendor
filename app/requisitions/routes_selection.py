@@ -137,7 +137,11 @@ async def send_requisition(
             import os
             from app.config import get_settings
             
-            pdf_bytes = generate_rfq_pdf(req, vendor.company_name, req.items or [])
+            pdf_bytes = generate_rfq_pdf(
+                req, vendor.company_name, req.items or [],
+                issuer_name=user.full_name or user.username,
+                issued_at=datetime.now(UTC),
+            )
             if pdf_bytes:
                 settings = get_settings()
                 rfq_dir = os.path.join(settings.upload_dir, "rfqs")
@@ -469,7 +473,11 @@ async def start_negotiation(
                 import os
                 from app.config import get_settings
                 
-                pdf_bytes = generate_rfq_pdf(req, vendor.company_name, shortlisted)
+                pdf_bytes = generate_rfq_pdf(
+                    req, vendor.company_name, shortlisted,
+                    issuer_name=user.full_name or user.username,
+                    issued_at=datetime.now(UTC),
+                )
                 if pdf_bytes:
                     settings = get_settings()
                     rfq_dir = os.path.join(settings.upload_dir, "rfqs")
@@ -611,7 +619,7 @@ async def resend_supplier_link(
     from app.reports.pdf_service import generate_rfq_pdf
     from app.email.resend import send_batch, build_vendor_invitation, build_negotiation_invitation
     
-    if link.negotiation_version == 2:
+    if link.shortlisted_items:
         # Re-build shortlisted items
         shortlisted = []
         for s_item in link.shortlisted_items:
@@ -621,20 +629,40 @@ async def resend_supplier_link(
             shortlisted.append({
                 "name": s_item.item_name,
                 "description": desc,
-                "shortlisted_qty": s_item.shortlisted_qty
+                "shortlisted_qty": s_item.shortlisted_qty,
+                "qty": s_item.shortlisted_qty,
             })
-        pdf_bytes = generate_rfq_pdf(req, vendor.company_name, shortlisted)
-        email_params.append(
-            await build_negotiation_invitation(
-                to=vendor.contact_email,
-                supplier_name=vendor.contact_person or vendor.company_name,
-                requisition_title=req.title,
-                quote_url=quote_url,
-                pdf_bytes=pdf_bytes,
-            )
+        pdf_bytes = generate_rfq_pdf(
+            req, vendor.company_name, shortlisted,
+            issuer_name=user.full_name or user.username,
+            issued_at=datetime.now(UTC),
         )
+        if link.negotiation_version == 2:
+            email_params.append(
+                await build_negotiation_invitation(
+                    to=vendor.contact_email,
+                    supplier_name=vendor.contact_person or vendor.company_name,
+                    requisition_title=req.title,
+                    quote_url=quote_url,
+                    pdf_bytes=pdf_bytes,
+                )
+            )
+        else:
+            email_params.append(
+                await build_vendor_invitation(
+                    to=vendor.contact_email,
+                    vendor_name=vendor.contact_person or vendor.company_name,
+                    requisition_title=req.title,
+                    quote_url=quote_url,
+                    pdf_bytes=pdf_bytes,
+                )
+            )
     else:
-        pdf_bytes = generate_rfq_pdf(req, vendor.company_name, req.items or [])
+        pdf_bytes = generate_rfq_pdf(
+            req, vendor.company_name, req.items or [],
+            issuer_name=user.full_name or user.username,
+            issued_at=datetime.now(UTC),
+        )
         email_params.append(
             await build_vendor_invitation(
                 to=vendor.contact_email,

@@ -38,6 +38,7 @@ class WorkOrder(Base):
 
     requisition = relationship("Requisition", lazy="selectin")
     vendor = relationship("Vendor", lazy="selectin")
+    requisition_vendor = relationship("RequisitionVendor", lazy="selectin")
     issuer = relationship("UserProfile", lazy="selectin")
     ratings = relationship("SupplierRating", back_populates="work_order", lazy="selectin")
 

@@ -85,11 +85,11 @@
             <div class="flex items-center gap-3.5 min-w-0">
                 <div class="w-10 h-10 rounded-xl shrink-0 flex items-center justify-center
                     {% if item.stage == 'draft' %}bg-slate-100 text-slate-500
-                    {% elif item.stage == 'new' %}bg-blue-50 text-blue-600
-                    {% elif item.stage == 'in_progress' %}bg-amber-50 text-amber-600
+                    {% elif item.stage in ('new', 'in_progress') %}bg-amber-50 text-amber-600
+                    {% elif item.stage == 'awarded' %}bg-emerald-50 text-emerald-600
                     {% elif item.stage == 'submitted' %}bg-purple-50 text-purple-600
                     {% elif item.stage == 'received' %}bg-sky-50 text-sky-600
-                    {% elif item.stage == 'closed' %}bg-emerald-50 text-emerald-600
+                    {% elif item.stage == 'closed' %}bg-blue-50 text-blue-600
                     {% elif item.stage == 'cancelled' %}bg-gray-100 text-gray-500
                     {% elif item.stage == 'rejected' %}bg-red-50 text-red-600{% endif %}">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
@@ -106,11 +106,11 @@
 
             <div class="flex items-center gap-3 shrink-0 self-end sm:self-auto">
                 {% if item.qc_done_at %}
-                <span class="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200/60">
+                <span class="text-xs font-semibold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200/60">
                     QC done on {{ item.qc_done_at.strftime('%b %d, %Y') }}
                 </span>
                 {% elif item.confirmed_at %}
-                <span class="text-xs font-semibold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200/60">
+                <span class="text-xs font-semibold text-purple-700 bg-purple-50 px-2.5 py-1 rounded-lg border border-purple-200/60">
                     Confirmed on {{ item.confirmed_at.strftime('%b %d, %Y') }}
                 </span>
                 {% endif %}
@@ -122,17 +122,18 @@
                 {% endif %}
 
                 <span class="text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider
-                    {% if item.stage == 'draft' %}bg-slate-100 text-slate-600
-                    {% elif item.stage == 'new' %}bg-blue-100 text-blue-700
-                    {% elif item.stage == 'in_progress' %}bg-amber-100 text-amber-700
-                    {% elif item.stage == 'submitted' %}bg-purple-100 text-purple-700
-                    {% elif item.stage == 'received' %}bg-sky-100 text-sky-700
-                    {% elif item.stage == 'closed' %}bg-emerald-100 text-emerald-700
-                    {% elif item.stage == 'cancelled' %}bg-gray-200 text-gray-700
-                    {% elif item.stage == 'rejected' %}bg-red-100 text-red-700{% endif %}">
+                    {% if item.stage == 'draft' %}bg-slate-100 text-slate-600 border border-slate-200
+                    {% elif item.stage in ('new', 'in_progress') %}bg-amber-100 text-amber-800 border border-amber-300
+                    {% elif item.stage == 'awarded' %}bg-emerald-100 text-emerald-800 border border-emerald-300
+                    {% elif item.stage == 'submitted' %}bg-purple-100 text-purple-700 border border-purple-200
+                    {% elif item.stage == 'received' %}bg-sky-100 text-sky-700 border border-sky-200
+                    {% elif item.stage == 'closed' %}bg-blue-100 text-blue-800 border border-blue-300
+                    {% elif item.stage == 'cancelled' %}bg-gray-200 text-gray-700 border border-gray-300
+                    {% elif item.stage == 'rejected' %}bg-red-100 text-red-700 border border-red-200{% endif %}">
                     {% if item.stage == 'draft' %}Draft
-                    {% elif item.stage == 'new' %}New
-                    {% elif item.stage == 'in_progress' %}In Progress
+                    {% elif item.stage == 'new' %}RFQ / Tender
+                    {% elif item.stage == 'in_progress' %}Quotation
+                    {% elif item.stage == 'awarded' %}Awarded
                     {% elif item.stage == 'submitted' %}Submitted
                     {% elif item.stage == 'received' %}Received
                     {% elif item.stage == 'closed' %}Closed
@@ -343,24 +344,24 @@
             </div>
 
             <!-- COLUMN 6: CLOSED (QC DONE) -->
-            <div class="bg-emerald-50/50 rounded-2xl p-3 border border-emerald-200/50 flex flex-col min-h-[500px]">
+            <div class="bg-blue-50/50 rounded-2xl p-3 border border-blue-200/50 flex flex-col min-h-[500px]">
                 <div class="flex items-center justify-between px-2 py-1.5 mb-3">
-                    <span class="text-xs font-extrabold text-emerald-800 uppercase tracking-wider flex items-center gap-1.5">
-                        <span class="w-2 h-2 rounded-full bg-emerald-500"></span> Closed
+                    <span class="text-xs font-extrabold text-blue-800 uppercase tracking-wider flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-blue-500"></span> Closed
                     </span>
-                    <span class="text-xs font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-full">
+                    <span class="text-xs font-bold text-blue-700 bg-blue-100/80 px-2 py-0.5 rounded-full">
                         {{ items | selectattr("stage", "equalto", "closed") | list | length }}
                     </span>
                 </div>
                 <div class="space-y-3 flex-1 overflow-y-auto">
                     {% for item in items if item.stage == 'closed' %}
                     {% set req = item.req %}
-                    <a href="/requisitions/{{ req.id }}" class="block bg-white rounded-xl p-3.5 border border-emerald-200/80 hover:border-emerald-400 hover:shadow-md transition active:scale-[0.98]">
+                    <a href="/requisitions/{{ req.id }}" class="block bg-white rounded-xl p-3.5 border border-blue-200/80 hover:border-blue-400 hover:shadow-md transition active:scale-[0.98]">
                         <div class="text-xs font-extrabold text-slate-900 mb-1 truncate">{{ req.title }}</div>
                         <div class="text-[11px] font-medium text-slate-500 mb-2 truncate">{{ req.quantity }} {{ req.unit or '' }}</div>
                         
                         {% if item.qc_done_at %}
-                        <div class="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded mb-1.5 border border-emerald-200/60 block truncate">
+                        <div class="text-[10px] font-bold text-blue-800 bg-blue-50 px-2 py-0.5 rounded mb-1.5 border border-blue-200/60 block truncate">
                             QC done on {{ item.qc_done_at.strftime('%b %d, %Y') }}
                         </div>
                         {% endif %}
@@ -373,7 +374,7 @@
 
                         <div class="text-[10px] text-slate-400 font-medium border-t border-slate-100 pt-2 flex items-center justify-between">
                             <span>QC Passed</span>
-                            <span class="font-bold text-emerald-600">✓ Closed</span>
+                            <span class="font-bold text-blue-600">✓ Closed</span>
                         </div>
                     </a>
                     {% else %}

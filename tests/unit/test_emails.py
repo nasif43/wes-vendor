@@ -34,15 +34,16 @@ async def test_email_payloads_with_default_cc():
             requisition_title="Req A",
             view_url="http://example.com/view",
         )
-        assert submission_notif["cc"] == ["test_cc@example.com"]
+        assert submission_notif[0]["cc"] == ["test_cc@example.com"]
         
         submission_conf = await build_submission_confirmation(
             to="vendor@example.com",
             vendor_name="Vendor A",
             requisition_title="Req A",
+            pdf_bytes=b"%PDF-1.4 test",
         )
         assert submission_conf["cc"] == ["test_cc@example.com"]
-
+        assert len(submission_conf["attachments"]) == 1
 
 @pytest.mark.anyio
 async def test_email_payloads_without_default_cc():
@@ -69,7 +70,7 @@ async def test_email_payloads_without_default_cc():
             requisition_title="Req A",
             view_url="http://example.com/view",
         )
-        assert "cc" not in submission_notif
+        assert "cc" not in submission_notif[0]
         
         submission_conf = await build_submission_confirmation(
             to="vendor@example.com",

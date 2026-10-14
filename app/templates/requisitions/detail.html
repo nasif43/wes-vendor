@@ -99,10 +99,10 @@
                 </p>
                 {% if req.invoice_number %}
                 <div class="mt-2 text-xs text-slate-600 flex items-center justify-between pt-2 border-t border-emerald-200/50">
-                    <span>Invoice #: <strong class="text-slate-900">{{ req.invoice_number }}</strong></span>
+                    <span>Accepted Challan #: <strong class="text-slate-900 font-mono">{{ req.invoice_number }}</strong></span>
                     {% if req.invoice_url %}
                     <a href="{{ req.invoice_url }}" target="_blank" class="text-brand-600 font-bold hover:underline inline-flex items-center gap-1">
-                        View Invoice &rarr;
+                        View Accepted Challan &rarr;
                     </a>
                     {% endif %}
                 </div>
@@ -217,6 +217,11 @@
                             </select>
                             <button type="submit" class="bg-brand-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-brand-700 transition">Issue WO</button>
                         </form>
+                        {% endif %}
+                        {% if link.quotation and link.quotation.form_data and link.quotation.form_data.price %}
+                        <span class="text-xs font-mono font-bold text-slate-900 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200">
+                            ৳{{ "%.2f"|format(link.quotation.form_data.price|float(0)) }}
+                        </span>
                         {% endif %}
                         <span class="text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wide bg-emerald-100 text-emerald-700">
                             Quote Received
@@ -379,16 +384,16 @@
     </div>
     {% endif %}
 
-    <!-- INVOICE LINK — for closed/QC-done requisitions -->
+    <!-- ACCEPTED CHALLAN LINK — for closed/QC-done requisitions -->
     {% if req.qc_done or status_str == 'closed' %}
-    <a href="/requisitions/{{ req.id }}/invoice" class="flex items-center justify-between bg-white border border-slate-200 rounded-2xl p-4 hover:border-brand-300 hover:shadow-sm transition shadow-sm group mb-4 active:scale-[0.98] mt-4">
+    <a href="/requisitions/{{ req.id }}/challan" class="flex items-center justify-between bg-white border border-slate-200 rounded-2xl p-4 hover:border-brand-300 hover:shadow-sm transition shadow-sm group mb-4 active:scale-[0.98] mt-4">
         <div class="flex items-center gap-3">
-            <div class="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center">
-                <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            <div class="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center">
+                <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
             </div>
             <div>
-                <div class="text-sm font-semibold text-slate-900">View / Print Invoice</div>
-                <div class="text-xs text-slate-400">BDT-denominated, printable invoice</div>
+                <div class="text-sm font-semibold text-slate-900">View / Print Accepted Challan</div>
+                <div class="text-xs text-slate-400">BDT-denominated, printable Accepted Challan</div>
             </div>
         </div>
         <svg class="w-4 h-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>

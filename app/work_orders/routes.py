@@ -51,8 +51,11 @@ async def view_work_order(
     wo = result.scalar_one_or_none()
     if not wo:
         return RedirectResponse(url="/work-orders", status_code=303)
+    quote_data = None
+    if wo.requisition_vendor and wo.requisition_vendor.quotation:
+        quote_data = wo.requisition_vendor.quotation.form_data
     return templates.TemplateResponse(
-        request, "work_orders/detail.html", {"user": user, "wo": wo}
+        request, "work_orders/detail.html", {"user": user, "wo": wo, "quote_data": quote_data}
     )
 
 

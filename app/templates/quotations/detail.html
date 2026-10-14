@@ -44,6 +44,9 @@
         {% endif %}
 
         {% if link.quotation.submission_type == 'form' and link.quotation.form_data %}
+        {% set req_status_str = link.requisition.status.value if (link.requisition and link.requisition.status.value is defined) else (link.requisition.status|string if link.requisition else '') %}
+        {% set is_post_award = req_status_str in ['awarded', 'work_order_issued', 'receiving', 'received', 'closed'] %}
+        {% set hide_price = user and user.is_procurement_blind and not is_post_award %}
         <div class="bg-white rounded-2xl border border-slate-200 p-4 mb-4 shadow-sm">
             <h3 class="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-3">Quote Details</h3>
             
@@ -65,14 +68,14 @@
                                 <div class="text-[10px] text-slate-500">{{ item.description }}</div>
                             </td>
                             <td class="px-3 py-2 text-center text-slate-700">{{ item.qty }}</td>
-                            <td class="px-3 py-2 text-right font-mono text-slate-700">{% if user and user.is_procurement_blind %}—{% else %}{{ "%.2f"|format(item.price|float(0)) }}{% endif %}</td>
+                            <td class="px-3 py-2 text-right font-mono text-slate-700">{% if hide_price %}—{% else %}{{ "%.2f"|format(item.price|float(0)) }}{% endif %}</td>
                         </tr>
                         {% endfor %}
                     </tbody>
                     <tfoot class="bg-slate-50 border-t border-slate-200">
                         <tr>
                             <td colspan="2" class="px-3 py-2 font-bold text-right text-slate-700">Total:</td>
-                            <td class="px-3 py-2 font-bold text-right font-mono text-slate-900">{% if user and user.is_procurement_blind %}—{% else %}৳{{ "%.2f"|format(link.quotation.form_data.price|float(0)) }}{% endif %}</td>
+                            <td class="px-3 py-2 font-bold text-right font-mono text-slate-900">{% if hide_price %}—{% else %}৳{{ "%.2f"|format(link.quotation.form_data.price|float(0)) }}{% endif %}</td>
                         </tr>
                     </tfoot>
                 </table>
@@ -83,7 +86,7 @@
                 {% if not link.quotation.form_data.get('items') %}
                 <div class="bg-slate-50 rounded-xl p-3.5">
                     <div class="text-[11px] text-slate-400 font-medium mb-1">Price</div>
-                    <div class="text-base font-bold text-slate-900">{% if user and user.is_procurement_blind %}— (hidden){% else %}{{ link.quotation.form_data.price or '—' }}{% endif %}</div>
+                    <div class="text-base font-bold text-slate-900">{% if hide_price %}— (hidden){% else %}{{ link.quotation.form_data.price or '—' }}{% endif %}</div>
                     <div class="text-xs text-slate-500">{{ link.quotation.form_data.currency or '' }}</div>
                 </div>
                 {% endif %}

@@ -99,12 +99,14 @@ async def receive_requisition_form(
 async def receive_requisition_submit(
     req_id: str,
     request: Request,
-    invoice_number: str = Form(...),
+    invoice_number: str = Form(""),
+    challan_number: str = Form(None),
     qc_done: bool = Form(False),
     qc_number: str = Form(None),
     receiver_number: str = Form(None),
     delivery_photo: UploadFile = File(None),
     invoice_file: UploadFile = File(None),
+    challan_file: UploadFile = File(None),
     letterhead_slot: str = Form(None),
     user: UserProfile = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -124,6 +126,16 @@ async def receive_requisition_submit(
             url=f"/requisitions/{req_id}?error=Permission+denied", status_code=303
         )
 
+    # Delivery photo is mandatory
+    if (not delivery_photo or not delivery_photo.filename) and not req.delivery_image_url:
+        return RedirectResponse(
+            url=f"/requisitions/{req_id}/receive?error=Delivery+photo+is+mandatory",
+            status_code=303
+        )
+
+    # Determine Challan Number
+    final_challan_number = challan_number or invoice_number or f"CH-{req.id[:8].upper()}"
+
     # Parse per-item form data
     form_data = await request.form()
     item_names = form_data.getlist("item_name[]")
@@ -135,7 +147,7 @@ async def receive_requisition_submit(
     item_indices = form_data.getlist("item_index[]")
 
     # Handle delivery photo upload
-    final_delivery_image_url = ""
+    final_delivery_image_url = req.delivery_image_url or ""
     if delivery_photo and delivery_photo.filename:
         photo_bytes = await delivery_photo.read()
         if len(photo_bytes) > 0:
@@ -146,14 +158,15 @@ async def receive_requisition_submit(
             if uploaded_url:
                 final_delivery_image_url = uploaded_url
 
-    # Handle invoice file upload (manual invoice, optional)
+    # Handle challan / invoice file upload
     manual_invoice_url = ""
-    if invoice_file and invoice_file.filename:
-        inv_bytes = await invoice_file.read()
+    active_challan_file = challan_file or invoice_file
+    if active_challan_file and active_challan_file.filename:
+        inv_bytes = await active_challan_file.read()
         if len(inv_bytes) > 0:
-            ext = invoice_file.filename.split(".")[-1].lower() if "." in invoice_file.filename else "pdf"
-            remote_path = f"invoices/{req.id}/{uuid.uuid4()}.{ext}"
-            content_type = invoice_file.content_type or "application/pdf"
+            ext = active_challan_file.filename.split(".")[-1].lower() if "." in active_challan_file.filename else "pdf"
+            remote_path = f"challans/{req.id}/{uuid.uuid4()}.{ext}"
+            content_type = active_challan_file.content_type or "application/pdf"
             uploaded_url = await upload_file(BUCKET_NAME, remote_path, inv_bytes, content_type)
             if uploaded_url:
                 manual_invoice_url = uploaded_url
@@ -272,25 +285,34 @@ async def receive_requisition_submit(
             )
 
         from datetime import datetime as _dt, timezone as _tz
-        invoice_date = _dt.now(_tz.utc).strftime("%B %d, %Y")
+        from zoneinfo import ZoneInfo
+        now_dt = _dt.now(_tz.utc)
+        try:
+            dhaka_time = now_dt.astimezone(ZoneInfo("Asia/Dhaka"))
+            challan_date = dhaka_time.strftime("%B %d, %Y")
+            challan_time = dhaka_time.strftime("%I:%M %p")
+        except Exception:
+            challan_date = now_dt.strftime("%B %d, %Y")
+            challan_time = now_dt.strftime("%I:%M %p")
+
         html_content = f"""
         <!DOCTYPE html><html>
         <head><meta charset="utf-8">
-        <style>@page{{margin:40px;}} body{{{bg_style}font-family:'Helvetica Neue',Arial,sans-serif;color:#1a1a1a;line-height:1.5;}}
-        .wrap{{background:rgba(255,255,255,0.93);padding:32px;border-radius:8px;}}
-        h1{{font-size:22px;border-bottom:2px solid #1a1a1a;padding-bottom:8px;margin-bottom:16px;}}
+        <style>@page{{margin:40px;}} body{{{bg_style}font-family:'Noto Sans Bengali','SolaimanLipi','Helvetica Neue',Arial,sans-serif;color:#1a1a1a;line-height:1.5;}}
+        .wrap{{background:rgba(255,255,255,0.95);padding:32px;border-radius:8px;}}
+        h1{{font-size:22px;border-bottom:2px solid #1a1a1a;padding-bottom:8px;margin-bottom:16px;text-align:center;color:#0f172a;}}
         table.meta{{width:100%;font-size:13px;margin-bottom:16px;}} table.meta td{{padding:3px 0;}}
         table.items{{border-collapse:collapse;width:100%;font-size:12px;margin-top:12px;}}
         table.items th{{border:1px solid #ccc;padding:7px;background:#e2e8f0;font-size:11px;}}
         table.items tfoot td{{font-weight:700;background:#f8fafc;}}
-        .footer{{margin-top:24px;font-size:11px;color:#666;text-align:center;}}
+        .footer{{margin-top:28px;font-size:11px;color:#475569;text-align:center;border-top:1px solid #cbd5e1;padding-top:12px;}}
         </style></head>
         <body><div class="wrap">
-        <p style="font-size:11px;color:#666;margin-bottom:4px">Invoice No: {invoice_number} | Date: {invoice_date}</p>
-        <h1>Invoice</h1>
+        <p style="font-size:11px;color:#666;margin-bottom:4px">Challan No: {final_challan_number} | Date: {challan_date}</p>
+        <h1>Accepted Challan (গৃহীত চালান)</h1>
         <table class="meta">
         <tr><td><b>Requisition:</b> {req.title}</td><td><b>Supplier:</b> {winner_name}</td></tr>
-        <tr><td><b>Received by:</b> {user.full_name}</td><td><b>Invoice No:</b> {invoice_number}</td></tr>
+        <tr><td><b>Received by:</b> {user.full_name}</td><td><b>Challan No:</b> {final_challan_number}</td></tr>
         </table>
         <table class="items">
         <thead><tr><th>Item</th><th>Ordered</th><th style="color:#16a34a">Received</th><th style="color:#dc2626">Rejected</th><th>Unit Price</th><th>Line Total</th><th>Notes</th></tr></thead>
@@ -299,41 +321,44 @@ async def receive_requisition_submit(
         <td style="border:1px solid #ccc;padding:6px;text-align:right;font-family:monospace">৳{grand_total:.2f}</td>
         <td style="border:1px solid #ccc;padding:6px"></td></tr></tfoot>
         </table>
-        <p class="footer">This invoice is system-generated based on goods received and QC-accepted quantities only.<br>
-        Rejected items ({total_rejected:.0f} units) are excluded from payment.</p>
+        <div class="footer">
+            <p>Accepted by: <strong>{user.full_name}</strong> &nbsp;|&nbsp; Date: <strong>{challan_date}</strong> &nbsp;|&nbsp; Time: <strong>{challan_time} BST</strong></p>
+            <p style="font-size:10px;color:#94a3b8;margin-top:4px;">This Accepted Challan is system-generated based on goods received and QC-accepted quantities only.<br>
+            Rejected items ({total_rejected:.0f} units) are excluded from payment.</p>
+        </div>
         </div></body></html>
         """
         from weasyprint import HTML as WP
         pdf_bytes = WP(string=html_content).write_pdf()
         if pdf_bytes:
-            remote_path = f"invoices/{req.id}/{uuid.uuid4()}.pdf"
+            remote_path = f"challans/{req.id}/{uuid.uuid4()}.pdf"
             url = await upload_file(BUCKET_NAME, remote_path, pdf_bytes, "application/pdf")
             if url:
                 invoice_pdf_url = url
-                # Email invoice to CC list
+                # Email accepted challan to CC list
                 try:
                     from app.email.resend import get_cc_emails, _apply_cc, send_batch, settings as email_settings
                     cc = await get_cc_emails()
-                    html_email = f"""<h2>Invoice Generated</h2>
-                    <p>The invoice for <strong>{req.title}</strong> has been generated.</p>
+                    html_email = f"""<h2>Accepted Challan Generated</h2>
+                    <p>The accepted challan for <strong>{req.title}</strong> has been generated and finalized.</p>
                     <p>Supplier: {winner_name} | Total: ৳{grand_total:.2f}</p>
-                    <p>Invoice Number: {invoice_number}</p>"""
+                    <p>Challan Number: {final_challan_number}</p>"""
                     payload = _apply_cc({
                         "from": f"Wener Supplier Management <{email_settings.mail_from}>",
                         "to": cc[:1] if cc else [email_settings.mail_from],
-                        "subject": f"Invoice: {req.title} — ৳{grand_total:.2f}",
+                        "subject": f"Accepted Challan: {req.title} — ৳{grand_total:.2f}",
                         "html": html_email,
-                        "attachments": [{"filename": f"Invoice_{invoice_number}.pdf", "content": list(pdf_bytes)}],
+                        "attachments": [{"filename": f"Accepted_Challan_{final_challan_number}.pdf", "content": list(pdf_bytes)}],
                     }, cc[1:] if len(cc) > 1 else [])
                     await send_batch([payload])
                 except Exception:
-                    logger.exception("Failed to email invoice PDF")
+                    logger.exception("Failed to email accepted challan PDF")
     except Exception:
-        logger.exception("Failed to generate invoice PDF for req %s", req_id)
+        logger.exception("Failed to generate accepted challan PDF for req %s", req_id)
 
     # Update requisition fields
     from datetime import timezone
-    req.invoice_number = invoice_number
+    req.invoice_number = final_challan_number
     req.invoice_url = invoice_pdf_url
     req.received_pieces = int(total_received)
     req.qc_number = qc_number
@@ -378,6 +403,7 @@ async def receive_requisition_submit(
     )
 
 @router.get("/{req_id}/invoice", response_class=HTMLResponse)
+@router.get("/{req_id}/challan", response_class=HTMLResponse)
 async def generate_invoice(
     req_id: str,
     request: Request,

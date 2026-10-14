@@ -208,8 +208,8 @@ async def build_submission_notification(
         "html": html,
     }
     
-    if not is_blind and pdf_bytes:
-        to_payload["attachments"] = [{"filename": f"Quotation_{vendor_name}.pdf", "content": list(pdf_bytes), "content_type": "application/pdf"}]
+    if pdf_bytes:
+        to_payload["attachments"] = [{"filename": f"Quotation_{vendor_name.replace(' ', '_')}.pdf", "content": list(pdf_bytes), "content_type": "application/pdf"}]
         
     if not is_blind:
         # If not blind, CC everyone on the same email
@@ -228,27 +228,35 @@ async def build_submission_notification(
                 "html": html,
             }
             if pdf_bytes:
-                cc_payload["attachments"] = [{"filename": f"Quotation_{vendor_name}.pdf", "content": list(pdf_bytes), "content_type": "application/pdf"}]
+                cc_payload["attachments"] = [{"filename": f"Quotation_{vendor_name.replace(' ', '_')}.pdf", "content": list(pdf_bytes), "content_type": "application/pdf"}]
             payloads.append(cc_payload)
             
     return payloads
 
 
 async def build_submission_confirmation(
-    to: str, vendor_name: str, requisition_title: str
+    to: str, vendor_name: str, requisition_title: str, pdf_bytes: bytes | None = None
 ) -> dict:
     cc = await get_cc_emails()
     html = f"""
     <h2>Quotation Received</h2>
     <p>Dear {vendor_name},</p>
     <p>Thank you for submitting your quotation for <strong>{requisition_title}</strong>. We have received it successfully and will review it shortly.</p>
+    <p>Attached is a copy of your submitted quotation for your records.</p>
     """
-    return _apply_cc({
+    payload = {
         "from": f"Wener Supplier Management <{settings.mail_from}>",
         "to": [to],
         "subject": f"Quotation Received: {requisition_title}",
         "html": html,
-    }, cc)
+    }
+    if pdf_bytes:
+        payload["attachments"] = [{
+            "filename": f"Quotation_Submitted_{requisition_title.replace(' ', '_')}.pdf",
+            "content": list(pdf_bytes),
+            "content_type": "application/pdf"
+        }]
+    return _apply_cc(payload, cc)
 
 
 async def build_work_order_email(

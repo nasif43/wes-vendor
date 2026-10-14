@@ -48,14 +48,18 @@ def _generate_quotation_pdf(form_data: dict | None, req_title: str, vendor_name:
                 f"</tr></tfoot></table>"
             )
 
-        total_price = form_data.get("price", 0) if form_data else 0
-        delivery_days = form_data.get("delivery_days", "N/A") if form_data else "N/A"
+        from datetime import datetime as _dt, timezone as _tz
+        now = _dt.now(_tz.utc)
+        sub_date = now.strftime("%B %d, %Y")
+        sub_time = now.strftime("%I:%M %p UTC")
+
         html_content = f"""
         <!DOCTYPE html><html>
         <head><meta charset="utf-8">
         <style>@page{{margin:40px;}} body{{font-family:'Helvetica Neue',Arial,sans-serif;color:#1a1a1a;line-height:1.5;}}
         h1{{font-size:20px;border-bottom:2px solid #333;padding-bottom:6px;margin-bottom:14px;}}
         table.meta{{width:100%;font-size:13px;margin-bottom:12px;}} table.meta td{{padding:3px 0;}}
+        .pdf-footer{{margin-top:32px;font-size:11px;color:#666;border-top:1px solid #ccc;padding-top:8px;}}
         </style></head>
         <body>
         <h1>Quotation</h1>
@@ -64,6 +68,9 @@ def _generate_quotation_pdf(form_data: dict | None, req_title: str, vendor_name:
         <tr><td><b>Total Price:</b> ৳{float(total_price):.2f}</td><td><b>Delivery:</b> {delivery_days} days</td></tr>
         </table>
         {table_html}
+        <div class="pdf-footer">
+            Submitted by: <b>{vendor_name}</b> | Date: <b>{sub_date}</b> | Time: <b>{sub_time}</b> | Wener Supplier Platform
+        </div>
         </body></html>
         """
         return HTML(string=html_content).write_pdf()
@@ -103,7 +110,7 @@ async def vendor_quote_form(
         )
 
     supplier_items = None  # None means show all items
-    if link.negotiation_version == 2 and link.shortlisted_items:
+    if link.shortlisted_items:
         from app.requisitions.models import ShortlistedItem
         supplier_items = []
         req_items = link.requisition.items or [] if link.requisition else []
@@ -194,25 +201,27 @@ async def submit_quotation(
         await db.flush()
 
     image_url = None
-    if submission_type == "image" and quote_image:
+    if quote_image and quote_image.filename:
         contents = await quote_image.read()
-        ext = quote_image.filename.split(".")[-1] if "." in (quote_image.filename or "") else "jpg"
-        remote_path = f"quotations/{link.id}/{uuid.uuid4()}.{ext}"
-        content_type = quote_image.content_type or "image/jpeg"
-        image_url = await upload_file(BUCKET_NAME, remote_path, contents, content_type)
-        if not image_url:
-            return templates.TemplateResponse(
-                request,
-                "quotations/vendor_form.html",
-                {
-                    "link": link,
-                    "vendor": link.vendor,
-                    "req": link.requisition,
-                    "token": token,
-                    "error": "File upload failed. Please try again.",
-                },
-                status_code=500,
-            )
+        if len(contents) > 0:
+            ext = quote_image.filename.split(".")[-1] if "." in (quote_image.filename or "") else "jpg"
+            remote_path = f"quotations/{link.id}/{uuid.uuid4()}.{ext}"
+            content_type = quote_image.content_type or "image/jpeg"
+            image_url = await upload_file(BUCKET_NAME, remote_path, contents, content_type)
+
+    if not image_url and (not link.quotation or not link.quotation.image_url):
+        return templates.TemplateResponse(
+            request,
+            "quotations/vendor_form.html",
+            {
+                "link": link,
+                "vendor": link.vendor,
+                "req": link.requisition,
+                "token": token,
+                "error": "দরপত্রের ছবি বা ডকুমেন্ট আপলোড করা বাধ্যতামূলক (Quote image or document is mandatory).",
+            },
+            status_code=400,
+        )
 
     form_data = None
     if submission_type == "form":
@@ -221,23 +230,23 @@ async def submit_quotation(
         items = []
         if item_prices and link.requisition and link.requisition.items:
             req_items = link.requisition.items
-            if link.negotiation_version == 2 and link.shortlisted_items:
-                # v2: only the shortlisted items are shown
+            if link.shortlisted_items:
+                # only the shortlisted items are shown
                 shortlisted_sorted = sorted(link.shortlisted_items, key=lambda x: x.item_index)
                 visible_items = [
                     req_items[si.item_index] 
                     for si in shortlisted_sorted 
                     if si.item_index < len(req_items)
                 ]
-                for item, p in zip(visible_items, item_prices):
+                for si, item, p in zip(shortlisted_sorted, visible_items, item_prices):
                     items.append({
                         "name": item.get("name"),
                         "description": item.get("description"),
-                        "qty": item.get("shortlisted_qty", item.get("qty")),
+                        "qty": float(si.shortlisted_qty) if si.shortlisted_qty is not None else item.get("qty"),
                         "price": float(p) if p else 0.0
                     })
             else:
-                # v1: all items shown
+                # all items shown
                 for item, p in zip(req_items, item_prices):
                     items.append({
                         "name": item.get("name"),
@@ -347,6 +356,7 @@ async def submit_quotation(
                     to=link.vendor.contact_email,
                     vendor_name=link.vendor.contact_person or link.vendor.company_name,
                     requisition_title=link.requisition.title if link.requisition else "Quotation",
+                    pdf_bytes=pdf_bytes,
                 )
             )
 
