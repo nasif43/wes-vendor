@@ -5,6 +5,9 @@ from app.email.resend import (
     build_submission_notification,
     build_vendor_invitation,
 )
+from app.auth.models import UserProfile, UserRole
+from app.vendors.models import Vendor
+from app.quotations.models import Quotation
 from app.requisitions.models import Requisition
 
 @pytest.mark.anyio
@@ -75,4 +78,48 @@ async def test_user_rename_reflects_in_issuer_and_pdf():
     )
     assert pdf is not None
     assert pdf.startswith(b"%PDF-")
+
+
+def test_procurement_ownership_and_blind_permissions():
+    from app.auth.models import UserProfile, UserRole
+
+    # Standard procurement officer with no extra permissions
+    proc1 = UserProfile(
+        id="user-1",
+        email="officer1@example.com",
+        full_name="Officer 1",
+        role=UserRole.PROCUREMENT,
+        can_view_all_requisitions=False,
+        can_view_quotations=False,
+        is_management=False,
+    )
+    assert proc1.can_see_all_requisitions is False
+    assert proc1.can_see_quotes is False
+    assert proc1.is_procurement_blind is True
+
+    # Procurement officer with "See All"
+    proc2 = UserProfile(
+        id="user-2",
+        email="officer2@example.com",
+        full_name="Officer 2",
+        role=UserRole.PROCUREMENT,
+        can_view_all_requisitions=True,
+        can_view_quotations=False,
+        is_management=False,
+    )
+    assert proc2.can_see_all_requisitions is True
+    assert proc2.can_see_quotes is False
+    assert proc2.is_procurement_blind is True
+
+    # Management user has full visibility and price access
+    mgmt = UserProfile(
+        id="user-3",
+        email="mgmt@example.com",
+        full_name="Management",
+        role=UserRole.MANAGEMENT,
+    )
+    assert mgmt.can_see_all_requisitions is True
+    assert mgmt.can_see_quotes is True
+    assert mgmt.is_procurement_blind is False
+
 

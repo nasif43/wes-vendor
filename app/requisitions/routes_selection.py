@@ -45,11 +45,14 @@ async def select_vendors_page(
         await db.commit()
         return RedirectResponse(url="/requisitions", status_code=303)
 
+    if not (user.can_see_all_requisitions or req.created_by == user.id):
+        await db.commit()
+        return RedirectResponse(url="/requisitions?error=Permission+denied", status_code=303)
+
     result = await db.execute(
         select(Vendor).where(Vendor.is_active == True, Vendor.is_temporary == False).order_by(Vendor.company_name)
     )
     vendors = result.scalars().all()
-
     result = await db.execute(select(Category).order_by(Category.name))
     categories = result.scalars().all()
 
@@ -76,7 +79,7 @@ async def send_requisition(
         await db.commit()
         return RedirectResponse(url="/requisitions", status_code=303)
 
-    if user.role not in [UserRole.PROCUREMENT, UserRole.ADMIN] and req.created_by != user.id:
+    if not (user.can_see_all_requisitions or req.created_by == user.id):
         await db.commit()
         return RedirectResponse(url=f"/requisitions/{req_id}?error=Permission+denied", status_code=303)
 
@@ -201,6 +204,10 @@ async def add_temporary_vendor(
     req = result.scalar_one_or_none()
     if not req:
         return RedirectResponse(url="/requisitions", status_code=303)
+
+    if not (user.can_see_all_requisitions or req.created_by == user.id):
+        await db.commit()
+        return RedirectResponse(url=f"/requisitions/{req_id}?error=Permission+denied", status_code=303)
 
     temp_vendor = Vendor(
         company_name="Temporary Supplier",
@@ -603,6 +610,9 @@ async def resend_supplier_link(
     
     if not link or link.requisition_id != req_id:
         return RedirectResponse(url=f"/requisitions/{req_id}?error=Link+not+found", status_code=303)
+
+    if not (user.can_see_all_requisitions or link.requisition.created_by == user.id):
+        return RedirectResponse(url=f"/requisitions/{req_id}?error=Permission+denied", status_code=303)
         
     if link.status == 'submitted':
         return RedirectResponse(url=f"/requisitions/{req_id}?error=Supplier+already+submitted", status_code=303)

@@ -230,9 +230,9 @@
                             <button type="submit" class="bg-brand-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-brand-700 transition">Issue WO</button>
                         </form>
                         {% endif %}
-                        {% if link.quotation and link.quotation.form_data and link.quotation.form_data.price %}
+                        {% if link.quotation and link.quotation.form_data and link.quotation.form_data.price and user and (user.can_see_quotes or user.has_management_authority) %}
                         <span class="text-xs font-mono font-bold text-slate-900 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200">
-                            ৳{{ "%.2f"|format(link.quotation.form_data.price|float(0)) }}
+                            BDT {{ "%.2f"|format(link.quotation.form_data.price|float(0)) }}
                         </span>
                         {% endif %}
                         {% if link.status == 'submitted' and (user.can_see_quotes or user.has_management_authority) %}

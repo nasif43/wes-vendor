@@ -180,6 +180,22 @@ async def index(
         pending_decisions = row[4] or 0
         confirmed_orders = row[5] or 0
 
+        from app.auth.models import UserProfile, UserRole
+
+        recent_req_stmt = sa_select(Requisition).order_by(Requisition.created_at.desc()).limit(5)
+        if user.role == UserRole.QC_RECEIVER and not user.can_view_all_requisitions:
+            recent_req_stmt = recent_req_stmt.where(Requisition.status.in_([
+                RequisitionStatus.SUBMITTED.value,
+                RequisitionStatus.RECEIVED.value,
+                RequisitionStatus.CLOSED.value,
+            ]))
+        elif not user.can_see_all_requisitions:
+            recent_req_stmt = recent_req_stmt.where(Requisition.created_by == user.id)
+
+        audit_stmt = sa_select(AuditLog).order_by(AuditLog.created_at.desc()).limit(5)
+        if not user.has_management_authority:
+            audit_stmt = audit_stmt.where(AuditLog.actor_id == user.id)
+
         completed_reqs_r, recent_req_r, audit_r = await asyncio.gather(
             db.execute(
                 sa_select(Requisition, Decision)
@@ -190,16 +206,8 @@ async def index(
                     Decision.approved_at.isnot(None)
                 )
             ),
-            db.execute(
-                sa_select(Requisition)
-                .order_by(Requisition.created_at.desc())
-                .limit(5)
-            ),
-            db.execute(
-                sa_select(AuditLog)
-                .order_by(AuditLog.created_at.desc())
-                .limit(5)
-            ),
+            db.execute(recent_req_stmt),
+            db.execute(audit_stmt),
         )
         lead_times = []
         for req, dec in completed_reqs_r.all():

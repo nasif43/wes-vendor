@@ -174,6 +174,10 @@ async def edit_requisition_page(
     req = result.scalar_one_or_none()
     if not req:
         return RedirectResponse(url="/requisitions", status_code=303)
+
+    if not (user.has_management_authority or user.role == UserRole.ADMIN or req.created_by == user.id):
+        await db.commit()
+        return RedirectResponse(url=f"/requisitions/{req_id}?error=Permission+denied", status_code=303)
         
 
     # UI status filter order (excludes legacy aliases)
@@ -208,6 +212,10 @@ async def update_requisition(
     req = result.scalar_one_or_none()
     if not req:
         return RedirectResponse(url="/requisitions", status_code=303)
+
+    if not (user.has_management_authority or user.role == UserRole.ADMIN or req.created_by == user.id):
+        await db.commit()
+        return RedirectResponse(url=f"/requisitions/{req_id}?error=Permission+denied", status_code=303)
         
     form_data = await request.form()
     item_names = form_data.getlist("item_name[]")
@@ -341,6 +349,14 @@ async def view_requisition(
     if not req:
         await db.commit()
         return RedirectResponse(url="/requisitions", status_code=303)
+
+    if user.role == UserRole.QC_RECEIVER and not user.can_view_all_requisitions:
+        if req.status not in (RequisitionStatus.SUBMITTED.value, RequisitionStatus.RECEIVED.value, RequisitionStatus.CLOSED.value):
+            await db.commit()
+            return RedirectResponse(url="/requisitions?error=Permission+denied", status_code=303)
+    elif not user.can_see_all_requisitions and req.created_by != user.id:
+        await db.commit()
+        return RedirectResponse(url="/requisitions?error=Permission+denied", status_code=303)
 
     # Fetch letterheads
     letterheads = {}

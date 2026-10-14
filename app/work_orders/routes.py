@@ -51,6 +51,8 @@ async def view_work_order(
     wo = result.scalar_one_or_none()
     if not wo:
         return RedirectResponse(url="/work-orders", status_code=303)
+    if not (user.can_see_all_requisitions or wo.issued_by == user.id):
+        return RedirectResponse(url="/work-orders?error=Permission+denied", status_code=303)
     quote_data = None
     if wo.requisition_vendor and wo.requisition_vendor.quotation:
         quote_data = wo.requisition_vendor.quotation.form_data
@@ -84,6 +86,13 @@ async def issue_work_order(
     from app.requisitions.service import transition_requisition_status
     from app.audit.service import log_action
     from app.settings.models import SystemSettings
+
+    req_result = await db.execute(select(Requisition).where(Requisition.id == req_id))
+    req = req_result.scalar_one_or_none()
+    if not req:
+        return RedirectResponse(url="/requisitions", status_code=303)
+    if not (user.can_see_all_requisitions or req.created_by == user.id):
+        return RedirectResponse(url=f"/requisitions/{req_id}?error=Permission+denied", status_code=303)
 
     rv_result = await db.execute(
         select(RequisitionVendor).where(RequisitionVendor.id == rv_id)

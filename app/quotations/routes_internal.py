@@ -22,7 +22,7 @@ async def quotation_inbox(
 
     if not user.can_see_quotes:
         await db.commit()
-        return RedirectResponse(url="/quotations/inbox?error=Permission+denied", status_code=303)
+        return RedirectResponse(url="/requisitions?error=Permission+denied", status_code=303)
 
     from app.requisitions.models import RequisitionStatus
     result = await db.execute(
@@ -44,17 +44,29 @@ async def quotation_detail(
     db: AsyncSession = Depends(get_db),
 ):
     from app.main import templates
+    from sqlalchemy.orm import selectinload
 
     result = await db.execute(
-        select(RequisitionVendor).where(RequisitionVendor.id == requisition_vendor_id)
+        select(RequisitionVendor)
+        .options(
+            selectinload(RequisitionVendor.requisition),
+            selectinload(RequisitionVendor.vendor),
+            selectinload(RequisitionVendor.quotations),
+        )
+        .where(RequisitionVendor.id == requisition_vendor_id)
     )
     link = result.scalar_one_or_none()
     if not link:
         await db.commit()
-        return RedirectResponse(url="/quotations/inbox", status_code=303)
+        return RedirectResponse(url="/requisitions", status_code=303)
 
+    if not (user.can_see_all_requisitions or (link.requisition and link.requisition.created_by == user.id)):
+        await db.commit()
+        return RedirectResponse(url="/requisitions?error=Permission+denied", status_code=303)
+
+    hide_price = user.is_procurement_blind
     return templates.TemplateResponse(
-        request, "quotations/detail.html", {"user": user, "link": link}
+        request, "quotations/detail.html", {"user": user, "link": link, "hide_price": hide_price}
     )
 
 
@@ -67,7 +79,7 @@ async def update_quotation_status(
 ):
     if not user.can_see_quotes:
         await db.commit()
-        return RedirectResponse(url="/quotations/inbox?error=Permission+denied", status_code=303)
+        return RedirectResponse(url="/requisitions?error=Permission+denied", status_code=303)
 
     valid_statuses = {"pending", "submitted", "accepted", "flagged"}
     clean_status = status.strip().lower()
@@ -77,11 +89,17 @@ async def update_quotation_status(
             url=f"/quotations/detail/{requisition_vendor_id}?error=Invalid+status", status_code=303
         )
 
+    from sqlalchemy.orm import selectinload
     result = await db.execute(
-        select(RequisitionVendor).where(RequisitionVendor.id == requisition_vendor_id)
+        select(RequisitionVendor)
+        .options(selectinload(RequisitionVendor.requisition))
+        .where(RequisitionVendor.id == requisition_vendor_id)
     )
     link = result.scalar_one_or_none()
     if link:
+        if not (user.can_see_all_requisitions or (link.requisition and link.requisition.created_by == user.id)):
+            await db.commit()
+            return RedirectResponse(url="/requisitions?error=Permission+denied", status_code=303)
         old_status = link.status
         link.status = clean_status
         from app.audit.service import log_action
@@ -249,13 +267,17 @@ async def compare_quotations(
 
     if not user.can_see_quotes:
         await db.commit()
-        return RedirectResponse(url="/quotations/inbox?error=Permission+denied", status_code=303)
+        return RedirectResponse(url=f"/requisitions/{req_id}?error=Permission+denied", status_code=303)
 
     result = await db.execute(select(Requisition).where(Requisition.id == req_id))
     req = result.scalar_one_or_none()
     if not req:
         await db.commit()
-        return RedirectResponse(url="/quotations/inbox", status_code=303)
+        return RedirectResponse(url="/requisitions", status_code=303)
+
+    if not (user.can_see_all_requisitions or req.created_by == user.id):
+        await db.commit()
+        return RedirectResponse(url="/requisitions?error=Permission+denied", status_code=303)
 
     from app.decisions.models import Decision
 
