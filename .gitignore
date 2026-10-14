@@ -20,7 +20,16 @@ __pycache__/
 
 # OS / IDE
 .DS_Store
+.idea/
+.ruff_cache/
 *.log
+
+# Uploads & Media
+uploads/
+
+# Virtual Environments
+test_venv/
+pgadmin_env/
 
 # Deployment (gitignored - contains env variables)
 plans/DEPLOY.md

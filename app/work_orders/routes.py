@@ -169,13 +169,25 @@ async def issue_work_order(
     await db.commit()
 
     # Send email (after commit so WO has all data)
+    email_sent = False
     if pdf_bytes and rv.vendor and rv.vendor.contact_email:
         try:
-            await send_work_order_email(wo, pdf_bytes)
+            email_sent = await send_work_order_email(wo, pdf_bytes)
         except Exception:
             logger.exception("Failed to email work order for WO %s", wo.id)
 
+    if email_sent:
+        result_message = "Work+order+issued+and+emailed"
+    elif pdf_bytes:
+        result_message = "Work+order+issued,+but+email+delivery+failed"
+    else:
+        result_message = "Work+order+issued,+but+PDF+generation+failed"
+
     return RedirectResponse(
-        url=f"/requisitions/{req_id}?success=Work+order+issued+and+emailed",
+        url=(
+            f"/requisitions/{req_id}?success={result_message}"
+            if email_sent
+            else f"/requisitions/{req_id}?error={result_message}"
+        ),
         status_code=303
     )

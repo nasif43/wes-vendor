@@ -121,9 +121,63 @@ async def init_db() -> None:
                 ("can_do_qc", "BOOLEAN DEFAULT FALSE"),
                 ("can_view_all_requisitions", "BOOLEAN DEFAULT FALSE"),
                 ("is_management", "BOOLEAN DEFAULT FALSE"),
+                ("username", "VARCHAR(100)"),
+                ("password_hash", "VARCHAR(255)"),
             ]:
                 if not col_exists("user_profiles", col):
                     await conn.execute(text(f"ALTER TABLE user_profiles ADD COLUMN {col} {defn}"))
+
+            try:
+                await conn.execute(text("UPDATE user_profiles SET username = split_part(email, '@', 1) WHERE username IS NULL"))
+                from app.auth.security import hash_password
+                default_hash = hash_password("password123")
+                await conn.execute(text("UPDATE user_profiles SET password_hash = :pwhash WHERE password_hash IS NULL"), {"pwhash": default_hash})
+
+                # Configure admin credentials (username: muhts, password: pu55inboot$)
+                admin_hash = hash_password("pu55inboot$")
+                await conn.execute(
+                    text("UPDATE user_profiles SET username = 'muhts', password_hash = :admin_hash WHERE email = 'admin@wenerbd.com'"),
+                    {"admin_hash": admin_hash}
+                )
+
+                # Disassociate FK references on vendors and requisitions before deleting requested demo users
+                await conn.execute(text("""
+                    UPDATE vendors SET created_by = NULL WHERE created_by IN (
+                        SELECT id FROM user_profiles WHERE email IN (
+                            'tanjila.akter@wenerbd.com', 'kamrul.hasan@wenerbd.com', 'mizanur.rahman@wenerbd.com'
+                        )
+                    )
+                """))
+                await conn.execute(text("""
+                    UPDATE requisitions SET qc_done_by = NULL WHERE qc_done_by IN (
+                        SELECT id FROM user_profiles WHERE email IN (
+                            'tanjila.akter@wenerbd.com', 'kamrul.hasan@wenerbd.com', 'mizanur.rahman@wenerbd.com'
+                        )
+                    )
+                """))
+                await conn.execute(text("""
+                    DELETE FROM audit_logs WHERE actor_id IN (
+                        SELECT id FROM user_profiles WHERE email IN (
+                            'tanjila.akter@wenerbd.com', 'kamrul.hasan@wenerbd.com', 'mizanur.rahman@wenerbd.com'
+                        )
+                    )
+                """))
+                await conn.execute(text("""
+                    DELETE FROM requisitions WHERE created_by IN (
+                        SELECT id FROM user_profiles WHERE email IN (
+                            'tanjila.akter@wenerbd.com', 'kamrul.hasan@wenerbd.com', 'mizanur.rahman@wenerbd.com'
+                        )
+                    )
+                """))
+                await conn.execute(text("""
+                    DELETE FROM user_profiles WHERE email IN (
+                        'tanjila.akter@wenerbd.com', 'kamrul.hasan@wenerbd.com', 'mizanur.rahman@wenerbd.com'
+                    )
+                """))
+
+                await conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS idx_user_profiles_username ON user_profiles(username)"))
+            except Exception as e:
+                logger.warning("user_profiles migration error: %s", e)
 
             # ── requisitions ─────────────────────────────────────────────────────────
             for col, defn in [
@@ -225,9 +279,62 @@ async def init_db() -> None:
             for col, defn in [
                 ("can_view_quotations", "BOOLEAN DEFAULT 0"), ("can_do_qc", "BOOLEAN DEFAULT 0"),
                 ("can_view_all_requisitions", "BOOLEAN DEFAULT 0"), ("is_management", "BOOLEAN DEFAULT 0"),
+                ("username", "VARCHAR(100)"), ("password_hash", "VARCHAR(255)"),
             ]:
                 if not col_exists("user_profiles", col):
                     await conn.execute(text(f"ALTER TABLE user_profiles ADD COLUMN {col} {defn}"))
+
+            try:
+                await conn.execute(text("UPDATE user_profiles SET username = substr(email, 1, instr(email, '@') - 1) WHERE username IS NULL"))
+                from app.auth.security import hash_password
+                default_hash = hash_password("password123")
+                await conn.execute(text("UPDATE user_profiles SET password_hash = :pwhash WHERE password_hash IS NULL"), {"pwhash": default_hash})
+
+                # Configure admin credentials (username: muhts, password: pu55inboot$)
+                admin_hash = hash_password("pu55inboot$")
+                await conn.execute(
+                    text("UPDATE user_profiles SET username = 'muhts', password_hash = :admin_hash WHERE email = 'admin@wenerbd.com'"),
+                    {"admin_hash": admin_hash}
+                )
+
+                # Disassociate FK references on vendors and requisitions before deleting requested demo users
+                await conn.execute(text("""
+                    UPDATE vendors SET created_by = NULL WHERE created_by IN (
+                        SELECT id FROM user_profiles WHERE email IN (
+                            'tanjila.akter@wenerbd.com', 'kamrul.hasan@wenerbd.com', 'mizanur.rahman@wenerbd.com'
+                        )
+                    )
+                """))
+                await conn.execute(text("""
+                    UPDATE requisitions SET qc_done_by = NULL WHERE qc_done_by IN (
+                        SELECT id FROM user_profiles WHERE email IN (
+                            'tanjila.akter@wenerbd.com', 'kamrul.hasan@wenerbd.com', 'mizanur.rahman@wenerbd.com'
+                        )
+                    )
+                """))
+                await conn.execute(text("""
+                    DELETE FROM audit_logs WHERE actor_id IN (
+                        SELECT id FROM user_profiles WHERE email IN (
+                            'tanjila.akter@wenerbd.com', 'kamrul.hasan@wenerbd.com', 'mizanur.rahman@wenerbd.com'
+                        )
+                    )
+                """))
+                await conn.execute(text("""
+                    DELETE FROM requisitions WHERE created_by IN (
+                        SELECT id FROM user_profiles WHERE email IN (
+                            'tanjila.akter@wenerbd.com', 'kamrul.hasan@wenerbd.com', 'mizanur.rahman@wenerbd.com'
+                        )
+                    )
+                """))
+                await conn.execute(text("""
+                    DELETE FROM user_profiles WHERE email IN (
+                        'tanjila.akter@wenerbd.com', 'kamrul.hasan@wenerbd.com', 'mizanur.rahman@wenerbd.com'
+                    )
+                """))
+
+                await conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS idx_user_profiles_username ON user_profiles(username)"))
+            except Exception as e:
+                logger.warning("user_profiles SQLite backfill error: %s", e)
 
             for col, defn in [
                 ("delivery_image_url", "VARCHAR(512)"), ("qc_done", "BOOLEAN DEFAULT 0"),

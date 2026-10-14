@@ -37,6 +37,8 @@ async def list_users(
 async def create_user(
     request: Request,
     email: str = Form(...),
+    username: str = Form(None),
+    password: str = Form(...),
     full_name: str = Form(...),
     role: str = Form("procurement"),
     can_view_quotations: bool = Form(False),
@@ -52,19 +54,31 @@ async def create_user(
         return RedirectResponse(url="/users?error=Permission+denied", status_code=303)
 
     clean_email = email.strip().lower()
+    clean_username = (username or clean_email.split("@")[0]).strip().lower()
+    clean_password = password.strip()
     clean_name = full_name.strip()
 
     if not clean_email or not clean_name:
         await db.commit()
         return RedirectResponse(url="/users?error=Name+and+Email+are+required", status_code=303)
 
-    result = await db.execute(
+    if len(clean_password) < 6:
+        await db.commit()
+        return RedirectResponse(url="/users?error=Password+must+be+at+least+6+characters", status_code=303)
+
+    result_email = await db.execute(
         select(UserProfile).where(func.lower(UserProfile.email) == clean_email)
     )
-    existing = result.scalar_one_or_none()
-    if existing:
+    if result_email.scalar_one_or_none():
         await db.commit()
         return RedirectResponse(url="/users?error=Email+already+registered", status_code=303)
+
+    result_username = await db.execute(
+        select(UserProfile).where(func.lower(UserProfile.username) == clean_username)
+    )
+    if result_username.scalar_one_or_none():
+        await db.commit()
+        return RedirectResponse(url="/users?error=Username+already+taken", status_code=303)
 
     # Resolve role enum
     target_role = UserRole.PROCUREMENT
@@ -81,6 +95,7 @@ async def create_user(
 
     new_user = UserProfile(
         email=clean_email,
+        username=clean_username,
         full_name=clean_name,
         role=target_role,
         can_view_quotations=final_view_quotes,
@@ -89,6 +104,7 @@ async def create_user(
         is_management=final_is_mgmt,
         is_active=True,
     )
+    new_user.set_password(clean_password)
     db.add(new_user)
     await db.flush()
 
@@ -99,13 +115,13 @@ async def create_user(
         entity_type="user_profile",
         entity_id=new_user.id,
         entity_label=new_user.full_name,
-        notes=f"User account created by {user.full_name} ({user.email}). Role: {target_role.value}.",
+        notes=f"User account created by {user.full_name} ({user.email}). Username: @{clean_username}, Role: {target_role.value}.",
     )
 
     await db.flush()
     await db.commit()
     return RedirectResponse(
-        url=f"/users?success=User+{new_user.full_name.replace(' ', '+')}+created+successfully",
+        url=f"/users?success=User+{new_user.full_name.replace(' ', '+')}+(@{clean_username})+created+successfully",
         status_code=303,
     )
 
@@ -224,10 +240,11 @@ async def toggle_user_active(
     )
 
 
-@router.post("/{target_user_id}/delete")
-async def delete_user(
+@router.post("/{target_user_id}/password")
+async def reset_user_password(
     target_user_id: str,
     request: Request,
+    new_password: str = Form(...),
     user: UserProfile = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -235,9 +252,53 @@ async def delete_user(
         await db.commit()
         return RedirectResponse(url="/users?error=Permission+denied", status_code=303)
 
+    clean_pwd = (new_password or "").strip()
+    if len(clean_pwd) < 6:
+        await db.commit()
+        return RedirectResponse(url="/users?error=Password+must+be+at+least+6+characters", status_code=303)
+
+    result = await db.execute(select(UserProfile).where(UserProfile.id == target_user_id))
+    target_user = result.scalar_one_or_none()
+    if not target_user:
+        await db.commit()
+        return RedirectResponse(url="/users?error=User+not+found", status_code=303)
+
+    target_user.set_password(clean_pwd)
+
+    await log_action(
+        db,
+        actor=user,
+        action="USER_PASSWORD_RESET",
+        entity_type="user_profile",
+        entity_id=target_user.id,
+        entity_label=target_user.full_name,
+        notes=f"Password for {target_user.full_name} updated by {user.full_name}.",
+    )
+
+    await db.commit()
+    return RedirectResponse(
+        url=f"/users?success=Password+for+{target_user.full_name.replace(' ', '+')}+updated+successfully",
+        status_code=303,
+    )
+
+
+@router.post("/{target_user_id}/delete")
+async def delete_user(
+    target_user_id: str,
+    request: Request,
+    user: UserProfile = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    from sqlalchemy import delete
+    from app.audit.models import AuditLog
+
+    if not user.has_management_authority and user.role != UserRole.ADMIN:
+        await db.commit()
+        return RedirectResponse(url="/users?error=Permission+denied", status_code=303)
+
     if user.id == target_user_id:
         await db.commit()
-        return RedirectResponse(url="/users?error=You+cannot+deactivate+your+own+account", status_code=303)
+        return RedirectResponse(url="/users?error=You+cannot+delete+your+own+account", status_code=303)
 
     result = await db.execute(select(UserProfile).where(UserProfile.id == target_user_id))
     target_user = result.scalar_one_or_none()
@@ -248,22 +309,21 @@ async def delete_user(
     user_name = target_user.full_name
     user_email = target_user.email
 
-    # Pure soft delete: mark as inactive to preserve historical audit logs and foreign keys
-    target_user.is_active = False
+    try:
+        # Clean audit logs by this actor so foreign keys allow deletion
+        await db.execute(delete(AuditLog).where(AuditLog.actor_id == target_user.id))
+        await db.delete(target_user)
+        await db.commit()
+        return RedirectResponse(
+            url=f"/users?success=User+{user_name.replace(' ', '+')}+permanently+deleted",
+            status_code=303,
+        )
+    except Exception:
+        # Fallback to deactivate if other business records (e.g. requisitions) reference this user
+        target_user.is_active = False
+        await db.commit()
+        return RedirectResponse(
+            url=f"/users?success=User+{user_name.replace(' ', '+')}+deactivated+(referenced+in+records)",
+            status_code=303,
+        )
 
-    await log_action(
-        db,
-        actor=user,
-        action="USER_SOFT_DELETED",
-        entity_type="user_profile",
-        entity_id=target_user.id,
-        entity_label=user_name,
-        notes=f"User {user_name} ({user_email}) soft-deleted (deactivated) by {user.full_name}.",
-    )
-    await db.flush()
-
-    await db.commit()
-    return RedirectResponse(
-        url=f"/users?success=User+{user_name.replace(' ', '+')}+has+been+deactivated+(soft-deleted)",
-        status_code=303,
-    )

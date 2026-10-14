@@ -3,66 +3,53 @@
 {% block body_class %}bg-brand-600{% endblock %}
 {% block unauth_content %}
 <div class="slide-up max-w-md mx-auto">
-    <h1 class="text-2xl font-bold text-white text-center mb-1">Welcome Back</h1>
-    <p class="text-blue-200 text-sm text-center mb-6">Sign in to your portal account</p>
+    <div class="text-center mb-6">
+        <div class="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-white/10 backdrop-blur border border-white/20 mb-3 shadow-sm">
+            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+            </svg>
+        </div>
+        <h1 class="text-2xl font-bold text-white mb-1">Welcome Back</h1>
+        <p class="text-blue-100 text-xs">Sign in to the WES Supplier Portal</p>
+    </div>
 
     {% if error %}
-    <div class="bg-red-500/20 border border-red-400/30 text-red-100 px-4 py-3 rounded-2xl mb-4 text-sm flex items-center gap-2 backdrop-blur">
-        <svg class="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
-        {{ error }}
+    <div class="bg-red-500/25 border border-red-400/30 text-white px-4 py-3 rounded-2xl mb-4 text-xs font-medium flex items-center gap-2.5 backdrop-blur shadow-sm">
+        <svg class="w-4 h-4 shrink-0 text-red-200" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+        </svg>
+        <span>{{ error }}</span>
     </div>
     {% endif %}
 
-    <!-- QUICK DEMO LOGINS BANNER -->
-    <div class="bg-white/10 backdrop-blur border border-white/20 rounded-2xl p-4 mb-4 text-xs text-blue-100">
-        <div class="font-bold text-white mb-2 flex items-center justify-between">
-            <span>⚡ Quick Demo Logins</span>
-            <a href="/auth/seed-db" class="text-[10px] bg-white/20 hover:bg-white/30 text-white px-2 py-0.5 rounded transition font-semibold">
-                🔄 Re-Seed DB
-            </a>
-        </div>
-        <div class="grid grid-cols-2 gap-1.5 font-medium">
-            <button type="button" onclick="fillLogin('admin@wenerbd.com')" class="text-left p-1.5 rounded bg-white/5 hover:bg-white/15 transition truncate">
-                👑 Admin
-            </button>
-            <button type="button" onclick="fillLogin('mizanur.rahman@wenerbd.com')" class="text-left p-1.5 rounded bg-white/5 hover:bg-white/15 transition truncate">
-                🔒 Management
-            </button>
-            <button type="button" onclick="fillLogin('tanjila.akter@wenerbd.com')" class="text-left p-1.5 rounded bg-white/5 hover:bg-white/15 transition truncate">
-                🛒 Procurement
-            </button>
-            <button type="button" onclick="fillLogin('kamrul.hasan@wenerbd.com')" class="text-left p-1.5 rounded bg-white/5 hover:bg-white/15 transition truncate">
-                🚚 QC Receiver
-            </button>
-        </div>
+    {% if success %}
+    <div class="bg-emerald-500/25 border border-emerald-400/30 text-white px-4 py-3 rounded-2xl mb-4 text-xs font-medium flex items-center gap-2.5 backdrop-blur shadow-sm">
+        <svg class="w-4 h-4 shrink-0 text-emerald-200" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+        </svg>
+        <span>{{ success }}</span>
     </div>
+    {% endif %}
 
     <form method="post" action="/auth/login" id="login-form" class="bg-white/10 backdrop-blur border border-white/20 rounded-2xl p-6 space-y-4 shadow-xl">
         <div>
-            <label class="block text-sm font-medium text-blue-100 mb-1.5">Email</label>
-            <input type="email" name="email" id="email-input" required autocomplete="email" placeholder="you@wenerbd.com"
-                class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-sm text-white placeholder-blue-300 focus:outline-none focus:ring-2 focus:ring-white/40 focus:border-white/40 transition">
+            <label class="block text-xs font-semibold text-blue-100 mb-1.5">Username or Corporate Email</label>
+            <input type="text" name="username" id="username-input" required autocomplete="username" placeholder="e.g. muhts or you@wenerbd.com"
+                class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-sm text-white placeholder-blue-200/70 focus:outline-none focus:ring-2 focus:ring-white/40 focus:border-white/40 transition">
         </div>
         <div>
-            <label class="block text-sm font-medium text-blue-100 mb-1.5">Password</label>
-            <input type="password" name="password" id="password-input" required autocomplete="current-password" value="password123" placeholder="Your password"
-                class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-sm text-white placeholder-blue-300 focus:outline-none focus:ring-2 focus:ring-white/40 focus:border-white/40 transition">
+            <label class="block text-xs font-semibold text-blue-100 mb-1.5">Password</label>
+            <input type="password" name="password" id="password-input" required autocomplete="current-password" placeholder="Enter your password"
+                class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-sm text-white placeholder-blue-200/70 focus:outline-none focus:ring-2 focus:ring-white/40 focus:border-white/40 transition">
         </div>
-        <button type="submit" class="w-full bg-white text-brand-700 py-3 rounded-xl text-sm font-semibold hover:bg-blue-50 transition shadow-sm active:scale-[0.98]">
+        <button type="submit" class="w-full bg-white text-brand-700 py-3 rounded-xl text-sm font-bold hover:bg-blue-50 transition shadow-sm active:scale-[0.98]">
             Sign In
         </button>
     </form>
 
-    <p class="text-center text-xs text-blue-200/80 mt-5">
-        🔒 Wener Enterprise System · Accounts created by System Administrator
-    </p>
+    <div class="text-center mt-6 text-xs text-blue-200/80 space-y-1">
+        <p class="font-medium">🔒 Internal Wener Enterprise Portal</p>
+        <p class="text-[11px] text-blue-200/60">User accounts are managed and provisioned by System Administrators.</p>
+    </div>
 </div>
-
-<script>
-function fillLogin(email) {
-    document.getElementById('email-input').value = email;
-    document.getElementById('password-input').value = 'password123';
-    document.getElementById('login-form').submit();
-}
-</script>
 {% endblock %}

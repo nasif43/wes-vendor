@@ -33,6 +33,8 @@ class UserProfile(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
     email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    username: Mapped[str | None] = mapped_column(String(100), unique=True, nullable=True)
+    password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
     full_name: Mapped[str] = mapped_column(String(255), nullable=False)
     role: Mapped[UserRole] = mapped_column(
         String(50), nullable=False, default=UserRole.PROCUREMENT
@@ -50,6 +52,15 @@ class UserProfile(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
+
+    def set_password(self, plain_password: str) -> None:
+        from app.auth.security import hash_password
+        self.password_hash = hash_password(plain_password)
+
+    def check_password(self, plain_password: str) -> bool:
+        from app.auth.security import verify_password
+        return verify_password(plain_password, self.password_hash)
+
 
     @property
     def is_procurement(self) -> bool:

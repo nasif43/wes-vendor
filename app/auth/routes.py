@@ -15,63 +15,74 @@ settings = get_settings()
 @router.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
     from app.main import templates
-    return templates.TemplateResponse(request, "auth/login.html")
+    error = request.query_params.get("error")
+    success = request.query_params.get("success")
+    return templates.TemplateResponse(
+        request, "auth/login.html", {"error": error, "success": success}
+    )
 
 
 @router.post("/login")
 async def login(
     request: Request,
-    email: str = Form(...),
+    email: str = Form(None),
+    username: str = Form(None),
     password: str = Form(...),
     db: AsyncSession = Depends(get_db),
 ):
-    from sqlalchemy import func
-    from app.main import templates  # noqa: F401
+    from sqlalchemy import func, or_
+    from app.main import templates
 
-    clean_email = email.strip().lower()
+    identifier = (username or email or "").strip().lower()
+    if not identifier or not password:
+        return templates.TemplateResponse(
+            request,
+            "auth/login.html",
+            {"error": "Please provide both your username/email and password."},
+            status_code=400,
+        )
+
     result = await db.execute(
-        select(UserProfile).where(func.lower(UserProfile.email) == clean_email)
+        select(UserProfile).where(
+            or_(
+                func.lower(UserProfile.email) == identifier,
+                func.lower(UserProfile.username) == identifier,
+            )
+        )
     )
     user = result.scalar_one_or_none()
 
-    # In dev mode: if user profile doesn't exist yet in DB, auto-create it instantly
     if not user:
-        full_name = clean_email.split("@")[0].replace(".", " ").title()
-        is_admin_or_mgmt = "admin" in clean_email or "manage" in clean_email or "mizanur" in clean_email
-        is_qc = "qc" in clean_email or "kamrul" in clean_email
-        is_purchaser = "procurement" in clean_email or "purchase" in clean_email or "tanjila" in clean_email
-
-        role = UserRole.ADMIN if is_admin_or_mgmt else (UserRole.QC_RECEIVER if is_qc else UserRole.PROCUREMENT)
-        user = UserProfile(
-            email=clean_email,
-            full_name=full_name,
-            role=role,
-            can_view_quotations=is_admin_or_mgmt,
-            can_do_qc=is_admin_or_mgmt or is_qc,
-            can_view_all_requisitions=is_admin_or_mgmt or is_qc,
-            is_management=is_admin_or_mgmt,
+        return templates.TemplateResponse(
+            request,
+            "auth/login.html",
+            {"error": "Invalid username/email or password."},
+            status_code=401,
         )
-        db.add(user)
+
+    if not user.is_active:
+        return templates.TemplateResponse(
+            request,
+            "auth/login.html",
+            {"error": "This account is deactivated. Please contact your System Administrator."},
+            status_code=403,
+        )
+
+    if not user.check_password(password):
+        return templates.TemplateResponse(
+            request,
+            "auth/login.html",
+            {"error": "Invalid username/email or password."},
+            status_code=401,
+        )
 
     request.session["user_id"] = user.id
-    await db.commit()
     return RedirectResponse(url="/", status_code=303)
 
 
 @router.get("/seed-db")
-async def trigger_db_seed(
-    request: Request,
-    db: AsyncSession = Depends(get_db),
-):
-    if not settings.enable_seed_endpoint:
-        raise HTTPException(status_code=404, detail="Seed endpoint is disabled")
-    try:
-        from scripts.seed import main as seed_main
-        await seed_main()
-        await db.commit()
-        return RedirectResponse(url="/auth/login?success=Database+re-seeded+successfully", status_code=303)
-    except Exception as e:
-        return RedirectResponse(url=f"/auth/login?error=Seed+failed:+{str(e)[:100]}", status_code=303)
+async def trigger_db_seed(request: Request):
+    raise HTTPException(status_code=404, detail="Seed endpoint is permanently disabled.")
 
 
 @router.get("/signup")

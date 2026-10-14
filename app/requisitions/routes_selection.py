@@ -120,7 +120,6 @@ async def send_requisition(
         link = RequisitionVendor(
             requisition_id=req_id,
             vendor_id=vendor_id,
-            link_sent_at=datetime.now(UTC),
             status="pending",
         )
         db.add(link)
@@ -129,6 +128,7 @@ async def send_requisition(
     await db.flush()
 
     email_params = []
+    emailed_links = []
     for link in links:
         vendor = vendors_map.get(link.vendor_id)
         if vendor and vendor.contact_email:
@@ -155,10 +155,16 @@ async def send_requisition(
                     pdf_bytes=pdf_bytes,
                 )
             )
+            emailed_links.append(link)
 
-    email_sent = True
+    # Links without a supplier email were created but could not be delivered.
+    email_sent = not links
     if email_params:
         email_sent = await send_batch(email_params)
+        if email_sent:
+            sent_at = datetime.now(UTC)
+            for emailed_link in emailed_links:
+                emailed_link.link_sent_at = sent_at
 
     if req.status == RequisitionStatus.DRAFT:
         from app.requisitions.service import transition_requisition_status
@@ -410,7 +416,6 @@ async def start_negotiation(
             is_shortlisted=True,
             allocated_quantity=lnk.allocated_quantity,
             negotiation_version=2,
-            link_sent_at=datetime.now(UTC),
         )
         db.add(v2_link)
         await db.flush()  # Need ID for ShortlistedItems
@@ -432,8 +437,10 @@ async def start_negotiation(
     await db.flush()
 
     # Send v2 invitation emails
+    negotiation_email_sent = False
     try:
         email_params = []
+        email_links = []
         for v2_lnk in v2_links:
             vendor = v2_lnk.vendor
             if vendor and vendor.contact_email:
@@ -481,8 +488,13 @@ async def start_negotiation(
                         pdf_bytes=pdf_bytes,
                     )
                 )
+                email_links.append(v2_lnk)
         if email_params:
-            await send_batch(email_params)
+            negotiation_email_sent = await send_batch(email_params)
+            if negotiation_email_sent:
+                sent_at = datetime.now(UTC)
+                for emailed_link in email_links:
+                    emailed_link.link_sent_at = sent_at
     except Exception as e:
         import logging as _logging
         _logging.getLogger(__name__).exception("Failed to send v2 negotiation emails: %s", e)
@@ -544,6 +556,14 @@ async def start_negotiation(
     )
     await db.flush()
     await db.commit()
+    if not negotiation_email_sent:
+        return RedirectResponse(
+            url=(
+                f"/quotations/compare/{req_id}?error="
+                "Negotiation+links+created,+but+email+delivery+failed"
+            ),
+            status_code=303,
+        )
     return RedirectResponse(
         url=f"/quotations/compare/{req_id}?success=Negotiation+links+sent", status_code=303
     )
@@ -627,7 +647,12 @@ async def resend_supplier_link(
 
     if email_params:
         try:
-            await send_batch(email_params)
+            email_sent = await send_batch(email_params)
+            if not email_sent:
+                return RedirectResponse(
+                    url=f"/requisitions/{req_id}?error=Failed+to+send+email",
+                    status_code=303,
+                )
             from datetime import datetime, UTC
             link.link_sent_at = datetime.now(UTC)
             await db.commit()
