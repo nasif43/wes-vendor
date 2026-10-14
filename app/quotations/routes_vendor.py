@@ -31,8 +31,8 @@ def _generate_quotation_pdf(form_data: dict | None, req_title: str, vendor_name:
                     f"<td style='border:1px solid #ccc;padding:6px'>{item.get('name','')}</td>"
                     f"<td style='border:1px solid #ccc;padding:6px'>{item.get('description','')}</td>"
                     f"<td style='border:1px solid #ccc;padding:6px;text-align:center'>{qty}</td>"
-                    f"<td style='border:1px solid #ccc;padding:6px;text-align:right;font-family:monospace'>৳{float(item_price):.2f}</td>"
-                    f"<td style='border:1px solid #ccc;padding:6px;text-align:right;font-family:monospace;font-weight:700'>৳{total:.2f}</td>"
+                    f"<td style='border:1px solid #ccc;padding:6px;text-align:right;font-family:monospace'>BDT {float(item_price):.2f}</td>"
+                    f"<td style='border:1px solid #ccc;padding:6px;text-align:right;font-family:monospace;font-weight:700'>BDT {total:.2f}</td>"
                     f"</tr>"
                 )
             table_html = (
@@ -47,7 +47,7 @@ def _generate_quotation_pdf(form_data: dict | None, req_title: str, vendor_name:
                 + "".join(rows)
                 + f"</tbody><tfoot><tr>"
                 f"<td colspan='4' style='border:1px solid #ccc;padding:6px;text-align:right;font-weight:700;'>Grand Total:</td>"
-                f"<td style='border:1px solid #ccc;padding:6px;text-align:right;font-family:monospace;font-weight:700;'>৳{grand_total:.2f}</td>"
+                f"<td style='border:1px solid #ccc;padding:6px;text-align:right;font-family:monospace;font-weight:700;'>BDT {grand_total:.2f}</td>"
                 f"</tr></tfoot></table>"
             )
 
@@ -59,10 +59,15 @@ def _generate_quotation_pdf(form_data: dict | None, req_title: str, vendor_name:
 
         delivery_days = (form_data or {}).get("delivery_days", "—")
 
-        from datetime import datetime as _dt, timezone as _tz
-        now = _dt.now(_tz.utc)
-        sub_date = now.strftime("%B %d, %Y")
-        sub_time = now.strftime("%I:%M %p UTC")
+        from datetime import datetime as _dt, timezone as _tz, timedelta as _td
+        from zoneinfo import ZoneInfo
+        now_utc = _dt.now(_tz.utc)
+        try:
+            dhaka_time = now_utc.astimezone(ZoneInfo("Asia/Dhaka"))
+        except Exception:
+            dhaka_time = now_utc.astimezone(_tz(_td(hours=6)))
+        sub_date = dhaka_time.strftime("%B %d, %Y")
+        sub_time = dhaka_time.strftime("%I:%M %p BST")
 
         html_content = f"""
         <!DOCTYPE html><html>
@@ -76,7 +81,7 @@ def _generate_quotation_pdf(form_data: dict | None, req_title: str, vendor_name:
         <h1>Quotation</h1>
         <table class="meta">
         <tr><td><b>Requisition:</b> {req_title}</td><td><b>Supplier:</b> {vendor_name}</td></tr>
-        <tr><td><b>Total Price:</b> ৳{float(total_price):.2f}</td><td><b>Delivery:</b> {delivery_days} days</td></tr>
+        <tr><td><b>Total Price:</b> BDT {float(total_price):.2f}</td><td><b>Delivery:</b> {delivery_days} days</td></tr>
         </table>
         {table_html}
         <div class="pdf-footer">
@@ -346,6 +351,7 @@ async def submit_quotation(
 
         if link.requisition and link.requisition.creator and link.requisition.creator.email:
             view_url = f"{str(request.base_url).rstrip('/')}/quotations/detail/{link.id}"
+            compare_url = f"{str(request.base_url).rstrip('/')}/quotations/compare/{link.requisition_id}" if link.requisition_id else None
             
             is_blind = False
             if hasattr(link.requisition.creator, "is_procurement_blind"):
@@ -357,7 +363,8 @@ async def submit_quotation(
                 requisition_title=link.requisition.title,
                 view_url=view_url,
                 pdf_bytes=pdf_bytes,
-                is_blind=is_blind
+                is_blind=is_blind,
+                compare_url=compare_url,
             )
             email_params.extend(notification_payloads)
 

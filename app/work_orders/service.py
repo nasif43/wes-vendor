@@ -57,7 +57,16 @@ async def generate_work_order_pdf(work_order, letterhead_url: str | None) -> byt
         if letterhead_url:
             bg_style = f"background-image: url('{letterhead_url}'); background-size: cover; background-position: center;"
 
-        issued_date = work_order.issued_at.strftime("%B %d, %Y") if work_order.issued_at else "N/A"
+        issued_date = "N/A"
+        if work_order.issued_at:
+            from zoneinfo import ZoneInfo
+            from datetime import timezone as _tz, timedelta as _td
+            try:
+                dt_bst = work_order.issued_at.astimezone(ZoneInfo("Asia/Dhaka")) if work_order.issued_at.tzinfo else work_order.issued_at.replace(tzinfo=_tz.utc).astimezone(ZoneInfo("Asia/Dhaka"))
+                issued_date = dt_bst.strftime("%B %d, %Y (%I:%M %p BST)")
+            except Exception:
+                issued_date = work_order.issued_at.strftime("%B %d, %Y")
+
         req_title = req.title if req else "N/A"
         vendor_name = vendor.company_name if vendor else "N/A"
         vendor_email = vendor.contact_email if vendor else ""
@@ -101,10 +110,10 @@ async def generate_work_order_pdf(work_order, letterhead_url: str | None) -> byt
             </table>
 
             {'<table class="items"><thead><tr>' +
-             '<th>Item</th><th>Description</th><th>Qty</th><th>Unit Price</th><th>Total</th>' +
+             '<th>Item</th><th>Description</th><th>Qty</th><th>Unit Price (BDT)</th><th>Total (BDT)</th>' +
              '</tr></thead><tbody>' + rows_html +
-             '</tbody><tfoot><tr><td colspan="4" style="text-align:right;border:1px solid #333;padding:6px">Grand Total:</td>' +
-             f'<td style="border:1px solid #333;padding:6px">{grand_total:.2f}</td>' +
+             '</tbody><tfoot><tr><td colspan="4" style="text-align:right;border:1px solid #333;padding:6px">Grand Total (BDT):</td>' +
+             f'<td style="border:1px solid #333;padding:6px">BDT {grand_total:.2f}</td>' +
              '</tr></tfoot></table>'
              if rows_html else '<p><em>Item details as per quotation submitted.</em></p>'}
 

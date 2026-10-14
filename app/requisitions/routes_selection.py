@@ -757,7 +757,18 @@ async def forward_all_quotes_to_cc(
             vendor_name=vendor_name,
         )
 
-        submitted_str = link.quotation.submitted_at.strftime("%Y-%m-%d %I:%M %p") if (link.quotation and link.quotation.submitted_at) else "Recent"
+        submitted_str = "Recent"
+        if link.quotation and link.quotation.submitted_at:
+            try:
+                from zoneinfo import ZoneInfo
+                from datetime import timezone as _tz, timedelta as _td
+                dt = link.quotation.submitted_at
+                dhaka = dt.astimezone(ZoneInfo("Asia/Dhaka")) if dt.tzinfo else dt.replace(tzinfo=_tz.utc).astimezone(ZoneInfo("Asia/Dhaka"))
+                submitted_str = dhaka.strftime("%B %d, %Y at %I:%M %p BST")
+            except Exception:
+                submitted_str = link.quotation.submitted_at.strftime("%B %d, %Y (%I:%M %p)")
+
+        compare_url = f"{str(request.base_url).rstrip('/')}/quotations/compare/{req_id}"
         html = f"""
         <h2>Quotation Copy: {vendor_name}</h2>
         <p>Submitted quotation copy forwarded for requisition: <strong>{req.title}</strong>.</p>
@@ -768,7 +779,12 @@ async def forward_all_quotes_to_cc(
           <tr><td style="padding:4px 8px;color:#666;">Submitted At:</td><td style="padding:4px 8px;">{submitted_str}</td></tr>
           <tr><td style="padding:4px 8px;color:#666;">Forwarded By:</td><td style="padding:4px 8px;">{user.full_name} ({user.email})</td></tr>
         </table>
-        <p><a href="{view_url}" style="display:inline-block;background:#1d4ed8;color:white;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:600;font-size:13px;margin:12px 0;">View Quotation Details in Portal</a></p>
+        <div style="margin: 20px 0 16px 0;">
+          <a href="{compare_url}" style="display:inline-block;background:#1d4ed8;color:#ffffff;padding:11px 22px;border-radius:8px;text-decoration:none;font-weight:700;font-size:13px;box-shadow:0 1px 3px rgba(0,0,0,0.1);">
+            📊 Compare All Quotations Side-by-Side
+          </a>
+        </div>
+        <p><a href="{view_url}" style="font-size:13px;color:#2563eb;">View this specific quotation details in portal &rarr;</a></p>
         <p style="font-size:12px;color:#888;margin-top:20px;">The official quotation summary PDF is attached.</p>
         """
 

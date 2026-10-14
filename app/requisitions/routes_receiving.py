@@ -278,8 +278,8 @@ async def receive_requisition_submit(
                 f"<td style='border:1px solid #ccc;padding:6px;text-align:center'>{li['ordered_qty']}</td>"
                 f"<td style='border:1px solid #ccc;padding:6px;text-align:center;color:#16a34a;font-weight:600'>{li['received_qty']}</td>"
                 f"<td style='border:1px solid #ccc;padding:6px;text-align:center;color:#dc2626'>{li['rejected_qty']}</td>"
-                f"<td style='border:1px solid #ccc;padding:6px;text-align:right;font-family:monospace'>৳{li['unit_price']:.2f}</td>"
-                f"<td style='border:1px solid #ccc;padding:6px;text-align:right;font-family:monospace;font-weight:700'>৳{li['line_total']:.2f}</td>"
+                f"<td style='border:1px solid #ccc;padding:6px;text-align:right;font-family:monospace'>BDT {li['unit_price']:.2f}</td>"
+                f"<td style='border:1px solid #ccc;padding:6px;text-align:right;font-family:monospace;font-weight:700'>BDT {li['line_total']:.2f}</td>"
                 f"<td style='border:1px solid #ccc;padding:6px;font-size:11px;color:#666'>{li['rejection_reason'] or ''}</td>"
                 f"</tr>"
             )
@@ -318,7 +318,7 @@ async def receive_requisition_submit(
         <thead><tr><th>Item</th><th>Ordered</th><th style="color:#16a34a">Received</th><th style="color:#dc2626">Rejected</th><th>Unit Price</th><th>Line Total</th><th>Notes</th></tr></thead>
         <tbody>{rows_html}</tbody>
         <tfoot><tr><td colspan="5" style="text-align:right;border:1px solid #ccc;padding:6px">TOTAL PAYABLE:</td>
-        <td style="border:1px solid #ccc;padding:6px;text-align:right;font-family:monospace">৳{grand_total:.2f}</td>
+        <td style="border:1px solid #ccc;padding:6px;text-align:right;font-family:monospace">BDT {grand_total:.2f}</td>
         <td style="border:1px solid #ccc;padding:6px"></td></tr></tfoot>
         </table>
         <div class="footer">
@@ -341,15 +341,16 @@ async def receive_requisition_submit(
                     cc = await get_cc_emails()
                     html_email = f"""<h2>Accepted Challan Generated</h2>
                     <p>The accepted challan for <strong>{req.title}</strong> has been generated and finalized.</p>
-                    <p>Supplier: {winner_name} | Total: ৳{grand_total:.2f}</p>
+                    <p>Supplier: {winner_name} | Total: BDT {grand_total:.2f}</p>
                     <p>Challan Number: {final_challan_number}</p>"""
                     payload = _apply_cc({
                         "from": f"Wener Supplier Management <{email_settings.mail_from}>",
                         "to": cc[:1] if cc else [email_settings.mail_from],
-                        "subject": f"Accepted Challan: {req.title} — ৳{grand_total:.2f}",
+                        "subject": f"Accepted Challan: {req.title} — BDT {grand_total:.2f}",
                         "html": html_email,
                         "attachments": [{"filename": f"Accepted_Challan_{final_challan_number}.pdf", "content": list(pdf_bytes)}],
                     }, cc[1:] if len(cc) > 1 else [])
+                    await send_batch([payload])
                     await send_batch([payload])
                 except Exception:
                     logger.exception("Failed to email accepted challan PDF")
@@ -378,7 +379,7 @@ async def receive_requisition_submit(
                 target_status=RequisitionStatus.CLOSED,
                 actor=user,
                 action_name="QC_COMPLETED",
-                notes=f"Invoice: {invoice_number}. QC passed. Grand total: ৳{grand_total:.2f}. Defect qty: {total_rejected:.0f} units.",
+                notes=f"Invoice: {invoice_number}. QC passed. Grand total: BDT {grand_total:.2f}. Defect qty: {total_rejected:.0f} units.",
             )
         except InvalidStateTransitionError:
             req.status = RequisitionStatus.CLOSED

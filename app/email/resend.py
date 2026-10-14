@@ -189,13 +189,30 @@ async def build_decision_notification(
 
 
 async def build_submission_notification(
-    to: str, vendor_name: str, requisition_title: str, view_url: str, pdf_bytes: bytes | None = None, is_blind: bool = False
+    to: str,
+    vendor_name: str,
+    requisition_title: str,
+    view_url: str,
+    pdf_bytes: bytes | None = None,
+    is_blind: bool = False,
+    compare_url: str | None = None,
 ) -> list[dict]:
     cc = await get_cc_emails()
+    compare_block = ""
+    if compare_url:
+        compare_block = f"""
+        <p style="margin: 20px 0 16px 0;">
+            <a href="{compare_url}" style="display:inline-block;background:#1d4ed8;color:#ffffff;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px;">
+                📊 Compare All Quotations Side-by-Side
+            </a>
+        </p>
+        """
+
     html = f"""
     <h2>Quotation Submitted</h2>
     <p>Supplier <strong>{vendor_name}</strong> has submitted a quotation for your requisition: <strong>{requisition_title}</strong>.</p>
-    <p><a href="{view_url}">Click here to view the quotation details in the portal</a></p>
+    {compare_block}
+    <p><a href="{view_url}" style="font-size:13px;color:#2563eb;">View this quotation details in the portal &rarr;</a></p>
     """
     
     payloads = []
@@ -311,7 +328,7 @@ async def build_invoice_email(
       <tr><td style="padding: 4px 0; color: #666;">Invoice No:</td>
           <td style="padding: 4px 0; font-weight: 600;">{invoice_number}</td></tr>
       <tr><td style="padding: 4px 0; color: #666;">Total Payable:</td>
-          <td style="padding: 4px 0; font-weight: 700; font-size: 16px;">৳{grand_total:.2f}</td></tr>
+          <td style="padding: 4px 0; font-weight: 700; font-size: 16px;">BDT {grand_total:.2f}</td></tr>
     </table>
     <p style="font-size: 12px; color: #888;">This invoice reflects accepted quantities only.
     Rejected items have been excluded from the total.</p>
@@ -319,7 +336,7 @@ async def build_invoice_email(
     payload = {
         "from": f"Wener Supplier Management <{settings.mail_from}>",
         "to": [to],
-        "subject": f"Invoice #{invoice_number} — {requisition_title} (৳{grand_total:.2f})",
+        "subject": f"Invoice #{invoice_number} — {requisition_title} (BDT {grand_total:.2f})",
         "html": html,
         "attachments": [{
             "filename": f"Invoice_{invoice_number}.pdf",
