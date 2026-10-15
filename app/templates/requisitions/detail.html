@@ -430,26 +430,7 @@
     </a>
     {% endif %}
 
-    <!-- CANCEL / REJECT ACTIONS — management/admin only on active requisitions -->
-    {% if user and user.has_management_authority and status_str not in ('closed', 'cancelled', 'rejected') %}
-    <div class="bg-white rounded-2xl border border-red-100 p-4 shadow-sm mt-4">
-        <h3 class="text-xs font-bold text-red-500 uppercase tracking-widest mb-3">Management Actions</h3>
-        <div class="grid grid-cols-2 gap-3">
-            <form method="post" action="/requisitions/{{ req.id }}/cancel" onsubmit="return confirm('Cancel this requisition?')">
-                <input type="hidden" name="reason" value="">
-                <button type="submit" class="w-full py-2.5 rounded-xl text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 transition min-h-[40px]">
-                    🚫 Cancel
-                </button>
-            </form>
-            <form method="post" action="/requisitions/{{ req.id }}/reject" onsubmit="return confirm('Reject this requisition?')">
-                <input type="hidden" name="reason" value="">
-                <button type="submit" class="w-full py-2.5 rounded-xl text-xs font-bold bg-red-100 text-red-700 hover:bg-red-200 transition min-h-[40px]">
-                    ✕ Reject
-                </button>
-            </form>
-        </div>
-    </div>
-    {% endif %}
+
 
     <!-- REJECTION/CANCELLATION REASON -->
     {% if req.rejected_reason and status_str in ('cancelled', 'rejected') %}
