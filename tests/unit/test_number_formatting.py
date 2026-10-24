@@ -104,3 +104,85 @@ class TestAmountToWordsBangla:
     def test_edge_cases(self):
         assert amount_to_words_bangla(None) == "Zero Taka Only"
         assert amount_to_words_bangla("") == "Zero Taka Only"
+
+
+class TestPDFFormatting:
+    def test_rfq_pdf_quantity_formatting(self):
+        from unittest.mock import MagicMock, patch
+        import app.reports.pdf_service as rfq_mod
+
+        captured_html = []
+        def mock_html(string=None):
+            captured_html.append(string)
+            m = MagicMock()
+            m.write_pdf.return_value = b"%PDF-1.4 mock"
+            return m
+
+        with patch("app.reports.pdf_service.HTML", side_effect=mock_html):
+            req = MagicMock(title="Wener Product Price List", quantity="3E+4")
+            items = [{"name": "Art Paper", "description": "150 GSM", "qty": "3E+4"}]
+            rfq_mod.generate_rfq_pdf(req, "Apex Supplies Ltd", items)
+            assert len(captured_html) > 0
+            html = captured_html[-1]
+            assert "30,000" in html
+            assert "3E+4" not in html
+
+    @pytest.mark.asyncio
+    async def test_work_order_pdf_formatting_and_words(self):
+        from unittest.mock import MagicMock, patch
+        from datetime import datetime
+        import app.work_orders.service as wo_mod
+
+        captured_html = []
+        def mock_html(string=None):
+            captured_html.append(string)
+            m = MagicMock()
+            m.write_pdf.return_value = b"%PDF-1.4 mock"
+            return m
+
+        with patch("weasyprint.HTML", side_effect=mock_html):
+            wo = MagicMock()
+            wo.id = "abcdef12-3456-7890-abcd-ef1234567890"
+            wo.issued_at = datetime.now()
+            wo.requisition = MagicMock(title="Switch Socket Order")
+            wo.vendor = MagicMock(company_name="Apex Supplies Ltd", contact_email="apex@example.com")
+            wo.issuer = MagicMock(full_name="Procurement Officer")
+            wo._quotation_data = {
+                "items": [
+                    {"name": "Switch Socket", "description": "White 4-gang", "qty": "3E+4", "price": 5.50}
+                ]
+            }
+            await wo_mod.generate_work_order_pdf(wo, None)
+            assert len(captured_html) > 0
+            html = captured_html[-1]
+            assert "30,000" in html
+            assert "3E+4" not in html
+            assert "1,65,000.00" in html
+            assert "One Lac Sixty-Five Thousand Taka Only" in html
+
+    def test_quotation_pdf_formatting_and_words(self):
+        from unittest.mock import MagicMock, patch
+        import app.quotations.routes_vendor as q_mod
+
+        captured_html = []
+        def mock_html(string=None):
+            captured_html.append(string)
+            m = MagicMock()
+            m.write_pdf.return_value = b"%PDF-1.4 mock"
+            return m
+
+        with patch("weasyprint.HTML", side_effect=mock_html):
+            form_data = {
+                "price": 165000.00,
+                "delivery_days": 7,
+                "items": [
+                    {"name": "Switch Socket", "description": "White 4-gang", "qty": "3E+4", "price": 5.50}
+                ],
+            }
+            q_mod._generate_quotation_pdf(form_data, "Switch Socket Order", "Apex Supplies Ltd")
+            assert len(captured_html) > 0
+            html = captured_html[-1]
+            assert "30,000" in html
+            assert "3E+4" not in html
+            assert "1,65,000.00" in html
+            assert "One Lac Sixty-Five Thousand Taka Only" in html
