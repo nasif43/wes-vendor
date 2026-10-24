@@ -114,6 +114,11 @@ async def send_batch(params: list[dict]) -> bool:
     if not params:
         return False
 
+    # Ensure all outgoing emails strictly use wenerbd.cloud instead of legacy domains
+    for p in params:
+        if "from" in p and "coolcompany.tech" in p["from"]:
+            p["from"] = p["from"].replace("coolcompany.tech", "wenerbd.cloud")
+
     async def _send_async(p):
         def _send():
             return resend.Emails.send(p)

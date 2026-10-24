@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     app_url: str = "http://localhost:8000"
 
     resend_api_key: str = ""
-    mail_from: str = "onboarding@resend.dev"
+    mail_from: str = "portal@wenerbd.cloud"
     # MD Email (Production/Demo): mahmudtarek1971@gmail.com
     default_cc: str = "muhtasimhossain43@gmail.com"
     secret_key: str = "dev-secret-change-in-production"

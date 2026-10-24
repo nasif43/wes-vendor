@@ -8,6 +8,8 @@ from app.database import AsyncSessionLocal, init_db
 
 @pytest.mark.asyncio
 async def test_functional_login():
+    from app.database import engine
+    await engine.dispose()
     await init_db()
     uid = uuid.uuid4().hex[:8]
     test_email = f"proc_{uid}@example.com"
@@ -40,3 +42,7 @@ async def test_functional_login():
         res_email = await client.post("/auth/login", data={"username": test_email, "password": "secretpass123"})
         assert res_email.status_code == 303
         assert res_email.headers["location"] == "/"
+
+    from app.database import engine
+    await engine.dispose()
+
