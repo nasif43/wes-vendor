@@ -15,7 +15,7 @@
         </a>
         <div class="min-w-0">
             <h1 class="text-xl font-bold text-slate-900 truncate">Compare Quotes</h1>
-            <p class="text-xs text-slate-400 mt-0.5 truncate">{{ req.title }} · {{ req.quantity }} {{ req.unit or '' }}</p>
+            <p class="text-xs text-slate-400 mt-0.5 truncate">{{ req.title }} · {{ req.quantity | qty_format }} {{ req.unit or '' }}</p>
         </div>
     </div>
 
@@ -94,7 +94,7 @@
                                 <p class="text-slate-400 mt-0.5 text-[11px] leading-snug">{{ item.description }}</p>
                                 {% endif %}
                             </td>
-                            <td class="px-3 py-3.5 text-center font-mono font-semibold text-slate-600 text-[11px]">{{ item.qty }}</td>
+                            <td class="px-3 py-3.5 text-center font-mono font-semibold text-slate-600 text-[11px]">{{ item.qty | qty_format }}</td>
                             {% for link in all_v1 %}
                             {% set link_id = link.id %}
                             {% set cb_id = "cb_" ~ link_id ~ "_" ~ item_idx %}
@@ -273,16 +273,16 @@ document.addEventListener('DOMContentLoaded', () => {
                         <td class="px-4 py-3 text-right text-slate-400 font-mono">—</td>
                         <td class="px-4 py-3 text-right text-slate-400 font-mono">—</td>
                         {% else %}
-                        <td class="px-4 py-3 text-right font-mono text-slate-700">৳{{ "%.2f"|format(v1_price) }}</td>
-                        <td class="px-4 py-3 text-right font-mono text-slate-700">৳{{ "%.2f"|format(v2_price) }}</td>
+                        <td class="px-4 py-3 text-right font-mono text-slate-700">৳{{ v1_price | money_inr }}</td>
+                        <td class="px-4 py-3 text-right font-mono text-slate-700">৳{{ v2_price | money_inr }}</td>
                         <td class="px-4 py-3 text-right font-mono font-bold {% if delta_price < 0 %}text-emerald-600{% elif delta_price > 0 %}text-red-600{% else %}text-slate-500{% endif %}">
-                            {% if delta_price > 0 %}+{% endif %}৳{{ "%.2f"|format(delta_price) }}
+                            {% if delta_price > 0 %}+{% endif %}৳{{ delta_price | money_inr }}
                         </td>
                         {% endif %}
-                        <td class="px-4 py-3 text-right font-mono text-slate-700">{{ v1_qty }}</td>
-                        <td class="px-4 py-3 text-right font-mono text-slate-700">{{ v2_qty }}</td>
+                        <td class="px-4 py-3 text-right font-mono text-slate-700">{{ v1_qty | qty_format }}</td>
+                        <td class="px-4 py-3 text-right font-mono text-slate-700">{{ v2_qty | qty_format }}</td>
                         <td class="px-4 py-3 text-right font-mono font-bold {% if delta_qty < 0 %}text-amber-600{% elif delta_qty > 0 %}text-emerald-600{% else %}text-slate-500{% endif %}">
-                            {% if delta_qty > 0 %}+{% endif %}{{ "%.2f"|format(delta_qty) }}
+                            {% if delta_qty > 0 %}+{% endif %}{{ delta_qty | qty_format }}
                         </td>
                     </tr>
                     {% endif %}
@@ -344,16 +344,24 @@ document.addEventListener('DOMContentLoaded', () => {
                                 {% for item in link.quotation.form_data.get('items') %}
                                 <tr>
                                     <td class="px-3 py-2 font-medium text-slate-900">{{ item.name }}</td>
-                                    <td class="px-3 py-2 text-center text-slate-700">{{ item.qty }}</td>
-                                    <td class="px-3 py-2 text-right font-mono text-slate-700">{% if blind %}—{% else %}৳{{ "%.2f"|format(item.price|float(0)) }}{% endif %}</td>
+                                    <td class="px-3 py-2 text-center text-slate-700">{{ item.qty | qty_format }}</td>
+                                    <td class="px-3 py-2 text-right font-mono text-slate-700">{% if blind %}—{% else %}৳{{ item.price | money_inr }}{% endif %}</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
                             <tfoot class="bg-slate-50 border-t border-slate-200">
                                 <tr>
                                     <td colspan="2" class="px-3 py-2 font-bold text-right text-slate-700">Total:</td>
-                                    <td class="px-3 py-2 font-bold text-right font-mono text-slate-900">{% if blind %}—{% else %}৳{{ "%.2f"|format(link.quotation.form_data.price|float(0)) }}{% endif %}</td>
+                                    <td class="px-3 py-2 font-bold text-right font-mono text-slate-900">{% if blind %}—{% else %}৳{{ link.quotation.form_data.price | money_inr }}{% endif %}</td>
                                 </tr>
+                                {% if not blind and link.quotation.form_data.price %}
+                                <tr>
+                                    <td colspan="3" class="px-3 py-1.5 bg-slate-100/70 border-t border-slate-200 text-[11px] text-slate-700">
+                                        <span class="font-bold text-slate-500 uppercase text-[9px] tracking-wider">In Words:</span>
+                                        <span class="font-bold text-slate-900 ml-1">{{ link.quotation.form_data.price | in_words }}</span>
+                                    </td>
+                                </tr>
+                                {% endif %}
                             </tfoot>
                         </table>
                     </div>
@@ -366,19 +374,23 @@ document.addEventListener('DOMContentLoaded', () => {
                             {% if blind %}
                             <span class="font-bold text-slate-400">— (hidden)</span>
                             {% else %}
-                            <span class="font-bold text-slate-900 text-base">৳{{ link.quotation.form_data.price or '—' }}</span>
+                            <span class="font-bold text-slate-900 text-base">৳{{ link.quotation.form_data.price | money_inr }}</span>
                             {% endif %}
                         </div>
                         <div class="flex justify-between items-center py-3 border-b border-slate-100">
                             <span class="text-slate-500">Qty Offered</span>
-                            <span class="font-semibold text-slate-800">{{ link.quotation.quoted_quantity or req.quantity }} {{ req.unit or '' }}</span>
+                            <span class="font-semibold text-slate-800">{{ (link.quotation.quoted_quantity or req.quantity) | qty_format }} {{ req.unit or '' }}</span>
                         </div>
                         {% if not blind %}
                         <div class="flex justify-between items-center py-3 border-b border-slate-100">
                             <span class="text-slate-500">Subtotal</span>
                             {% set unit_price = link.quotation.form_data.price | float(0) %}
                             {% set qty = link.quotation.quoted_quantity | float(req.quantity) %}
-                            <span class="font-bold text-slate-900">৳{{ "%.2f"|format(unit_price * qty) }}</span>
+                            <span class="font-bold text-slate-900">৳{{ (unit_price * qty) | money_inr }}</span>
+                        </div>
+                        <div class="py-1.5 text-[11px] text-slate-600 border-b border-slate-100">
+                            <span class="text-slate-400 font-bold uppercase text-[9px]">In Words:</span>
+                            <span class="font-semibold text-slate-800 ml-1">{{ (unit_price * qty) | in_words }}</span>
                         </div>
                         {% endif %}
                         {% endif %}
@@ -468,20 +480,20 @@ document.addEventListener('DOMContentLoaded', () => {
                                 {% for item in hq.form_data.get('items') %}
                                 <div class="flex justify-between text-slate-600">
                                     <span>{{ item.name }}</span>
-                                    {% if blind %}<span class="text-slate-400">— (hidden)</span>{% else %}<span class="font-mono font-semibold text-slate-800">৳{{ "%.2f"|format(item.price|float(0)) }}</span>{% endif %}
+                                    {% if blind %}<span class="text-slate-400">— (hidden)</span>{% else %}<span class="font-mono font-semibold text-slate-800">৳{{ item.price | money_inr }}</span>{% endif %}
                                 </div>
                                 {% endfor %}
                                 {% if not blind %}
                                 <div class="flex justify-between font-bold text-slate-800 border-t border-slate-200 pt-1 mt-1">
                                     <span>Total</span>
-                                    <span class="font-mono">৳{{ "%.2f"|format(hq.form_data.price|float(0)) }}</span>
+                                    <span class="font-mono">৳{{ hq.form_data.price | money_inr }}</span>
                                 </div>
                                 {% endif %}
                             </div>
                             {% elif not blind %}
                             <div class="flex justify-between text-slate-600">
                                 <span>Unit Rate</span>
-                                <span class="font-mono font-semibold text-slate-800">৳{{ hq.form_data.price or '—' }}</span>
+                                <span class="font-mono font-semibold text-slate-800">৳{{ hq.form_data.price | money_inr }}</span>
                             </div>
                             {% endif %}
                             {% if hq.form_data.get('notes') %}

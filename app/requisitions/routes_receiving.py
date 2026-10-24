@@ -20,6 +20,11 @@ from app.auth.models import UserProfile, UserRole
 from app.database import get_db
 from app.dependencies import get_current_user
 from app.requisitions.models import Requisition, RequisitionStatus, RequisitionVendor
+from app.utils.number_formatting import (
+    amount_to_words_bangla,
+    format_indian_number,
+    format_quantity,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -272,14 +277,19 @@ async def receive_requisition_submit(
         rows_html = ""
         for li in invoice_line_items:
             strike = "text-decoration: line-through; color: #999;" if li["rejected_qty"] > 0 else ""
+            ordered_display = format_quantity(li['ordered_qty'])
+            received_display = format_quantity(li['received_qty'])
+            rejected_display = format_quantity(li['rejected_qty'])
+            price_display = format_indian_number(li['unit_price'])
+            total_display = format_indian_number(li['line_total'])
             rows_html += (
                 f"<tr>"
                 f"<td style='border:1px solid #ccc;padding:6px'>{li['name']}</td>"
-                f"<td style='border:1px solid #ccc;padding:6px;text-align:center'>{li['ordered_qty']}</td>"
-                f"<td style='border:1px solid #ccc;padding:6px;text-align:center;color:#16a34a;font-weight:600'>{li['received_qty']}</td>"
-                f"<td style='border:1px solid #ccc;padding:6px;text-align:center;color:#dc2626'>{li['rejected_qty']}</td>"
-                f"<td style='border:1px solid #ccc;padding:6px;text-align:right;font-family:monospace'>BDT {li['unit_price']:.2f}</td>"
-                f"<td style='border:1px solid #ccc;padding:6px;text-align:right;font-family:monospace;font-weight:700'>BDT {li['line_total']:.2f}</td>"
+                f"<td style='border:1px solid #ccc;padding:6px;text-align:center'>{ordered_display}</td>"
+                f"<td style='border:1px solid #ccc;padding:6px;text-align:center;color:#16a34a;font-weight:600'>{received_display}</td>"
+                f"<td style='border:1px solid #ccc;padding:6px;text-align:center;color:#dc2626'>{rejected_display}</td>"
+                f"<td style='border:1px solid #ccc;padding:6px;text-align:right;font-family:monospace'>BDT {price_display}</td>"
+                f"<td style='border:1px solid #ccc;padding:6px;text-align:right;font-family:monospace;font-weight:700'>BDT {total_display}</td>"
                 f"<td style='border:1px solid #ccc;padding:6px;font-size:11px;color:#666'>{li['rejection_reason'] or ''}</td>"
                 f"</tr>"
             )
@@ -317,14 +327,18 @@ async def receive_requisition_submit(
         <table class="items">
         <thead><tr><th>Item</th><th>Ordered</th><th style="color:#16a34a">Received</th><th style="color:#dc2626">Rejected</th><th>Unit Price</th><th>Line Total</th><th>Notes</th></tr></thead>
         <tbody>{rows_html}</tbody>
-        <tfoot><tr><td colspan="5" style="text-align:right;border:1px solid #ccc;padding:6px">TOTAL PAYABLE:</td>
-        <td style="border:1px solid #ccc;padding:6px;text-align:right;font-family:monospace">BDT {grand_total:.2f}</td>
-        <td style="border:1px solid #ccc;padding:6px"></td></tr></tfoot>
+        <tfoot>
+        <tr><td colspan="5" style="text-align:right;border:1px solid #ccc;padding:8px;font-weight:700">TOTAL PAYABLE:</td>
+        <td style="border:1px solid #ccc;padding:8px;text-align:right;font-family:monospace;font-weight:700">BDT {format_indian_number(grand_total)}</td>
+        <td style="border:1px solid #ccc;padding:8px"></td></tr>
+        <tr><td colspan="7" style="border:1px solid #ccc;padding:8px;background:#f8fafc;font-size:12px;color:#334155">
+        <b>In Words:</b> {amount_to_words_bangla(grand_total)}</td></tr>
+        </tfoot>
         </table>
         <div class="footer">
             <p>Accepted by: <strong>{user.full_name}</strong> &nbsp;|&nbsp; Date: <strong>{challan_date}</strong> &nbsp;|&nbsp; Time: <strong>{challan_time} BST</strong></p>
             <p style="font-size:10px;color:#94a3b8;margin-top:4px;">This Accepted Challan is system-generated based on goods received and QC-accepted quantities only.<br>
-            Rejected items ({total_rejected:.0f} units) are excluded from payment.</p>
+            Rejected items ({format_quantity(total_rejected)} units) are excluded from payment.</p>
         </div>
         </div></body></html>
         """

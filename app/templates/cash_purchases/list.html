@@ -17,9 +17,9 @@
         </div>
 
         <div class="flex items-center gap-3">
-            <div class="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-emerald-50 border border-emerald-200/80 rounded-xl text-emerald-800">
+            <div class="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-emerald-50 border border-emerald-200/80 rounded-xl text-emerald-800" title="{{ total_amount_sum | in_words }}">
                 <span class="text-[11px] font-bold text-emerald-600 uppercase tracking-wider">Total Filtered:</span>
-                <span class="font-mono font-bold text-xs">BDT {{ "%.2f"|format(total_amount_sum|float(0)) }}</span>
+                <span class="font-mono font-bold text-xs">BDT {{ total_amount_sum | money_inr }}</span>
             </div>
 
             <a href="/cash-purchases/new" class="bg-brand-600 text-white h-9 px-4 rounded-xl text-xs font-bold hover:bg-brand-700 transition shadow-xs flex items-center gap-1.5 active:scale-95 shrink-0">
@@ -163,8 +163,8 @@
                         </td>
 
                         <!-- Amount -->
-                        <td class="py-3.5 px-4 text-right font-mono font-bold text-slate-900 whitespace-nowrap text-sm">
-                            BDT {{ "%.2f"|format(p.amount|float(0)) }}
+                        <td class="py-3.5 px-4 text-right font-mono font-bold text-slate-900 whitespace-nowrap text-sm" title="{{ p.amount | in_words }}">
+                            BDT {{ p.amount | money_inr }}
                         </td>
 
                         <!-- Purchase Date -->

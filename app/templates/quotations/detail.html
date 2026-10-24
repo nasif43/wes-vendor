@@ -67,16 +67,24 @@
                                 <div class="font-semibold text-slate-900">{{ item.name }}</div>
                                 <div class="text-[10px] text-slate-500">{{ item.description }}</div>
                             </td>
-                            <td class="px-3 py-2 text-center text-slate-700">{{ item.qty }}</td>
-                            <td class="px-3 py-2 text-right font-mono text-slate-700">{% if hide_price %}—{% else %}{{ "%.2f"|format(item.price|float(0)) }}{% endif %}</td>
+                            <td class="px-3 py-2 text-center text-slate-700">{{ item.qty | qty_format }}</td>
+                            <td class="px-3 py-2 text-right font-mono text-slate-700">{% if hide_price %}—{% else %}৳{{ item.price | money_inr }}{% endif %}</td>
                         </tr>
                         {% endfor %}
                     </tbody>
                     <tfoot class="bg-slate-50 border-t border-slate-200">
                         <tr>
                             <td colspan="2" class="px-3 py-2 font-bold text-right text-slate-700">Total:</td>
-                            <td class="px-3 py-2 font-bold text-right font-mono text-slate-900">{% if hide_price %}—{% else %}৳{{ "%.2f"|format(link.quotation.form_data.price|float(0)) }}{% endif %}</td>
+                            <td class="px-3 py-2 font-bold text-right font-mono text-slate-900">{% if hide_price %}—{% else %}৳{{ link.quotation.form_data.price | money_inr }}{% endif %}</td>
                         </tr>
+                        {% if not hide_price and link.quotation.form_data.price %}
+                        <tr>
+                            <td colspan="3" class="px-3 py-2 bg-slate-100/70 border-t border-slate-200 text-xs text-slate-700">
+                                <span class="font-bold text-slate-500 uppercase text-[10px] tracking-wider">In Words:</span>
+                                <span class="font-bold text-slate-900 ml-1">{{ link.quotation.form_data.price | in_words }}</span>
+                            </td>
+                        </tr>
+                        {% endif %}
                     </tfoot>
                 </table>
             </div>
@@ -86,8 +94,11 @@
                 {% if not link.quotation.form_data.get('items') %}
                 <div class="bg-slate-50 rounded-xl p-3.5">
                     <div class="text-[11px] text-slate-400 font-medium mb-1">Price</div>
-                    <div class="text-base font-bold text-slate-900">{% if hide_price %}— (hidden){% else %}{{ link.quotation.form_data.price or '—' }}{% endif %}</div>
-                    <div class="text-xs text-slate-500">{{ link.quotation.form_data.currency or '' }}</div>
+                    <div class="text-base font-bold text-slate-900">{% if hide_price %}— (hidden){% else %}৳{{ link.quotation.form_data.price | money_inr }}{% endif %}</div>
+                    {% if not hide_price and link.quotation.form_data.price %}
+                    <div class="text-[11px] font-semibold text-slate-600 mt-1 italic">{{ link.quotation.form_data.price | in_words }}</div>
+                    {% endif %}
+                    <div class="text-xs text-slate-500 mt-0.5">{{ link.quotation.form_data.currency or 'BDT' }}</div>
                 </div>
                 {% endif %}
                 <div class="bg-slate-50 rounded-xl p-3.5">

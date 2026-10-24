@@ -25,7 +25,7 @@
         </div>
         <div>
             <p class="text-sm font-semibold text-slate-900">{{ req.title }}</p>
-            <p class="text-xs text-slate-400">{{ req.quantity }} {{ req.unit or '' }}</p>
+            <p class="text-xs text-slate-400">{{ req.quantity | qty_format }} {{ req.unit or '' }}</p>
         </div>
     </div>
 

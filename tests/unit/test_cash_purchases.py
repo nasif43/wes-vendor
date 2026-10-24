@@ -513,7 +513,8 @@ async def test_route_create_cash_purchase_validations(async_db, monkeypatch):
             res_detail = await client.get(detail_url)
             assert res_detail.status_code == 200
             assert "Emergency Printer Paper" in res_detail.text
-            assert "1800.00" in res_detail.text
+            assert "1,800.00" in res_detail.text
+            assert "One Thousand Eight Hundred Taka Only" in res_detail.text
             assert "New Market Stationers" in res_detail.text
             assert "MEMO-54321" in res_detail.text
     finally:

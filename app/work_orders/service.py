@@ -8,6 +8,11 @@ import logging
 from datetime import UTC, datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
+from app.utils.number_formatting import (
+    amount_to_words_bangla,
+    format_indian_number,
+    format_quantity,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -41,15 +46,21 @@ async def generate_work_order_pdf(work_order, letterhead_url: str | None) -> byt
             for item in quotation["items"]:
                 qty = item.get("qty", 0)
                 price = item.get("price", 0)
-                total = float(qty) * float(price)
+                try:
+                    total = float(qty) * float(price)
+                except Exception:
+                    total = 0.0
                 grand_total += total
+                qty_display = format_quantity(qty)
+                price_display = format_indian_number(price)
+                total_display = format_indian_number(total)
                 rows_html += (
                     f"<tr>"
                     f"<td style='border:1px solid #333;padding:6px'>{item.get('name','')}</td>"
                     f"<td style='border:1px solid #333;padding:6px'>{item.get('description','')}</td>"
-                    f"<td style='border:1px solid #333;padding:6px'>{qty}</td>"
-                    f"<td style='border:1px solid #333;padding:6px'>{float(price):.2f}</td>"
-                    f"<td style='border:1px solid #333;padding:6px'>{total:.2f}</td>"
+                    f"<td style='border:1px solid #333;padding:6px;text-align:center'>{qty_display}</td>"
+                    f"<td style='border:1px solid #333;padding:6px;text-align:right;font-family:monospace'>{price_display}</td>"
+                    f"<td style='border:1px solid #333;padding:6px;text-align:right;font-family:monospace;font-weight:600'>{total_display}</td>"
                     f"</tr>"
                 )
 
@@ -110,11 +121,12 @@ async def generate_work_order_pdf(work_order, letterhead_url: str | None) -> byt
             </table>
 
             {'<table class="items"><thead><tr>' +
-             '<th>Item</th><th>Description</th><th>Qty</th><th>Unit Price (BDT)</th><th>Total (BDT)</th>' +
+             '<th>Item</th><th>Description</th><th style="text-align:center">Qty</th><th style="text-align:right">Unit Price (BDT)</th><th style="text-align:right">Total (BDT)</th>' +
              '</tr></thead><tbody>' + rows_html +
-             '</tbody><tfoot><tr><td colspan="4" style="text-align:right;border:1px solid #333;padding:6px">Grand Total (BDT):</td>' +
-             f'<td style="border:1px solid #333;padding:6px">BDT {grand_total:.2f}</td>' +
-             '</tr></tfoot></table>'
+             '</tbody><tfoot><tr><td colspan="4" style="text-align:right;border:1px solid #333;padding:8px;font-weight:700">Grand Total (BDT):</td>' +
+             f'<td style="border:1px solid #333;padding:8px;text-align:right;font-family:monospace;font-weight:700;font-size:14px">BDT {format_indian_number(grand_total)}</td>' +
+             '</tr><tr><td colspan="5" style="border:1px solid #333;padding:8px;background:#f8fafc;font-size:12px;color:#334155">' +
+             f'<b>In Words:</b> {amount_to_words_bangla(grand_total)}</td></tr></tfoot></table>'
              if rows_html else '<p><em>Item details as per quotation submitted.</em></p>'}
 
             <p style="margin-top:32px;font-size:12px;color:#666;">

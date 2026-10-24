@@ -143,7 +143,7 @@
                                 {% for req in recent_requisitions %}
                                 <tr class="hover:bg-slate-50/80 transition">
                                     <td class="py-3.5 pr-3 font-bold text-slate-900 truncate max-w-[200px]">{{ req.title }}</td>
-                                    <td class="py-3.5 px-3 text-slate-600 font-medium">{{ req.quantity }} {{ req.unit or '' }}</td>
+                                    <td class="py-3.5 px-3 text-slate-600 font-medium">{{ req.quantity | qty_format }} {{ req.unit or '' }}</td>
                                     <td class="py-3.5 px-3 text-slate-500 whitespace-nowrap">{{ req.created_at.strftime('%d %b %Y') }}</td>
 {% from "components/status_badge.html" import render_status_badge %}
                                     <td class="py-3.5 px-3">

@@ -9,6 +9,11 @@ from app.database import get_db
 from app.quotations.models import Quotation
 from app.requisitions.models import RequisitionVendor
 from app.storage import BUCKET_NAME, upload_file
+from app.utils.number_formatting import (
+    amount_to_words_bangla,
+    format_indian_number,
+    format_quantity,
+)
 
 def _generate_quotation_pdf(form_data: dict | None, req_title: str, vendor_name: str) -> bytes | None:
     """Generate quotation PDF from form data. Returns None on failure."""
@@ -26,13 +31,16 @@ def _generate_quotation_pdf(form_data: dict | None, req_title: str, vendor_name:
                 except (ValueError, TypeError):
                     total = 0.0
                 grand_total += total
+                qty_display = format_quantity(qty)
+                price_display = format_indian_number(item_price)
+                total_display = format_indian_number(total)
                 rows.append(
                     f"<tr>"
                     f"<td style='border:1px solid #ccc;padding:6px'>{item.get('name','')}</td>"
                     f"<td style='border:1px solid #ccc;padding:6px'>{item.get('description','')}</td>"
-                    f"<td style='border:1px solid #ccc;padding:6px;text-align:center'>{qty}</td>"
-                    f"<td style='border:1px solid #ccc;padding:6px;text-align:right;font-family:monospace'>BDT {float(item_price):.2f}</td>"
-                    f"<td style='border:1px solid #ccc;padding:6px;text-align:right;font-family:monospace;font-weight:700'>BDT {total:.2f}</td>"
+                    f"<td style='border:1px solid #ccc;padding:6px;text-align:center'>{qty_display}</td>"
+                    f"<td style='border:1px solid #ccc;padding:6px;text-align:right;font-family:monospace'>BDT {price_display}</td>"
+                    f"<td style='border:1px solid #ccc;padding:6px;text-align:right;font-family:monospace;font-weight:700'>BDT {total_display}</td>"
                     f"</tr>"
                 )
             table_html = (
@@ -47,7 +55,7 @@ def _generate_quotation_pdf(form_data: dict | None, req_title: str, vendor_name:
                 + "".join(rows)
                 + f"</tbody><tfoot><tr>"
                 f"<td colspan='4' style='border:1px solid #ccc;padding:6px;text-align:right;font-weight:700;'>Grand Total:</td>"
-                f"<td style='border:1px solid #ccc;padding:6px;text-align:right;font-family:monospace;font-weight:700;'>BDT {grand_total:.2f}</td>"
+                f"<td style='border:1px solid #ccc;padding:6px;text-align:right;font-family:monospace;font-weight:700;'>BDT {format_indian_number(grand_total)}</td>"
                 f"</tr></tfoot></table>"
             )
 
@@ -81,7 +89,8 @@ def _generate_quotation_pdf(form_data: dict | None, req_title: str, vendor_name:
         <h1>Quotation</h1>
         <table class="meta">
         <tr><td><b>Requisition:</b> {req_title}</td><td><b>Supplier:</b> {vendor_name}</td></tr>
-        <tr><td><b>Total Price:</b> BDT {float(total_price):.2f}</td><td><b>Delivery:</b> {delivery_days} days</td></tr>
+        <tr><td><b>Total Price:</b> BDT {format_indian_number(total_price)}</td><td><b>Delivery:</b> {delivery_days} days</td></tr>
+        <tr><td colspan="2"><b>Amount in Words:</b> {amount_to_words_bangla(total_price)}</td></tr>
         </table>
         {table_html}
         <div class="pdf-footer">

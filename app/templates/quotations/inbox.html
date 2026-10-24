@@ -24,7 +24,7 @@
                     <a href="/requisitions/{{ req.id }}" class="font-bold text-sm text-slate-900 hover:text-brand-600 transition truncate min-w-0">{{ req.title }}</a>
                     {{ render_status_badge(req.status) }}
                 </div>
-                <p class="text-xs text-slate-400 mt-0.5">{{ req.quantity }} {{ req.unit or '' }}</p>
+                <p class="text-xs text-slate-400 mt-0.5">{{ req.quantity | qty_format }} {{ req.unit or '' }}</p>
             </div>
 
 

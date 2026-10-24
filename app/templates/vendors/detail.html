@@ -139,9 +139,9 @@
                     {% for r in supplier_ratings %}
                     <tr>
                         <td class="py-2 pr-3 text-slate-500">{{ r.rated_at.strftime('%b %d, %Y') }}</td>
-                        <td class="py-2 pr-3 text-right font-mono">{{ r.ordered_qty|int }}</td>
-                        <td class="py-2 pr-3 text-right font-mono text-emerald-700">{{ r.received_qty|int }}</td>
-                        <td class="py-2 pr-3 text-right font-mono text-red-600">{{ r.rejected_qty|int }}</td>
+                        <td class="py-2 pr-3 text-right font-mono">{{ r.ordered_qty | qty_format }}</td>
+                        <td class="py-2 pr-3 text-right font-mono text-emerald-700">{{ r.received_qty | qty_format }}</td>
+                        <td class="py-2 pr-3 text-right font-mono text-red-600">{{ r.rejected_qty | qty_format }}</td>
                         <td class="py-2 pr-3 text-right font-mono {% if r.defect_rate_pct|float <= 5 %}text-emerald-600{% elif r.defect_rate_pct|float <= 15 %}text-amber-600{% else %}text-red-600{% endif %}">
                             {{ r.defect_rate_pct }}%
                         </td>

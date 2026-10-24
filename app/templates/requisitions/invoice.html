@@ -96,10 +96,10 @@
                                     <p class="font-semibold text-slate-900">{{ item.name }}</p>
                                     <p class="text-xs text-slate-500 mt-1">{{ item.description }}</p>
                                 </td>
-                                <td class="py-4 text-right font-semibold text-slate-800">{{ item.qty }}</td>
+                                <td class="py-4 text-right font-semibold text-slate-800">{{ item.qty | qty_format }}</td>
                                 <td class="py-4 text-right text-slate-600">{{ req.unit or '—' }}</td>
-                                <td class="py-4 text-right font-semibold text-slate-800">{{ "%.2f"|format(item.price|float(0)) }}</td>
-                                <td class="py-4 text-right font-bold text-slate-900">BDT {{ "%.2f"|format((item.price|float(0)) * (item.qty|float(0))) }}</td>
+                                <td class="py-4 text-right font-semibold text-slate-800">{{ item.price | money_inr }}</td>
+                                <td class="py-4 text-right font-bold text-slate-900">BDT {{ ((item.price|float(0)) * (item.qty|float(0))) | money_inr }}</td>
                             </tr>
                             {% endfor %}
                         {% else %}
@@ -110,15 +110,15 @@
                                 </td>
                                 <td class="py-4 text-right font-semibold text-slate-800">
                                     {% if winning_quotation and winning_quotation.quoted_quantity %}
-                                    {{ winning_quotation.quoted_quantity }}
+                                    {{ winning_quotation.quoted_quantity | qty_format }}
                                     {% else %}
-                                    {{ req.received_pieces or req.quantity }}
+                                    {{ (req.received_pieces or req.quantity) | qty_format }}
                                     {% endif %}
                                 </td>
                                 <td class="py-4 text-right text-slate-600">{{ req.unit or '—' }}</td>
                                 <td class="py-4 text-right font-semibold text-slate-800">
                                     {% if winning_quotation and winning_quotation.form_data and winning_quotation.form_data.price %}
-                                    {{ winning_quotation.form_data.price }}
+                                    {{ winning_quotation.form_data.price | money_inr }}
                                     {% else %}
                                     —
                                     {% endif %}
@@ -127,7 +127,7 @@
                                     {% if winning_quotation and winning_quotation.form_data and winning_quotation.form_data.price %}
                                     {% set unit_p = winning_quotation.form_data.price | float(0) %}
                                     {% set qty = (winning_quotation.quoted_quantity | float(0)) or (req.quantity | float(0)) %}
-                                    BDT {{ "%.2f"|format(unit_p * qty) }}
+                                    BDT {{ (unit_p * qty) | money_inr }}
                                     {% else %}
                                     —
                                     {% endif %}
@@ -136,22 +136,36 @@
                         {% endif %}
                     </tbody>
                     <tfoot>
+                        {% set total_bdt = 0 %}
+                        {% if winning_quotation and winning_quotation.form_data and winning_quotation.form_data.price %}
+                            {% if req.items and winning_quotation.form_data.get('items') %}
+                                {% set total_bdt = winning_quotation.form_data.price %}
+                            {% else %}
+                                {% set unit_p = winning_quotation.form_data.price | float(0) %}
+                                {% set qty = (winning_quotation.quoted_quantity | float(0)) or (req.quantity | float(0)) %}
+                                {% set total_bdt = unit_p * qty %}
+                            {% endif %}
+                        {% endif %}
                         <tr>
                             <td colspan="4" class="pt-4 text-right text-sm font-bold text-slate-600 pr-4">Total (BDT):</td>
                             <td class="pt-4 text-right text-xl font-black text-brand-700">
-                                {% if winning_quotation and winning_quotation.form_data and winning_quotation.form_data.price %}
-                                    {% if req.items and winning_quotation.form_data.get('items') %}
-                                        BDT {{ "%.2f"|format(winning_quotation.form_data.price|float(0)) }}
-                                    {% else %}
-                                        {% set unit_p = winning_quotation.form_data.price | float(0) %}
-                                        {% set qty = (winning_quotation.quoted_quantity | float(0)) or (req.quantity | float(0)) %}
-                                        BDT {{ "%.2f"|format(unit_p * qty) }}
-                                    {% endif %}
+                                {% if total_bdt %}
+                                    BDT {{ total_bdt | money_inr }}
                                 {% else %}
-                                —
+                                    —
                                 {% endif %}
                             </td>
                         </tr>
+                        {% if total_bdt %}
+                        <tr>
+                            <td colspan="5" class="pt-3 pb-1">
+                                <div class="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                                    <span class="text-slate-500 font-bold uppercase text-[10px] tracking-wider">Amount in Words:</span>
+                                    <span class="font-bold text-slate-900 sm:text-right">{{ total_bdt | in_words }}</span>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endif %}
                     </tfoot>
                 </table>
             </div>

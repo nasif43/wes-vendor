@@ -12,11 +12,22 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from app.config import get_settings
 from app.database import init_db
+from app.utils.number_formatting import (
+    amount_to_words_bangla,
+    format_indian_number,
+    format_quantity,
+)
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
 templates = Jinja2Templates(directory="app/templates")
+templates.env.filters["qty_format"] = format_quantity
+templates.env.filters["format_quantity"] = format_quantity
+templates.env.filters["money_inr"] = format_indian_number
+templates.env.filters["format_money_inr"] = format_indian_number
+templates.env.filters["in_words"] = amount_to_words_bangla
+templates.env.filters["amount_words"] = amount_to_words_bangla
 
 
 @asynccontextmanager

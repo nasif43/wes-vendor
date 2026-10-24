@@ -81,7 +81,7 @@
                                 {% endif %}
                             </td>
                             <td class="px-4 py-3 text-center font-mono font-semibold text-slate-700">
-                                {{ item.ordered_qty }}
+                                {{ item.ordered_qty | qty_format }}
                             </td>
                             <td class="px-4 py-3 text-center">
                                 <input type="number" name="received_qty[]" min="0"
@@ -96,11 +96,11 @@
                                 <input type="hidden" name="rejected_qty[]" id="rejected_input_{{ loop.index0 }}" value="0">
                             </td>
                             <td class="px-4 py-3 text-right font-mono text-slate-700">
-                                {{ "%.2f"|format(item.unit_price|float(0)) }}
+                                {{ item.unit_price | money_inr }}
                             </td>
                             <td class="px-4 py-3 text-right">
                                 <span id="total_{{ loop.index0 }}" class="font-mono font-semibold text-slate-900">
-                                    {{ "%.2f"|format((item.ordered_qty|float(0)) * (item.unit_price|float(0))) }}
+                                    {{ ((item.ordered_qty|float(0)) * (item.unit_price|float(0))) | money_inr }}
                                 </span>
                             </td>
                             <td class="px-4 py-3">

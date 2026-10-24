@@ -97,7 +97,7 @@
                 <div class="min-w-0">
                     <div class="font-bold text-sm text-slate-900 group-hover:text-brand-600 transition truncate">{{ req.title }}</div>
                     <div class="text-xs text-slate-500 truncate mt-0.5">
-                        {{ req.quantity }} {{ req.unit or 'units' }}
+                        {{ req.quantity | qty_format }} {{ req.unit or 'units' }}
                         {% if req.creator %} · By {{ req.creator.full_name }}{% endif %}
                         {% if item.confirmed_at %} · Confirmed {{ item.confirmed_at.strftime('%b %d') }}{% endif %}
                     </div>
@@ -185,7 +185,7 @@
                     {% set req = item.req %}
                     <a href="/requisitions/{{ req.id }}" class="block bg-white rounded-xl p-3.5 border border-slate-200/80 hover:border-brand-400 hover:shadow-md transition active:scale-[0.98]">
                         <div class="text-xs font-extrabold text-slate-900 mb-1 truncate">{{ req.title }}</div>
-                        <div class="text-[11px] font-medium text-slate-500 mb-2.5 truncate">{{ req.quantity }} {{ req.unit or '' }} · {{ req.item_description[:30] }}</div>
+                        <div class="text-[11px] font-medium text-slate-500 mb-2.5 truncate">{{ req.quantity | qty_format }} {{ req.unit or '' }} · {{ req.item_description[:30] }}</div>
                         <div class="text-[10px] text-slate-400 font-medium border-t border-slate-100 pt-2 flex items-center justify-between">
                             <span>Created (Unsent)</span>
                             <span class="font-bold text-slate-500">{{ req.created_at.strftime('%b %d') if req.created_at else '' }}</span>
@@ -212,7 +212,7 @@
                     {% set req = item.req %}
                     <a href="/requisitions/{{ req.id }}" class="block bg-white rounded-xl p-3.5 border border-blue-200/80 hover:border-blue-400 hover:shadow-md transition active:scale-[0.98]">
                         <div class="text-xs font-extrabold text-slate-900 mb-1 truncate">{{ req.title }}</div>
-                        <div class="text-[11px] font-medium text-slate-500 mb-2 truncate">{{ req.quantity }} {{ req.unit or '' }}</div>
+                        <div class="text-[11px] font-medium text-slate-500 mb-2 truncate">{{ req.quantity | qty_format }} {{ req.unit or '' }}</div>
                         <div class="inline-block text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded mb-2 border border-blue-200/50">
                             {{ req.vendor_links | length }} supplier(s) invited
                         </div>
@@ -242,7 +242,7 @@
                     {% set req = item.req %}
                     <a href="/requisitions/{{ req.id }}" class="block bg-white rounded-xl p-3.5 border border-amber-200/80 hover:border-amber-400 hover:shadow-md transition active:scale-[0.98]">
                         <div class="text-xs font-extrabold text-slate-900 mb-1 truncate">{{ req.title }}</div>
-                        <div class="text-[11px] font-medium text-slate-500 mb-2 truncate">{{ req.quantity }} {{ req.unit or '' }}</div>
+                        <div class="text-[11px] font-medium text-slate-500 mb-2 truncate">{{ req.quantity | qty_format }} {{ req.unit or '' }}</div>
                         <div class="inline-block text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded mb-2 border border-amber-200/50">
                             Quotes under review
                         </div>
@@ -273,7 +273,7 @@
                     <div class="bg-white rounded-xl p-3.5 border border-purple-200/80 hover:border-purple-400 hover:shadow-md transition">
                         <a href="/requisitions/{{ req.id }}" class="block active:scale-[0.98]">
                             <div class="text-xs font-extrabold text-slate-900 mb-1 truncate">{{ req.title }}</div>
-                            <div class="text-[11px] font-medium text-slate-500 mb-2 truncate">{{ req.quantity }} {{ req.unit or '' }}</div>
+                            <div class="text-[11px] font-medium text-slate-500 mb-2 truncate">{{ req.quantity | qty_format }} {{ req.unit or '' }}</div>
                             {% if item.confirmed_at %}
                             <div class="inline-block text-[10px] font-bold text-purple-800 bg-purple-50 px-2 py-0.5 rounded mb-2 border border-purple-200/60">
                                 Confirmed on {{ item.confirmed_at.strftime('%b %d, %Y') }}
@@ -319,7 +319,7 @@
                     <div class="bg-white rounded-xl p-3.5 border border-sky-200/80 hover:border-sky-400 hover:shadow-md transition">
                         <a href="/requisitions/{{ req.id }}" class="block active:scale-[0.98]">
                             <div class="text-xs font-extrabold text-slate-900 mb-1 truncate">{{ req.title }}</div>
-                            <div class="text-[11px] font-medium text-slate-500 mb-2 truncate">{{ req.quantity }} {{ req.unit or '' }}</div>
+                            <div class="text-[11px] font-medium text-slate-500 mb-2 truncate">{{ req.quantity | qty_format }} {{ req.unit or '' }}</div>
                             <div class="inline-block text-[10px] font-bold text-sky-800 bg-sky-50 px-2 py-0.5 rounded mb-2 border border-sky-200/60">
                                 Delivery Arrived
                             </div>
@@ -358,7 +358,7 @@
                     {% set req = item.req %}
                     <a href="/requisitions/{{ req.id }}" class="block bg-white rounded-xl p-3.5 border border-blue-200/80 hover:border-blue-400 hover:shadow-md transition active:scale-[0.98]">
                         <div class="text-xs font-extrabold text-slate-900 mb-1 truncate">{{ req.title }}</div>
-                        <div class="text-[11px] font-medium text-slate-500 mb-2 truncate">{{ req.quantity }} {{ req.unit or '' }}</div>
+                        <div class="text-[11px] font-medium text-slate-500 mb-2 truncate">{{ req.quantity | qty_format }} {{ req.unit or '' }}</div>
                         
                         {% if item.qc_done_at %}
                         <div class="text-[10px] font-bold text-blue-800 bg-blue-50 px-2 py-0.5 rounded mb-1.5 border border-blue-200/60 block truncate">
@@ -398,7 +398,7 @@
                     {% set req = item.req %}
                     <a href="/requisitions/{{ req.id }}" class="block bg-white rounded-xl p-3.5 border border-slate-200 hover:border-slate-300 hover:shadow-md transition active:scale-[0.98] opacity-75">
                         <div class="text-xs font-extrabold text-slate-900 mb-1 truncate">{{ req.title }}</div>
-                        <div class="text-[11px] font-medium text-slate-500 mb-2 truncate">{{ req.quantity }} {{ req.unit or '' }}</div>
+                        <div class="text-[11px] font-medium text-slate-500 mb-2 truncate">{{ req.quantity | qty_format }} {{ req.unit or '' }}</div>
                         <div class="text-[10px] text-slate-400 font-medium border-t border-slate-100 pt-2 flex items-center justify-between">
                             <span>Status</span>
                             <span class="font-bold text-slate-500">Cancelled</span>
@@ -425,7 +425,7 @@
                     {% set req = item.req %}
                     <a href="/requisitions/{{ req.id }}" class="block bg-white rounded-xl p-3.5 border border-red-200/80 hover:border-red-400 hover:shadow-md transition active:scale-[0.98]">
                         <div class="text-xs font-extrabold text-slate-900 mb-1 truncate">{{ req.title }}</div>
-                        <div class="text-[11px] font-medium text-slate-500 mb-2 truncate">{{ req.quantity }} {{ req.unit or '' }}</div>
+                        <div class="text-[11px] font-medium text-slate-500 mb-2 truncate">{{ req.quantity | qty_format }} {{ req.unit or '' }}</div>
                         <div class="text-[10px] text-slate-400 font-medium border-t border-slate-100 pt-2 flex items-center justify-between">
                             <span>Status</span>
                             <span class="font-bold text-red-600">Rejected</span>

@@ -1,5 +1,6 @@
 import logging
 from weasyprint import HTML
+from app.utils.number_formatting import format_quantity
 
 logger = logging.getLogger(__name__)
 
@@ -40,8 +41,9 @@ def generate_rfq_pdf(
         name = item.get("name", "")
         desc = item.get("description", "")
         qty = item.get("shortlisted_qty", item.get("qty", ""))
+        qty_display = format_quantity(qty)
         desc_html = f"<br><small style='color:#555;'>{desc}</small>" if desc else ""
-        rows_html += f"<tr><td style='text-align:center;'>{idx}</td><td><b>{name}</b>{desc_html}</td><td style='text-align:center;font-weight:600;'>{qty}</td></tr>"
+        rows_html += f"<tr><td style='text-align:center;'>{idx}</td><td><b>{name}</b>{desc_html}</td><td style='text-align:center;font-weight:600;'>{qty_display}</td></tr>"
 
     html_content = f"""
     <!DOCTYPE html><html>

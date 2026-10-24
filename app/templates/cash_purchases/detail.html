@@ -54,10 +54,14 @@
                 <span class="text-xs font-bold uppercase tracking-widest text-emerald-100 block mb-1">Total Cash Amount Paid</span>
                 <div class="text-3xl font-black font-mono tracking-tight flex items-baseline gap-2">
                     <span class="text-xl font-bold text-emerald-200">BDT</span>
-                    {{ "%.2f"|format(purchase.amount|float(0)) }}
+                    {{ purchase.amount | money_inr }}
                 </div>
-                <div class="mt-3 pt-3 border-t border-emerald-500/40 flex items-center justify-between text-xs text-emerald-100">
-                    <span>Currency: Bangladeshi Taka</span>
+                <div class="mt-2.5 pt-2.5 border-t border-emerald-500/40 text-xs text-emerald-100 flex items-start gap-1.5">
+                    <span class="opacity-75 uppercase tracking-wider text-[10px] font-bold block pt-0.5 shrink-0">In Words:</span>
+                    <span class="font-bold text-white leading-relaxed">{{ purchase.amount | in_words }}</span>
+                </div>
+                <div class="mt-2.5 pt-2 border-t border-emerald-500/30 flex items-center justify-between text-[11px] text-emerald-100/90">
+                    <span>Currency: Bangladeshi Taka (BDT)</span>
                     <span>Status: Paid in Cash</span>
                 </div>
             </div>
