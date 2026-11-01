@@ -779,7 +779,7 @@ def test_navbar_quotation_inbox_and_print_layout_rules():
 
 
 def test_executive_compare_quotations_hero_and_worksheet_lock_ui():
-    """Verify Requisition detail features Executive Decision Hub hero banner, pulsing compare button, and locked state when quotes exist."""
+    """Verify Requisition detail features professional corporate compare actions, evaluation banner, and locked state when quotes exist."""
     from pathlib import Path
     detail_path = Path("/home/muhts/dev/Codes/wes-vendor/app/templates/requisitions/detail.html")
     assert detail_path.exists()
@@ -788,16 +788,15 @@ def test_executive_compare_quotations_hero_and_worksheet_lock_ui():
     # Lock condition logic
     assert "has_submitted_quotes" in content
     assert "submitted_count" in content
-    assert "🔒 Worksheet Locked (Quotes Submitted)" in content
+    assert "Worksheet Locked (Quotes Submitted)" in content
 
-    # Compare Quotations prominent action button with radar animation
+    # Compare Quotations corporate action button
     assert "btn-action-compare-quotes" in content
-    assert "animate-ping" in content
-    assert "📊 Compare Quotations" in content
+    assert "Compare Quotations" in content
 
-    # Executive Decision Hub Hero Banner
+    # Quotation Evaluation Notice Banner
     assert "btn-hero-compare-quotes" in content
-    assert "Executive Decision Hub" in content
+    assert "Evaluate &amp; Compare Supplier Quotations" in content
     assert "Compare &amp; Shortlist Quotes" in content
 
     # Fixed column percentage widths for 100% full-width A4 printing
@@ -865,6 +864,31 @@ async def test_requisition_edit_backend_locks_when_quotes_submitted(async_db):
     )
     assert response.status_code == 303
     assert "Requisition+is+locked+because+suppliers+have+already+submitted+quotations" in response.headers["location"]
+
+
+def test_system_settings_high_contrast_and_no_provision_jargon():
+    """Verify system settings is clean, legible, high-contrast light theme and tech buzzwords like 'provision' are purged."""
+    from pathlib import Path
+    settings_path = Path("/home/muhts/dev/Codes/wes-vendor/app/templates/settings/index.html")
+    assert settings_path.exists()
+    settings_content = settings_path.read_text(encoding="utf-8")
+
+    # High contrast corporate titles & cards
+    assert "System Configuration" in settings_content
+    assert "text-slate-900" in settings_content
+    assert "bg-white rounded-xl border border-slate-300" in settings_content
+    assert "Automated Email Notification Recipients (CC)" in settings_content
+    assert "Official Company Letterheads" in settings_content
+    # No dark gaming containers or unstyled white-on-white text
+    assert "bg-slate-900/70" not in settings_content
+    assert "text-white tracking-tight" not in settings_content
+
+    # Check that 'provision' is absent from all templates
+    templates_dir = Path("/home/muhts/dev/Codes/wes-vendor/app/templates")
+    for html_file in templates_dir.rglob("*.html"):
+        content = html_file.read_text(encoding="utf-8").lower()
+        assert "provision" not in content, f"Found 'provision' in {html_file}"
+
 
 
 

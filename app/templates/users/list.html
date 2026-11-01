@@ -32,17 +32,17 @@
         <button type="button" onclick="toggleNewUserCard()" id="btn-toggle-new-user"
                 class="inline-flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition shadow-xs active:scale-95 shrink-0 self-start sm:self-auto">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
-            + Provision New User
+            + Add User
         </button>
     </div>
 
-    <!-- PROVISION NEW USER SLIDE-DOWN CARD -->
+    <!-- ADD NEW USER SLIDE-DOWN CARD -->
     <div id="new-user-card" class="hidden bg-white rounded-2xl border border-brand-200 p-6 mb-8 shadow-lg border-t-4 border-t-brand-600">
         <div class="flex items-center justify-between mb-5 pb-3 border-b border-slate-100">
             <div>
                 <h2 class="text-sm font-bold text-slate-900 flex items-center gap-2">
                     <span class="w-2.5 h-2.5 rounded-full bg-brand-600"></span>
-                    Provision New Employee Account
+                    Add New User Account
                 </h2>
                 <p class="text-xs text-slate-400 mt-0.5">Create corporate login credentials and define security permissions.</p>
             </div>
@@ -118,7 +118,7 @@
                             <input type="radio" name="role" value="admin" onchange="applyNewUserRole('admin')" class="text-brand-600 focus:ring-brand-500">
                             <span class="text-xs font-bold text-slate-900">System Administrator</span>
                         </div>
-                        <span class="text-[11px] text-slate-500 italic pl-5">Complete system control, user provisioning, database configuration, and master system settings.</span>
+                        <span class="text-[11px] text-slate-500 italic pl-5">Complete system control, user management, database configuration, and master system settings.</span>
                     </label>
                 </div>
             </div>
@@ -177,7 +177,7 @@
                             <input type="checkbox" name="can_access_users" id="new-perm-users" value="true" class="mt-0.5 w-4 h-4 rounded text-brand-600 focus:ring-brand-500">
                             <div>
                                 <span class="font-bold text-slate-800 block">👥 Users &amp; Permissions</span>
-                                <span class="text-[10px] text-slate-400 italic">Access user provisioning &amp; role administration</span>
+                                <span class="text-[10px] text-slate-400 italic">Access user management &amp; role administration</span>
                             </div>
                         </label>
 
@@ -197,7 +197,7 @@
                     Cancel
                 </button>
                 <button type="submit" class="px-5 py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition shadow-xs active:scale-95 flex items-center gap-1.5">
-                    ✓ Provision Account
+                    ✓ Create User
                 </button>
             </div>
         </form>
@@ -393,7 +393,7 @@
                             <input type="radio" name="role" value="admin" id="role-admin" onchange="applyEditRoleDefaults('admin')" class="text-brand-600 focus:ring-brand-500">
                             <span class="text-xs font-bold text-slate-900">System Administrator</span>
                         </div>
-                        <span class="text-[11px] text-slate-500 italic pl-5">Complete system control, user provisioning, database configuration, and master system settings.</span>
+                        <span class="text-[11px] text-slate-500 italic pl-5">Complete system control, user management, database configuration, and master system settings.</span>
                     </label>
                 </div>
             </div>

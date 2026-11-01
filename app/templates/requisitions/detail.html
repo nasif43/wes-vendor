@@ -237,18 +237,14 @@
             </span>
             {% endif %}
 
-            <!-- High Visibility Compare Quotations Action with Radar Animation -->
+            <!-- Compare Quotations Action (Clean Corporate Blue) -->
             {% if (status_str != 'draft' or submitted_count > 0) and user and user.can_see_quotes %}
             <a href="/quotations/compare/{{ req.id }}" id="btn-action-compare-quotes"
-               class="relative inline-flex items-center gap-2 bg-gradient-to-r from-amber-500 via-brand-600 to-indigo-600 hover:from-amber-600 hover:via-brand-700 hover:to-indigo-700 text-white font-bold text-xs px-4 py-2 rounded-xl shadow-md hover:shadow-indigo-500/25 transition-all duration-200 transform hover:-translate-y-0.5 active:translate-y-0 active:scale-95 group">
-                <span class="relative flex h-2 w-2">
-                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-200 opacity-75"></span>
-                    <span class="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
-                </span>
-                <svg class="w-4 h-4 text-amber-200 group-hover:rotate-12 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
-                <span>📊 Compare Quotations</span>
+               class="inline-flex items-center gap-2 bg-blue-700 hover:bg-blue-800 text-white font-bold text-xs sm:text-sm px-4 py-2 rounded-lg shadow-xs transition active:scale-95" title="Review and compare vendor quotations">
+                <svg class="w-4 h-4 text-blue-100" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                <span>Compare Quotations</span>
                 {% if submitted_count > 0 %}
-                <span class="ml-1 bg-white/20 text-white font-mono text-[10px] font-extrabold px-1.5 py-0.5 rounded-full border border-white/30 backdrop-blur-xs">
+                <span class="ml-1 bg-blue-900/60 text-white font-mono text-[10px] font-bold px-1.5 py-0.5 rounded">
                     {{ submitted_count }} quote{{ 's' if submitted_count != 1 else '' }}
                 </span>
                 {% endif %}
@@ -258,39 +254,36 @@
     </div>
 
     <!-- ════════════════════════════════════════════════════════════════════════
-         EXECUTIVE DECISION HUB HERO BANNER (Screen Only - .no-print)
+         QUOTATION EVALUATION NOTICE BANNER (Screen Only - .no-print)
          ════════════════════════════════════════════════════════════════════════ -->
     {% if (status_str != 'draft' or submitted_count > 0) and user and user.can_see_quotes %}
-    <div class="no-print mb-6 bg-gradient-to-r from-slate-900 via-indigo-950 to-brand-950 rounded-2xl p-4 sm:p-5 text-white shadow-md border border-indigo-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div class="no-print mb-6 bg-blue-50/80 border border-blue-200 rounded-xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div class="flex items-center gap-3.5">
-            <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-400 to-indigo-500 p-0.5 shrink-0 shadow-inner">
-                <div class="w-full h-full bg-slate-900 rounded-[10px] flex items-center justify-center">
-                    <svg class="w-6 h-6 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
-                </div>
+            <div class="w-10 h-10 rounded-lg bg-blue-100 border border-blue-200 flex items-center justify-center text-blue-700 shrink-0">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
             </div>
             <div>
                 <div class="flex items-center gap-2">
-                    <span class="text-xs uppercase font-extrabold tracking-wider text-amber-400">Executive Decision Hub</span>
+                    <span class="text-xs uppercase font-bold tracking-wider text-blue-800">Quotation Evaluation</span>
                     {% if submitted_count > 0 %}
-                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-white text-emerald-800 border border-emerald-300">
                         ● {{ submitted_count }} Supplier Quote{{ 's' if submitted_count != 1 else '' }} Received
                     </span>
                     {% else %}
-                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-white text-slate-700 border border-slate-300">
                         Awaiting Supplier Quotes
                     </span>
                     {% endif %}
                 </div>
-                <h3 class="text-base font-bold text-white mt-0.5">Evaluate &amp; Compare Supplier Quotations</h3>
-                <p class="text-xs text-slate-300">Review line-item pricing side-by-side, sort by lowest price, shortlist vendors, and allocate orders.</p>
+                <h3 class="text-base font-bold text-slate-900 mt-0.5">Evaluate &amp; Compare Supplier Quotations</h3>
+                <p class="text-xs text-slate-600">Review line-item pricing side-by-side, sort by lowest price, shortlist vendors, and allocate orders.</p>
             </div>
         </div>
         <div class="flex items-center gap-3 self-end sm:self-center shrink-0">
             <a href="/quotations/compare/{{ req.id }}" id="btn-hero-compare-quotes"
-               class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 hover:from-amber-500 hover:to-amber-700 text-slate-950 font-black text-xs sm:text-sm shadow-lg shadow-amber-500/20 hover:shadow-amber-500/40 transition-all duration-200 transform hover:scale-[1.02] active:scale-95 group">
-                <svg class="w-4 h-4 text-slate-950 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
-                <span>Compare &amp; Shortlist Quotes</span>
-                <span class="bg-black/10 px-1.5 py-0.5 rounded text-xs">&rarr;</span>
+               class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-blue-700 hover:bg-blue-800 text-white font-bold text-xs sm:text-sm shadow-xs transition active:scale-95">
+                <svg class="w-4 h-4 text-blue-100" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                <span>Compare &amp; Shortlist Quotes &rarr;</span>
             </a>
         </div>
     </div>
@@ -334,7 +327,7 @@
              ════════════════════════════════════════════════════════════════════ -->
         <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
             <!-- Spreadsheet Toolbar (Screen Only) -->
-            <div class="no-print bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white px-6 py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div class="no-print bg-slate-800 text-white px-6 py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div class="flex items-center gap-3">
                     <div class="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center font-black text-white text-xs shadow-xs">
                         XLS
