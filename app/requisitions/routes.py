@@ -229,6 +229,18 @@ async def edit_requisition_page(
     if not (user.has_management_authority or user.role == UserRole.ADMIN or req.created_by == user.id):
         await db.commit()
         return RedirectResponse(url=f"/requisitions/{req_id}?error=Permission+denied", status_code=303)
+
+    # Requisition cannot be edited if suppliers have already submitted quotations
+    has_submitted_quotes = any(
+        vl.status == "submitted" or (vl.quotations and len(vl.quotations) > 0)
+        for vl in (req.vendor_links or [])
+    )
+    if has_submitted_quotes:
+        await db.commit()
+        return RedirectResponse(
+            url=f"/requisitions/{req_id}?error=Requisition+is+locked+because+suppliers+have+already+submitted+quotations",
+            status_code=303,
+        )
         
 
     # UI status filter order (excludes legacy aliases)
@@ -266,6 +278,18 @@ async def update_requisition(
     if not (user.has_management_authority or user.role == UserRole.ADMIN or req.created_by == user.id):
         await db.commit()
         return RedirectResponse(url=f"/requisitions/{req_id}?error=Permission+denied", status_code=303)
+
+    # Requisition cannot be edited if suppliers have already submitted quotations
+    has_submitted_quotes = any(
+        vl.status == "submitted" or (vl.quotations and len(vl.quotations) > 0)
+        for vl in (req.vendor_links or [])
+    )
+    if has_submitted_quotes:
+        await db.commit()
+        return RedirectResponse(
+            url=f"/requisitions/{req_id}?error=Requisition+is+locked+because+suppliers+have+already+submitted+quotations",
+            status_code=303,
+        )
         
     form_data = await request.form()
     item_names = form_data.getlist("item_name[]")

@@ -758,6 +758,116 @@ def test_requisition_tabular_view_and_inline_editable_cells_and_a4_printing():
     assert "Assign Item" in compare_content
 
 
+def test_navbar_quotation_inbox_and_print_layout_rules():
+    """Verify Quotation Inbox is present in desktop & mobile navigation, and global A4 print rules prevent half-page squishing."""
+    from pathlib import Path
+    base_path = Path("/home/muhts/dev/Codes/wes-vendor/app/templates/base.html")
+    assert base_path.exists()
+    content = base_path.read_text(encoding="utf-8")
+
+    # Quotation inbox link in desktop & mobile header
+    assert "/quotations/inbox" in content
+    assert "Quotation Inbox" in content
+
+    # Global print styling overrides to prevent half-page desktop sidebar squishing
+    assert "@media print" in content
+    assert "size: A4 portrait;" in content
+    assert "aside, header, nav, footer, #mobile-nav, .tab-bar, .no-print" in content
+    assert "display: none !important;" in content
+    assert "width: 0 !important;" in content
+    assert "min-height: 0 !important;" in content
+
+
+def test_executive_compare_quotations_hero_and_worksheet_lock_ui():
+    """Verify Requisition detail features Executive Decision Hub hero banner, pulsing compare button, and locked state when quotes exist."""
+    from pathlib import Path
+    detail_path = Path("/home/muhts/dev/Codes/wes-vendor/app/templates/requisitions/detail.html")
+    assert detail_path.exists()
+    content = detail_path.read_text(encoding="utf-8")
+
+    # Lock condition logic
+    assert "has_submitted_quotes" in content
+    assert "submitted_count" in content
+    assert "🔒 Worksheet Locked (Quotes Submitted)" in content
+
+    # Compare Quotations prominent action button with radar animation
+    assert "btn-action-compare-quotes" in content
+    assert "animate-ping" in content
+    assert "📊 Compare Quotations" in content
+
+    # Executive Decision Hub Hero Banner
+    assert "btn-hero-compare-quotes" in content
+    assert "Executive Decision Hub" in content
+    assert "Compare &amp; Shortlist Quotes" in content
+
+    # Fixed column percentage widths for 100% full-width A4 printing
+    assert "table-layout: fixed !important;" in content
+    assert "print-col-index" in content
+    assert "print-col-name" in content
+    assert "print-col-desc" in content
+    assert "print-col-qty" in content
+    assert "print-col-unit" in content
+
+
+@pytest.mark.asyncio
+async def test_requisition_edit_backend_locks_when_quotes_submitted(async_db):
+    """Verify backend endpoints /requisitions/{id}/edit block edits once any supplier has submitted a quote."""
+    from uuid import uuid4
+    from app.auth.models import UserProfile, UserRole
+    from app.requisitions.models import Requisition, RequisitionStatus, RequisitionVendor
+    from app.requisitions.routes import edit_requisition_page
+    from starlette.requests import Request
+
+    user = UserProfile(
+        id=str(uuid4()),
+        email="buyer_lock_test@wenerbd.com",
+        full_name="Lock Buyer",
+        role=UserRole.PROCUREMENT,
+    )
+    async_db.add(user)
+    await async_db.flush()
+
+    req = Requisition(
+        id=str(uuid4()),
+        title="BOM For Testing Lock",
+        quantity=50.0,
+        status=RequisitionStatus.IN_PROGRESS,
+        created_by=user.id,
+    )
+    async_db.add(req)
+    await async_db.flush()
+
+    # Add a vendor link with status='submitted'
+    rv = RequisitionVendor(
+        id=str(uuid4()),
+        requisition_id=req.id,
+        vendor_id=str(uuid4()),
+        status="submitted",
+    )
+    async_db.add(rv)
+    await async_db.commit()
+
+    # Create dummy starlette request
+    scope = {
+        "type": "http",
+        "method": "GET",
+        "path": f"/requisitions/{req.id}/edit",
+        "headers": [],
+    }
+    request = Request(scope)
+
+    # Calling edit_requisition_page should redirect with error
+    response = await edit_requisition_page(
+        request=request,
+        req_id=req.id,
+        user=user,
+        db=async_db,
+    )
+    assert response.status_code == 303
+    assert "Requisition+is+locked+because+suppliers+have+already+submitted+quotations" in response.headers["location"]
+
+
+
 
 
 
