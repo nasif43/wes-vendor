@@ -779,25 +779,24 @@ def test_navbar_quotation_inbox_and_print_layout_rules():
 
 
 def test_executive_compare_quotations_hero_and_worksheet_lock_ui():
-    """Verify Requisition detail features professional corporate compare actions, evaluation banner, and locked state when quotes exist."""
+    """Verify Requisition detail features a single non-redundant corporate compare action, and locked state when quotes exist."""
     from pathlib import Path
     detail_path = Path("/home/muhts/dev/Codes/wes-vendor/app/templates/requisitions/detail.html")
+    compare_path = Path("/home/muhts/dev/Codes/wes-vendor/app/templates/quotations/compare.html")
     assert detail_path.exists()
+    assert compare_path.exists()
     content = detail_path.read_text(encoding="utf-8")
+    compare_content = compare_path.read_text(encoding="utf-8")
 
     # Lock condition logic
     assert "has_submitted_quotes" in content
     assert "submitted_count" in content
     assert "Worksheet Locked (Quotes Submitted)" in content
 
-    # Compare Quotations corporate action button
+    # Single authoritative Compare Quotations action button (no duplicate banner button)
     assert "btn-action-compare-quotes" in content
     assert "Compare Quotations" in content
-
-    # Quotation Evaluation Notice Banner
-    assert "btn-hero-compare-quotes" in content
-    assert "Evaluate &amp; Compare Supplier Quotations" in content
-    assert "Compare &amp; Shortlist Quotes" in content
+    assert "btn-hero-compare-quotes" not in content
 
     # Fixed column percentage widths for 100% full-width A4 printing
     assert "table-layout: fixed !important;" in content
@@ -806,6 +805,9 @@ def test_executive_compare_quotations_hero_and_worksheet_lock_ui():
     assert "print-col-desc" in content
     assert "print-col-qty" in content
     assert "print-col-unit" in content
+
+    # Price comparison delta shows higher prices in red
+    assert "text-rose-600 font-bold" in compare_content
 
 
 @pytest.mark.asyncio

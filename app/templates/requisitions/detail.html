@@ -254,43 +254,6 @@
     </div>
 
     <!-- ════════════════════════════════════════════════════════════════════════
-         QUOTATION EVALUATION NOTICE BANNER (Screen Only - .no-print)
-         ════════════════════════════════════════════════════════════════════════ -->
-    {% if (status_str != 'draft' or submitted_count > 0) and user and user.can_see_quotes %}
-    <div class="no-print mb-6 bg-blue-50/80 border border-blue-200 rounded-xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div class="flex items-center gap-3.5">
-            <div class="w-10 h-10 rounded-lg bg-blue-100 border border-blue-200 flex items-center justify-center text-blue-700 shrink-0">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
-            </div>
-            <div>
-                <div class="flex items-center gap-2">
-                    <span class="text-xs uppercase font-bold tracking-wider text-blue-800">Quotation Evaluation</span>
-                    {% if submitted_count > 0 %}
-                    <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-white text-emerald-800 border border-emerald-300">
-                        ● {{ submitted_count }} Supplier Quote{{ 's' if submitted_count != 1 else '' }} Received
-                    </span>
-                    {% else %}
-                    <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-white text-slate-700 border border-slate-300">
-                        Awaiting Supplier Quotes
-                    </span>
-                    {% endif %}
-                </div>
-                <h3 class="text-base font-bold text-slate-900 mt-0.5">Evaluate &amp; Compare Supplier Quotations</h3>
-                <p class="text-xs text-slate-600">Review line-item pricing side-by-side, sort by lowest price, shortlist vendors, and allocate orders.</p>
-            </div>
-        </div>
-        <div class="flex items-center gap-3 self-end sm:self-center shrink-0">
-            <a href="/quotations/compare/{{ req.id }}" id="btn-hero-compare-quotes"
-               class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-blue-700 hover:bg-blue-800 text-white font-bold text-xs sm:text-sm shadow-xs transition active:scale-95">
-                <svg class="w-4 h-4 text-blue-100" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
-                <span>Compare &amp; Shortlist Quotes &rarr;</span>
-            </a>
-        </div>
-    </div>
-    {% endif %}
-
-
-    <!-- ════════════════════════════════════════════════════════════════════════
          WORKSHEET FORM WRAPPER (POST to /requisitions/{id}/edit)
          ════════════════════════════════════════════════════════════════════════ -->
     <form method="post" action="/requisitions/{{ req.id }}/edit" id="requisitionWorksheetForm" class="space-y-6">
