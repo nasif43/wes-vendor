@@ -26,6 +26,7 @@ __pycache__/
 
 # Uploads & Media
 uploads/
+generated_cycle_pdfs/
 
 # Virtual Environments
 test_venv/

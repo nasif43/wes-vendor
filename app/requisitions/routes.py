@@ -37,8 +37,13 @@ async def list_requisitions(
 
     # ── Search ────────────────────────────────────────────────────────────────
     if search:
+        from sqlalchemy import or_
+        clean_id = search.strip().removeprefix("REQ-").removeprefix("req-").removeprefix("WO-").removeprefix("wo-")
         stmt = stmt.where(
-            Requisition.title.ilike(f"%{search}%")
+            or_(
+                Requisition.title.ilike(f"%{search}%"),
+                Requisition.id.ilike(f"%{clean_id}%"),
+            )
         )
 
     # ── Status filter ─────────────────────────────────────────────────────────
@@ -370,6 +375,11 @@ async def view_requisition(
     decision_res = await db.execute(select(Decision).where(Decision.requisition_id == req_id))
     decision = decision_res.scalar_one_or_none()
 
+    from app.work_orders.models import WorkOrder
+    wo_res = await db.execute(select(WorkOrder).where(WorkOrder.requisition_id == req_id))
+    work_orders = wo_res.scalars().all()
+    work_order_by_link = {wo.requisition_vendor_id: wo for wo in work_orders if wo.requisition_vendor_id}
+
     # UI status filter order (excludes legacy aliases)
     ui_status_list = [
         RequisitionStatus.DRAFT,
@@ -385,7 +395,16 @@ async def view_requisition(
     ]
 
     return templates.TemplateResponse(
-        request, "requisitions/detail.html", {"user": user, "req": req, "letterheads": letterheads, "decision": decision}
+        request,
+        "requisitions/detail.html",
+        {
+            "user": user,
+            "req": req,
+            "letterheads": letterheads,
+            "decision": decision,
+            "work_orders": work_orders,
+            "work_order_by_link": work_order_by_link,
+        },
     )
 
 

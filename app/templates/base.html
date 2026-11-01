@@ -98,6 +98,11 @@
                 Requisitions
             </a>
 
+            <a href="/work-orders" class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition {% block nav_side_wo %}text-slate-400 hover:text-white hover:bg-slate-800/60{% endblock %}">
+                <svg class="w-4 h-4 shrink-0 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                Work Orders
+            </a>
+
             <a href="/cash-purchases" class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition {% block nav_side_cash %}text-slate-400 hover:text-white hover:bg-slate-800/60{% endblock %}">
                 <svg class="w-4 h-4 shrink-0 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
                 Cash Purchases
@@ -250,12 +255,18 @@
 <!-- MOBILE BOTTOM TAB BAR -->
 {% if user is defined and user %}
 <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-40 safe-bottom lg:hidden">
-    <div class="max-w-md mx-auto grid {% if user.can_see_quotes or user.has_management_authority %}grid-cols-4{% else %}grid-cols-2{% endif %} px-2">
+    <div class="max-w-md mx-auto grid {% if user.can_see_quotes or user.has_management_authority %}grid-cols-5{% else %}grid-cols-3{% endif %} px-2">
         <a href="/requisitions" class="flex flex-col items-center pt-2 pb-1 {% block nav_requisitions %}{% endblock %}">
             <div class="tab-pill w-10 h-7 flex items-center justify-center mb-0.5">
                 <svg class="tab-icon w-5 h-5 {% block nav_requisitions_icon %}text-slate-400{% endblock %}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
             </div>
             <span class="tab-label text-[10px] {% block nav_requisitions_label %}text-slate-400{% endblock %}">Reqs</span>
+        </a>
+        <a href="/work-orders" class="flex flex-col items-center pt-2 pb-1 {% block nav_work_orders %}{% endblock %}">
+            <div class="tab-pill w-10 h-7 flex items-center justify-center mb-0.5">
+                <svg class="tab-icon w-5 h-5 {% block nav_work_orders_icon %}text-slate-400{% endblock %}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            </div>
+            <span class="tab-label text-[10px] {% block nav_work_orders_label %}text-slate-400{% endblock %}">Orders</span>
         </a>
         {% if user.is_procurement or user.has_management_authority %}
         <a href="/vendors" class="flex flex-col items-center pt-2 pb-1 {% block nav_vendors %}{% endblock %}">

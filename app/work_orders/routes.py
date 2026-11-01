@@ -25,17 +25,39 @@ router = APIRouter()
 @router.get("", response_class=HTMLResponse)
 async def list_work_orders(
     request: Request,
+    search: str = "",
     user: UserProfile = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     from app.main import templates
-    stmt = select(WorkOrder).order_by(WorkOrder.issued_at.desc())
-    if not user.can_see_all_requisitions:
+    from app.requisitions.models import Requisition
+    from app.vendors.models import Vendor
+    from sqlalchemy import or_
+
+    stmt = (
+        select(WorkOrder)
+        .outerjoin(WorkOrder.requisition)
+        .outerjoin(WorkOrder.vendor)
+        .order_by(WorkOrder.issued_at.desc())
+    )
+    if not (user.can_see_all_requisitions or user.is_procurement):
         stmt = stmt.where(WorkOrder.issued_by == user.id)
+
+    if search:
+        clean = search.strip().removeprefix("WO-").removeprefix("wo-").removeprefix("REQ-").removeprefix("req-")
+        stmt = stmt.where(
+            or_(
+                WorkOrder.id.ilike(f"%{clean}%"),
+                WorkOrder.requisition_id.ilike(f"%{clean}%"),
+                Requisition.title.ilike(f"%{search}%"),
+                Vendor.company_name.ilike(f"%{search}%"),
+            )
+        )
+
     result = await db.execute(stmt)
     work_orders = result.scalars().all()
     return templates.TemplateResponse(
-        request, "work_orders/list.html", {"user": user, "work_orders": work_orders}
+        request, "work_orders/list.html", {"user": user, "work_orders": work_orders, "search": search}
     )
 
 
@@ -51,7 +73,7 @@ async def view_work_order(
     wo = result.scalar_one_or_none()
     if not wo:
         return RedirectResponse(url="/work-orders", status_code=303)
-    if not (user.can_see_all_requisitions or wo.issued_by == user.id):
+    if not (user.can_see_all_requisitions or user.is_procurement or wo.issued_by == user.id):
         return RedirectResponse(url="/work-orders?error=Permission+denied", status_code=303)
     quote_data = None
     if wo.requisition_vendor and wo.requisition_vendor.quotation:
@@ -141,6 +163,10 @@ async def issue_work_order(
     )
     db.add(wo)
     await db.flush()
+
+    # Attach quotation form_data for line item rendering
+    if rv and rv.quotation and rv.quotation.form_data:
+        wo._quotation_data = rv.quotation.form_data
 
     # Generate PDF
     pdf_bytes = None

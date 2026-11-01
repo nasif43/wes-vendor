@@ -42,6 +42,12 @@ class WorkOrder(Base):
     issuer = relationship("UserProfile", lazy="selectin")
     ratings = relationship("SupplierRating", back_populates="work_order", lazy="selectin")
 
+    @property
+    def reference_code(self) -> str:
+        if self.requisition_id:
+            return f"WO-{self.requisition_id[:8].upper()}"
+        return f"WO-{self.id[:8].upper()}"
+
 
 class SupplierRating(Base):
     """Performance rating recorded for a supplier after invoice finalization.

@@ -79,6 +79,10 @@ class Requisition(Base):
     creator = relationship("UserProfile", foreign_keys=[created_by], lazy="selectin")
     qc_receiver = relationship("UserProfile", foreign_keys=[qc_done_by], lazy="selectin")
 
+    @property
+    def reference_code(self) -> str:
+        return f"REQ-{self.id[:8].upper()}"
+
 
 class RequisitionVendor(Base):
     """Links a Requisition to a Vendor (internally 'vendor', displayed as 'supplier' in UI)."""

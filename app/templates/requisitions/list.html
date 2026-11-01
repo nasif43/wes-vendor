@@ -50,7 +50,7 @@
             <!-- Search -->
             <div class="relative flex-1 min-w-[200px] max-w-sm">
                 <svg class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-                <input type="text" name="search" value="{{ search or '' }}" placeholder="Search by title…"
+                <input type="text" name="search" value="{{ search or '' }}" placeholder="Search by title or ID (e.g. REQ-04A7E919)…"
                     class="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition bg-slate-50 focus:bg-white">
             </div>
 
@@ -95,6 +95,7 @@
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                 </div>
                 <div class="min-w-0">
+                    <span class="inline-block font-mono text-[11px] font-bold text-brand-700 bg-brand-50 px-1.5 py-0.5 rounded border border-brand-200/70 mb-0.5 tracking-wide">{{ req.reference_code }}</span>
                     <div class="font-bold text-sm text-slate-900 group-hover:text-brand-600 transition truncate">{{ req.title }}</div>
                     <div class="text-xs text-slate-500 truncate mt-0.5">
                         {{ req.quantity | qty_format }} {{ req.unit or 'units' }}
