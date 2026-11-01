@@ -101,7 +101,7 @@
                     <div class="text-xs text-slate-500 truncate mt-0.5">
                         {{ req.quantity | qty_format }} {{ req.unit or 'units' }}
                         {% if req.creator %} · By {{ req.creator.full_name }}{% endif %}
-                        {% if item.confirmed_at %} · Confirmed {{ item.confirmed_at.strftime('%b %d') }}{% endif %}
+                        {% if item.confirmed_at %} · Confirmed {{ item.confirmed_at | format_date_bst('%b %d') }}{% endif %}
                     </div>
                 </div>
             </div>
@@ -109,11 +109,11 @@
             <div class="flex items-center gap-3 shrink-0 self-end sm:self-auto">
                 {% if item.qc_done_at %}
                 <span class="text-xs font-semibold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200/60">
-                    QC done on {{ item.qc_done_at.strftime('%b %d, %Y') }}
+                    QC done on {{ item.qc_done_at | format_date_bst('%b %d, %Y') }}
                 </span>
                 {% elif item.confirmed_at %}
                 <span class="text-xs font-semibold text-purple-700 bg-purple-50 px-2.5 py-1 rounded-lg border border-purple-200/60">
-                    Confirmed on {{ item.confirmed_at.strftime('%b %d, %Y') }}
+                    Confirmed on {{ item.confirmed_at | format_date_bst('%b %d, %Y') }}
                 </span>
                 {% endif %}
 
@@ -191,7 +191,7 @@
                         <div class="text-[11px] font-medium text-slate-500 mb-2.5 truncate">{{ req.quantity | qty_format }} {{ req.unit or '' }} · {{ req.item_description[:30] }}</div>
                         <div class="text-[10px] text-slate-400 font-medium border-t border-slate-100 pt-2 flex items-center justify-between">
                             <span>Created (Unsent)</span>
-                            <span class="font-bold text-slate-500">{{ req.created_at.strftime('%b %d') if req.created_at else '' }}</span>
+                            <span class="font-bold text-slate-500">{{ req.created_at | format_date_bst('%b %d') if req.created_at else '' }}</span>
                         </div>
                     </a>
                     {% else %}
@@ -279,7 +279,7 @@
                             <div class="text-[11px] font-medium text-slate-500 mb-2 truncate">{{ req.quantity | qty_format }} {{ req.unit or '' }}</div>
                             {% if item.confirmed_at %}
                             <div class="inline-block text-[10px] font-bold text-purple-800 bg-purple-50 px-2 py-0.5 rounded mb-2 border border-purple-200/60">
-                                Confirmed on {{ item.confirmed_at.strftime('%b %d, %Y') }}
+                                Confirmed on {{ item.confirmed_at | format_date_bst('%b %d, %Y') }}
                             </div>
                             {% endif %}
                             <div class="text-[10px] text-slate-400 font-medium border-t border-slate-100 pt-2 flex items-center justify-between">
@@ -365,7 +365,7 @@
                         
                         {% if item.qc_done_at %}
                         <div class="text-[10px] font-bold text-blue-800 bg-blue-50 px-2 py-0.5 rounded mb-1.5 border border-blue-200/60 block truncate">
-                            QC done on {{ item.qc_done_at.strftime('%b %d, %Y') }}
+                            QC done on {{ item.qc_done_at | format_date_bst('%b %d, %Y') }}
                         </div>
                         {% endif %}
 

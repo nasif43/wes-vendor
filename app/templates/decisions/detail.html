@@ -64,7 +64,7 @@
                 <span class="font-bold text-emerald-700 block">Decision Approved</span>
                 {% if decision.approver %}
                 <span class="text-xs text-emerald-600">by <strong>{{ decision.approver.full_name }}</strong>
-                    {% if decision.approved_at %}· {{ decision.approved_at.strftime('%b %d, %Y %H:%M') }}{% endif %}
+                    {% if decision.approved_at %}· {{ decision.approved_at | format_datetime_bst('%b %d, %Y at %I:%M %p BST') }}{% endif %}
                 </span>
                 {% endif %}
             </div>
@@ -76,7 +76,7 @@
                 <span class="font-bold text-red-700 block">Decision Rejected</span>
                 {% if decision.approver %}
                 <span class="text-xs text-red-600">by <strong>{{ decision.approver.full_name }}</strong>
-                    {% if decision.approved_at %}· {{ decision.approved_at.strftime('%b %d, %Y %H:%M') }}{% endif %}
+                    {% if decision.approved_at %}· {{ decision.approved_at | format_datetime_bst('%b %d, %Y at %I:%M %p BST') }}{% endif %}
                 </span>
                 {% endif %}
             </div>

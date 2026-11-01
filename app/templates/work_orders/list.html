@@ -74,7 +74,7 @@
                             {{ render_status_badge(wo.status) }}
                         </td>
                         <td class="px-6 py-4 text-slate-500 text-sm">
-                            {{ wo.issued_at.strftime('%b %d, %Y') if wo.issued_at else '—' }}
+                            {{ wo.issued_at | format_date_bst('%b %d, %Y') if wo.issued_at else '—' }}
                         </td>
                         <td class="px-6 py-4 text-right">
                             <div class="flex items-center justify-end gap-3">

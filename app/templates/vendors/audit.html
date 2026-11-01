@@ -78,7 +78,7 @@
                                 {% else %}text-slate-700{% endif %}">
                                 {{ log.action | replace('_', ' ') }}
                             </span>
-                            <span class="text-xs text-slate-400 shrink-0">{{ log.created_at.strftime('%b %d, %Y %I:%M %p') }}</span>
+                            <span class="text-xs text-slate-400 shrink-0">{{ log.created_at | format_datetime_bst('%b %d, %Y %I:%M %p BST') }}</span>
                         </div>
                         <p class="text-sm text-slate-700 mt-1 leading-relaxed">{{ log.notes or '—' }}</p>
                         <p class="text-xs text-slate-400 mt-1">By: {{ log.actor_name }} ({{ log.actor_role }})</p>

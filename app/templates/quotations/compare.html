@@ -700,7 +700,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 {% if h_link.id == link.id %}<span class="text-brand-600 font-semibold">(current)</span>{% endif %}
                             </span>
                             {% if hq and hq.submitted_at %}
-                            <span class="text-slate-400">{{ hq.submitted_at.strftime('%d %b %Y, %H:%M') }}</span>
+                            <span class="text-slate-400">{{ hq.submitted_at | format_datetime_bst('%d %b %Y, %I:%M %p BST') }}</span>
                             {% endif %}
                         </div>
                         {% if hq and hq.form_data %}

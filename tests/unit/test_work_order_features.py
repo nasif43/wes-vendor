@@ -444,4 +444,69 @@ def test_comparison_sorting_least_total_price_first():
     assert round(sorted_entries[1]["delta_percent"], 2) == 6.38
 
 
+def test_bst_date_and_time_formatting():
+    """Verify timestamps are converted from UTC to BST (GMT+6) accurately."""
+    from app.utils.date_formatting import (
+        to_bst,
+        format_datetime_bst,
+        format_date_bst,
+        format_time_bst,
+    )
+
+    # 16:47 UTC is 22:47 BST (10:47 PM BST)
+    utc_dt = datetime(2026, 11, 1, 16, 47, 28, tzinfo=timezone.utc)
+    bst_dt = to_bst(utc_dt)
+    assert bst_dt.hour == 22
+    assert bst_dt.minute == 47
+
+    formatted_dt = format_datetime_bst(utc_dt)
+    assert "Nov 01, 2026 at 10:47 PM BST" == formatted_dt
+
+    formatted_time = format_time_bst(utc_dt)
+    assert "10:47 PM BST" == formatted_time
+
+    # Naive datetime is interpreted as UTC
+    naive_utc = datetime(2026, 11, 1, 16, 47, 28)
+    assert format_datetime_bst(naive_utc) == "Nov 01, 2026 at 10:47 PM BST"
+
+    # None returns fallback
+    assert format_datetime_bst(None) == "—"
+
+
+def test_requisition_id_search_cleaning():
+    """Verify requisition search extracts and normalizes IDs from various copy-paste formats."""
+    import re
+
+    def clean_search_term(raw_search: str) -> tuple[str, str | None]:
+        raw_search = raw_search.strip()
+        uuid_match = re.search(r"([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})", raw_search)
+        clean_term = raw_search
+        for prefix in (
+            "Requisition #", "requisition #", "Requisition:", "requisition:", "Requisition ", "requisition ",
+            "REQ-", "req-", "WO-", "wo-", "PO-", "po-", "RV-", "rv-", "#"
+        ):
+            if clean_term.startswith(prefix):
+                clean_term = clean_term[len(prefix):].strip()
+        found_uuid = uuid_match.group(1).lower() if uuid_match else None
+        return clean_term, found_uuid
+
+    # 1. Copied from notes: "Requisition #04c63e86-c223-4247-8c6d-88c113657283"
+    term, uid = clean_search_term("Requisition #04c63e86-c223-4247-8c6d-88c113657283")
+    assert uid == "04c63e86-c223-4247-8c6d-88c113657283"
+
+    # 2. Copied with hash: "#04c63e86-c223-4247-8c6d-88c113657283"
+    term, uid = clean_search_term("#04c63e86-c223-4247-8c6d-88c113657283")
+    assert term == "04c63e86-c223-4247-8c6d-88c113657283"
+    assert uid == "04c63e86-c223-4247-8c6d-88c113657283"
+
+    # 3. Formatted code: "REQ-04C63E86"
+    term, uid = clean_search_term("REQ-04C63E86")
+    assert term == "04C63E86"
+
+    # 4. Work order code: "WO-04C63E86"
+    term, uid = clean_search_term("WO-04C63E86")
+    assert term == "04C63E86"
+
+
+
 

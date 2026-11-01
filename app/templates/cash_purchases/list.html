@@ -189,7 +189,7 @@
                         <!-- Logged By & Time -->
                         <td class="py-3.5 px-4 text-slate-600 whitespace-nowrap">
                             <div class="font-medium text-slate-800">{{ p.creator.full_name if p.creator else 'Unknown' }}</div>
-                            <div class="text-[10px] text-slate-400">{{ p.created_at.strftime('%d %b %Y, %H:%M') if p.created_at else '' }}</div>
+                            <div class="text-[10px] text-slate-400">{{ p.created_at | format_datetime_bst('%d %b %Y, %I:%M %p BST') if p.created_at else '' }}</div>
                         </td>
 
                         <!-- Action buttons -->

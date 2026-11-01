@@ -17,7 +17,7 @@
         <div class="min-w-0 flex-1">
             <span class="inline-block font-mono text-xs font-bold text-brand-700 bg-brand-50 px-2 py-0.5 rounded border border-brand-200/80 mb-1 tracking-wide">{{ req.reference_code }}</span>
             <h1 class="text-xl font-bold text-slate-900 truncate">{{ req.title }}</h1>
-            <p class="text-xs text-slate-400 mt-0.5">{{ req.created_at.strftime('%b %d, %Y') }}</p>
+            <p class="text-xs text-slate-400 mt-0.5">{{ req.created_at | format_datetime_bst('%b %d, %Y at %I:%M %p BST') }}</p>
         </div>
         {% if user and (user.is_procurement or user.is_management or user.role == 'admin') and req.status.value in ('draft', 'new', 'in_progress') %}
         <a href="/requisitions/{{ req.id }}/edit" class="bg-white border border-slate-200 text-slate-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-slate-50 transition shadow-sm shrink-0 flex items-center gap-1.5">
@@ -65,7 +65,7 @@
             </div>
             <div class="pt-3 border-t border-slate-100">
                 <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Created</p>
-                <p class="text-sm text-slate-800">{{ req.created_at.strftime('%b %d, %Y') }}</p>
+                <p class="text-sm text-slate-800">{{ req.created_at | format_datetime_bst('%b %d, %Y at %I:%M %p BST') }}</p>
             </div>
             {% else %}
             <div>
@@ -79,7 +79,7 @@
                 </div>
                 <div>
                     <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Created</p>
-                    <p class="text-sm text-slate-800">{{ req.created_at.strftime('%b %d, %Y') }}</p>
+                    <p class="text-sm text-slate-800">{{ req.created_at | format_datetime_bst('%b %d, %Y at %I:%M %p BST') }}</p>
                 </div>
             </div>
             {% endif %}
@@ -95,7 +95,7 @@
             <div class="pt-3 border-t border-slate-100 bg-emerald-50/60 -mx-5 -mb-5 p-4 rounded-b-2xl border-emerald-100 border-t">
                 <div class="flex items-center gap-2 text-emerald-800 font-bold text-sm mb-1.5">
                     <svg class="w-5 h-5 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                    QC done on {{ req.qc_done_at.strftime('%b %d, %Y at %I:%M %p') if req.qc_done_at else 'Verified' }}
+                    QC done on {{ req.qc_done_at | format_datetime_bst('%b %d, %Y at %I:%M %p BST') if req.qc_done_at else 'Verified' }}
                 </div>
                 <p class="text-xs text-emerald-700 font-medium">
                     Verified &amp; Accepted by: <span class="font-bold">{{ req.qc_receiver.full_name if req.qc_receiver else 'QC Inspector' }}</span>
@@ -354,7 +354,7 @@
                         <div class="flex items-center gap-1">
                             <form method="post" action="/requisitions/{{ req.id }}/resend-link/{{ link.id }}" class="inline">
                                 {% if link.link_sent_at %}
-                                <button type="submit" class="text-xs text-amber-600 bg-amber-50 hover:bg-amber-100 px-2.5 py-1.5 rounded-lg border border-amber-200 transition active:scale-95 flex items-center gap-1 min-h-[36px]" title="Last sent: {{ link.link_sent_at.strftime('%Y-%m-%d %H:%M') }}">
+                                <button type="submit" class="text-xs text-amber-600 bg-amber-50 hover:bg-amber-100 px-2.5 py-1.5 rounded-lg border border-amber-200 transition active:scale-95 flex items-center gap-1 min-h-[36px]" title="Last sent: {{ link.link_sent_at | format_datetime_bst('%Y-%m-%d %I:%M %p BST') }}">
                                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
                                     Resend
                                 </button>

@@ -37,14 +37,60 @@ async def list_requisitions(
 
     # ── Search ────────────────────────────────────────────────────────────────
     if search:
+        import re
         from sqlalchemy import or_
-        clean_id = search.strip().removeprefix("REQ-").removeprefix("req-").removeprefix("WO-").removeprefix("wo-")
-        stmt = stmt.where(
-            or_(
-                Requisition.title.ilike(f"%{search}%"),
-                Requisition.id.ilike(f"%{clean_id}%"),
+        from app.requisitions.models import RequisitionVendor
+        from app.work_orders.models import WorkOrder
+
+        raw_search = search.strip()
+
+        # Extract standard 36-char UUID pattern if present anywhere in the string
+        uuid_match = re.search(r"([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})", raw_search)
+
+        # Clean prefixes: "Requisition #", "REQ-", "WO-", "PO-", "RV-", "#", etc.
+        clean_term = raw_search
+        for prefix in (
+            "Requisition #", "requisition #", "Requisition:", "requisition:", "Requisition ", "requisition ",
+            "REQ-", "req-", "WO-", "wo-", "PO-", "po-", "RV-", "rv-", "#"
+        ):
+            if clean_term.startswith(prefix):
+                clean_term = clean_term[len(prefix):].strip()
+
+        search_conditions = [
+            Requisition.title.ilike(f"%{raw_search}%"),
+            Requisition.item_description.ilike(f"%{raw_search}%"),
+        ]
+
+        if clean_term:
+            search_conditions.append(Requisition.id.ilike(f"%{clean_term}%"))
+            # If at least 6 characters, also check if it matches a quotation link or work order id
+            if len(clean_term) >= 6:
+                search_conditions.append(
+                    Requisition.id.in_(
+                        select(RequisitionVendor.requisition_id).where(RequisitionVendor.id.ilike(f"%{clean_term}%"))
+                    )
+                )
+                search_conditions.append(
+                    Requisition.id.in_(
+                        select(WorkOrder.requisition_id).where(WorkOrder.id.ilike(f"%{clean_term}%"))
+                    )
+                )
+
+        if uuid_match:
+            exact_uuid = uuid_match.group(1).lower()
+            search_conditions.append(Requisition.id.ilike(f"%{exact_uuid}%"))
+            search_conditions.append(
+                Requisition.id.in_(
+                    select(RequisitionVendor.requisition_id).where(RequisitionVendor.id.ilike(f"%{exact_uuid}%"))
+                )
             )
-        )
+            search_conditions.append(
+                Requisition.id.in_(
+                    select(WorkOrder.requisition_id).where(WorkOrder.id.ilike(f"%{exact_uuid}%"))
+                )
+            )
+
+        stmt = stmt.where(or_(*search_conditions))
 
     # ── Status filter ─────────────────────────────────────────────────────────
     if status_filter:

@@ -45,7 +45,7 @@
                     {% if req.invoice_number %}
                     <p class="text-white text-lg font-bold mt-0.5 font-mono">#{{ req.invoice_number }}</p>
                     {% endif %}
-                    <p class="text-brand-300 text-xs mt-1">{{ req.qc_done_at.strftime('%B %d, %Y') if req.qc_done_at else req.updated_at.strftime('%B %d, %Y') }}</p>
+                    <p class="text-brand-300 text-xs mt-1">{{ req.qc_done_at | format_date_bst('%B %d, %Y') if req.qc_done_at else req.updated_at | format_date_bst('%B %d, %Y') }}</p>
                 </div>
             </div>
         </div>
@@ -206,7 +206,7 @@
                         <p class="text-sm font-bold text-emerald-800">Quality Control: PASSED ✓</p>
                         <p class="text-xs text-emerald-700 mt-0.5">
                             Verified by {{ req.qc_receiver.full_name if req.qc_receiver else 'QC Inspector' }}
-                            {% if req.qc_done_at %}on {{ req.qc_done_at.strftime('%B %d, %Y at %I:%M %p') }}{% endif %}
+                            {% if req.qc_done_at %}on {{ req.qc_done_at | format_datetime_bst('%B %d, %Y at %I:%M %p BST') }}{% endif %}
                         </p>
                     </div>
                     {% else %}

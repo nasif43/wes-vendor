@@ -17,6 +17,12 @@ from app.utils.number_formatting import (
     format_indian_number,
     format_quantity,
 )
+from app.utils.date_formatting import (
+    to_bst,
+    format_datetime_bst,
+    format_date_bst,
+    format_time_bst,
+)
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -28,6 +34,13 @@ templates.env.filters["money_inr"] = format_indian_number
 templates.env.filters["format_money_inr"] = format_indian_number
 templates.env.filters["in_words"] = amount_to_words_bangla
 templates.env.filters["amount_words"] = amount_to_words_bangla
+templates.env.filters["to_bst"] = to_bst
+templates.env.filters["format_datetime_bst"] = format_datetime_bst
+templates.env.filters["format_date_bst"] = format_date_bst
+templates.env.filters["format_time_bst"] = format_time_bst
+templates.env.filters["bst"] = format_datetime_bst
+templates.env.filters["bst_date"] = format_date_bst
+templates.env.filters["bst_time"] = format_time_bst
 
 
 @asynccontextmanager
