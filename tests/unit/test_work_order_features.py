@@ -508,5 +508,141 @@ def test_requisition_id_search_cleaning():
     assert term == "04C63E86"
 
 
+def test_granular_menu_permissions_and_operations_manager_customization():
+    """Verify granular menu permissions (can_access_audit, can_access_users, can_access_settings)."""
+    from app.auth.models import UserProfile, UserRole
+
+    # 1. Base Operations Manager: has operational authority, but no admin menus by default
+    op_mgr = UserProfile(
+        email="ops@wenerbd.com",
+        full_name="Operations Lead",
+        role=UserRole.OPERATIONS_MANAGER,
+        can_access_audit=False,
+        can_access_users=False,
+        can_access_settings=False,
+    )
+    assert op_mgr.has_management_authority is True
+    assert op_mgr.has_audit_access is False
+    assert op_mgr.has_users_access is False
+    assert op_mgr.has_settings_access is False
+    assert op_mgr.can_access_admin_settings is False
+
+    # 2. Operations Manager granted access to Audit and Users menus
+    op_mgr.can_access_audit = True
+    op_mgr.can_access_users = True
+    assert op_mgr.has_audit_access is True
+    assert op_mgr.has_users_access is True
+    assert op_mgr.has_settings_access is False
+    assert op_mgr.can_access_admin_settings is True
+
+    # 3. Administrator: always has all menu and admin accesses
+    admin = UserProfile(
+        email="admin@wenerbd.com",
+        full_name="System Admin",
+        role=UserRole.ADMIN,
+    )
+    assert admin.has_audit_access is True
+    assert admin.has_users_access is True
+    assert admin.has_settings_access is True
+    assert admin.can_access_admin_settings is True
+
+    # 4. Standard Procurement Specialist: no admin menus
+    procurement = UserProfile(
+        email="buyer@wenerbd.com",
+        full_name="Buyer One",
+        role=UserRole.PROCUREMENT,
+    )
+    assert procurement.has_audit_access is False
+    assert procurement.has_users_access is False
+    assert procurement.has_settings_access is False
+
+
+def test_users_and_permissions_page_ui_elements():
+    """Verify Users & Permissions page template renders cards, italic roles, card actions, and permission checkboxes."""
+    from pathlib import Path
+    template_path = Path("/home/muhts/dev/Codes/wes-vendor/app/templates/users/list.html")
+    assert template_path.exists()
+    content = template_path.read_text(encoding="utf-8")
+
+    # Roles displayed in italics
+    assert "*Operations Manager*" in content
+    assert "*Procurement Specialist*" in content
+    assert "*System Administrator*" in content
+
+    # Action button as card
+    assert "Edit Role &amp; Permissions" in content
+
+    # Italic role descriptions under role name without hover tooltips
+    assert "Creates requisitions, invites suppliers, manages RFQs" in content
+    assert "Full management authority for requisition approval" in content
+
+    # Granular menu checkboxes
+    assert 'name="can_access_audit"' in content
+    assert 'name="can_access_users"' in content
+    assert 'name="can_access_settings"' in content
+    assert "Activity Audit Log" in content
+
+
+def test_excel_spreadsheet_requisition_canvas_layout():
+    """Verify requisition create and edit templates feature wide MS Excel aspect ratio and spreadsheet table UX."""
+    from pathlib import Path
+    create_path = Path("/home/muhts/dev/Codes/wes-vendor/app/templates/requisitions/create.html")
+    edit_path = Path("/home/muhts/dev/Codes/wes-vendor/app/templates/requisitions/edit.html")
+
+    for path in (create_path, edit_path):
+        assert path.exists()
+        content = path.read_text(encoding="utf-8")
+        # Spread-out canvas
+        assert "max-w-[1750px]" in content
+        # Row index numbering
+        assert "row-index" in content
+        # Specification, quantity, and unit fields
+        assert 'name="item_name[]"' in content
+        assert 'name="item_desc[]"' in content
+        assert 'name="item_qty[]"' in content
+        assert 'name="item_unit[]"' in content
+        # Summary footer
+        assert "total-qty" in content
+        assert "total-rows" in content
+
+
+def test_unified_quotation_comparison_table_and_no_review_status():
+    """Verify comparison page unifies matrix, shortlist, and vendor details into one table with toggle and no review status."""
+    from pathlib import Path
+    compare_path = Path("/home/muhts/dev/Codes/wes-vendor/app/templates/quotations/compare.html")
+    detail_path = Path("/home/muhts/dev/Codes/wes-vendor/app/templates/quotations/detail.html")
+
+    assert compare_path.exists()
+    compare_content = compare_path.read_text(encoding="utf-8")
+
+    # Unified master matrix table
+    assert "unified-matrix-table" in compare_content
+    # View mode vs Edit mode toggle
+    assert "btn-mode-view" in compare_content
+    assert "btn-mode-edit" in compare_content
+    assert "cell-view-mode" in compare_content
+    assert "cell-edit-mode" in compare_content
+    # Sorting controls
+    assert "table-sort-select" in compare_content
+    assert "Lowest Price First" in compare_content
+    assert "Fastest Delivery" in compare_content
+    assert "Newest Submitted" in compare_content
+    # Checkbox and editable quantity per item
+    assert "shortlisted_ids" in compare_content
+    assert "qty_{{ link_id }}_{{ item_idx }}" in compare_content
+
+    # Confusing Review Status (Accept / Flag / Reset) removed
+    assert "Review Status" not in compare_content
+    assert "value=\"accepted\"" not in compare_content
+    assert "value=\"flagged\"" not in compare_content
+
+    # In detail.html as well
+    assert detail_path.exists()
+    detail_content = detail_path.read_text(encoding="utf-8")
+    assert "Review Status" not in detail_content
+    assert "value=\"accepted\"" not in detail_content
+    assert "value=\"flagged\"" not in detail_content
+
+
 
 

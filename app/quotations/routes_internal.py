@@ -376,9 +376,62 @@ async def compare_quotations(
         return float("inf")
 
     req_qty = float(req.quantity or 1.0)
+    req_items = req.items or []
+
     for entry in vendor_map.values():
         entry["history"].sort(key=lambda l: l.negotiation_version, reverse=True)
         entry["total_price"] = get_entry_total_price(entry, req_qty)
+        sub_dt = latest_submitted_at(entry)
+        entry["submission_timestamp"] = sub_dt.timestamp() if sub_dt else 0
+        link = entry.get("active")
+        fd = link.quotation.form_data if (link and link.quotation and link.quotation.form_data) else {}
+        try:
+            entry["delivery_days"] = float(fd.get("delivery_days") or 999999)
+        except (ValueError, TypeError):
+            entry["delivery_days"] = 999999
+
+        # Map itemized quotes
+        q_items = fd.get("items") or []
+        item_map = {}
+        if q_items:
+            if link and link.shortlisted_items:
+                sorted_si = sorted(link.shortlisted_items, key=lambda x: x.item_index)
+                for si, q_item in zip(sorted_si, q_items):
+                    try:
+                        u_p = float(q_item.get("price") or 0)
+                        q_q = float(q_item.get("qty") or 0)
+                    except (ValueError, TypeError):
+                        u_p, q_q = 0.0, 0.0
+                    item_map[si.item_index] = {
+                        "unit_price": u_p,
+                        "qty": q_q,
+                        "total": u_p * (q_q or 1.0),
+                    }
+            else:
+                for idx, q_item in enumerate(q_items):
+                    try:
+                        u_p = float(q_item.get("price") or 0)
+                        q_q = float(q_item.get("qty") or 0)
+                    except (ValueError, TypeError):
+                        u_p, q_q = 0.0, 0.0
+                    item_map[idx] = {
+                        "unit_price": u_p,
+                        "qty": q_q,
+                        "total": u_p * (q_q or 1.0),
+                    }
+        elif fd.get("price") is not None:
+            try:
+                u_p = float(fd.get("price") or 0)
+                quoted_q = link.quotation.quoted_quantity if (link and link.quotation) else None
+                q_q = float(quoted_q) if quoted_q is not None and float(quoted_q) > 0 else req_qty
+            except (ValueError, TypeError):
+                u_p, q_q = 0.0, req_qty
+            item_map[0] = {
+                "unit_price": u_p,
+                "qty": q_q,
+                "total": u_p * q_q,
+            }
+        entry["item_map"] = item_map
 
     # Sort vendors by total price ascending (companies with least total price first).
     # Inf / missing prices are placed at the end; secondary sort by submission date desc.
@@ -406,6 +459,18 @@ async def compare_quotations(
             entry["delta_price"] = None
             entry["delta_percent"] = None
 
+    # Calculate lowest rate per line item across all vendors
+    item_lowest_rates = {}
+    num_items = len(req_items) if req_items else 1
+    for idx in range(num_items):
+        item_prices = []
+        for entry in vendor_entries:
+            im = entry.get("item_map", {})
+            if idx in im and im[idx]["unit_price"] > 0:
+                item_prices.append(im[idx]["unit_price"])
+        if item_prices:
+            item_lowest_rates[idx] = min(item_prices)
+
     # Flat list of active links (for the shortlist matrix, backward-compat)
     active_links = [e["active"] for e in vendor_entries]
 
@@ -426,6 +491,7 @@ async def compare_quotations(
             "active_links": active_links,
             "decision": decision,
             "letterheads": letterheads,
+            "item_lowest_rates": item_lowest_rates,
         }
     )
 

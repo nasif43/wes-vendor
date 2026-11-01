@@ -47,6 +47,9 @@ class UserProfile(Base):
     can_do_qc: Mapped[bool] = mapped_column(Boolean, default=False)
     can_view_all_requisitions: Mapped[bool] = mapped_column(Boolean, default=False)
     is_management: Mapped[bool] = mapped_column(Boolean, default=False)
+    can_access_audit: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    can_access_users: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    can_access_settings: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
 
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(
@@ -95,14 +98,42 @@ class UserProfile(Base):
         return bool(self.is_management or role_str in ("management", "admin", "operations_manager"))
 
     @property
+    def has_audit_access(self) -> bool:
+        role_str = str(self.role.value if hasattr(self.role, "value") else (self.role or "")).lower()
+        if role_str == "admin":
+            return True
+        if self.can_access_audit:
+            return True
+        if role_str == "management" or self.is_management:
+            return True
+        return False
+
+    @property
+    def has_users_access(self) -> bool:
+        role_str = str(self.role.value if hasattr(self.role, "value") else (self.role or "")).lower()
+        if role_str == "admin":
+            return True
+        if self.can_access_users:
+            return True
+        if role_str == "management" or self.is_management:
+            return True
+        return False
+
+    @property
+    def has_settings_access(self) -> bool:
+        role_str = str(self.role.value if hasattr(self.role, "value") else (self.role or "")).lower()
+        if role_str == "admin":
+            return True
+        if self.can_access_settings:
+            return True
+        if role_str == "management" or self.is_management:
+            return True
+        return False
+
+    @property
     def can_access_admin_settings(self) -> bool:
-        """Full system administrators and management executives have access to
-        Activity Audit Log, User Administration, and System Settings.
-        Operations Managers have all operational & decision privileges MINUS these admin areas."""
-        role_str = str(self.role.value) if hasattr(self.role, "value") else str(self.role or "")
-        if role_str == "operations_manager":
-            return False
-        return bool(role_str in ("admin", "management") or self.is_management)
+        """True if user has access to at least one administration area (Audit, Users, Settings)."""
+        return self.has_audit_access or self.has_users_access or self.has_settings_access
 
     @property
     def can_see_all_requisitions(self) -> bool:

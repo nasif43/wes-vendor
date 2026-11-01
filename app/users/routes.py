@@ -19,9 +19,9 @@ async def list_users(
 ):
     from app.main import templates
 
-    if not user.can_access_admin_settings:
+    if not user.has_users_access:
         await db.commit()
-        return RedirectResponse(url="/users?error=Permission+denied", status_code=303)
+        return RedirectResponse(url="/?error=Permission+denied", status_code=303)
 
     result = await db.execute(select(UserProfile).order_by(UserProfile.full_name))
     users_list = result.scalars().all()
@@ -45,11 +45,14 @@ async def create_user(
     can_do_qc: bool = Form(False),
     can_view_all_requisitions: bool = Form(False),
     is_management: bool = Form(False),
+    can_access_audit: bool = Form(False),
+    can_access_users: bool = Form(False),
+    can_access_settings: bool = Form(False),
     user: UserProfile = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     from sqlalchemy import func
-    if not user.can_access_admin_settings:
+    if not user.has_users_access:
         await db.commit()
         return RedirectResponse(url="/users?error=Permission+denied", status_code=303)
 
@@ -87,11 +90,16 @@ async def create_user(
             target_role = r
             break
 
-    # If role is management or admin, automatically set management flags
-    final_is_mgmt = is_management or target_role in (UserRole.MANAGEMENT, UserRole.ADMIN)
-    final_view_quotes = can_view_quotations or final_is_mgmt
-    final_view_all = can_view_all_requisitions or final_is_mgmt or target_role == UserRole.QC_RECEIVER
-    final_do_qc = can_do_qc or final_is_mgmt or target_role == UserRole.QC_RECEIVER
+    # Role defaults
+    is_admin = target_role == UserRole.ADMIN
+    is_mgmt_role = target_role in (UserRole.MANAGEMENT, UserRole.ADMIN)
+    final_is_mgmt = is_management or is_mgmt_role
+    final_view_quotes = can_view_quotations or final_is_mgmt or target_role == UserRole.OPERATIONS_MANAGER
+    final_view_all = can_view_all_requisitions or final_is_mgmt or target_role in (UserRole.QC_RECEIVER, UserRole.OPERATIONS_MANAGER)
+    final_do_qc = can_do_qc or final_is_mgmt or target_role in (UserRole.QC_RECEIVER, UserRole.OPERATIONS_MANAGER)
+    final_audit = can_access_audit or is_admin
+    final_users = can_access_users or is_admin
+    final_settings = can_access_settings or is_admin
 
     new_user = UserProfile(
         email=clean_email,
@@ -102,6 +110,9 @@ async def create_user(
         can_do_qc=final_do_qc,
         can_view_all_requisitions=final_view_all,
         is_management=final_is_mgmt,
+        can_access_audit=final_audit,
+        can_access_users=final_users,
+        can_access_settings=final_settings,
         is_active=True,
     )
     new_user.set_password(clean_password)
@@ -138,7 +149,7 @@ async def edit_user_profile(
 ):
     from sqlalchemy import func
 
-    if not user.can_access_admin_settings:
+    if not user.has_users_access:
         await db.commit()
         return RedirectResponse(url="/users?error=Permission+denied", status_code=303)
 
@@ -219,10 +230,13 @@ async def update_user_permissions(
     can_do_qc: bool = Form(False),
     can_view_all_requisitions: bool = Form(False),
     is_management: bool = Form(False),
+    can_access_audit: bool = Form(False),
+    can_access_users: bool = Form(False),
+    can_access_settings: bool = Form(False),
     user: UserProfile = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if not user.can_access_admin_settings:
+    if not user.has_users_access:
         await db.commit()
         return RedirectResponse(url="/users?error=Permission+denied", status_code=303)
 
@@ -238,6 +252,9 @@ async def update_user_permissions(
     old_do_qc = target_user.can_do_qc
     old_view_all = target_user.can_view_all_requisitions
     old_is_mgmt = target_user.is_management
+    old_access_audit = target_user.can_access_audit
+    old_access_users = target_user.can_access_users
+    old_access_settings = target_user.can_access_settings
 
     if full_name and full_name.strip():
         target_user.full_name = full_name.strip()
@@ -246,6 +263,9 @@ async def update_user_permissions(
     target_user.can_do_qc = can_do_qc
     target_user.can_view_all_requisitions = can_view_all_requisitions
     target_user.is_management = is_management
+    target_user.can_access_audit = can_access_audit
+    target_user.can_access_users = can_access_users
+    target_user.can_access_settings = can_access_settings
 
     if role:
         for r in UserRole:
@@ -267,6 +287,12 @@ async def update_user_permissions(
         changes.append(f"All Requisitions Visibility: {'Granted' if can_view_all_requisitions else 'Revoked'}")
     if old_is_mgmt != is_management:
         changes.append(f"Management Authority: {'Granted' if is_management else 'Revoked'}")
+    if old_access_audit != can_access_audit:
+        changes.append(f"Audit Log Access: {'Granted' if can_access_audit else 'Revoked'}")
+    if old_access_users != can_access_users:
+        changes.append(f"Users & Permissions Access: {'Granted' if can_access_users else 'Revoked'}")
+    if old_access_settings != can_access_settings:
+        changes.append(f"System Settings Access: {'Granted' if can_access_settings else 'Revoked'}")
 
     change_summary = ", ".join(changes) if changes else "Permissions updated"
 
@@ -295,7 +321,7 @@ async def toggle_user_active(
     user: UserProfile = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if not user.can_access_admin_settings:
+    if not user.has_users_access:
         await db.commit()
         return RedirectResponse(url="/users?error=Permission+denied", status_code=303)
 
@@ -338,7 +364,7 @@ async def reset_user_password(
     user: UserProfile = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if not user.can_access_admin_settings:
+    if not user.has_users_access:
         await db.commit()
         return RedirectResponse(url="/users?error=Permission+denied", status_code=303)
 
@@ -382,7 +408,7 @@ async def delete_user(
     from sqlalchemy import delete
     from app.audit.models import AuditLog
 
-    if not user.can_access_admin_settings:
+    if not user.has_users_access:
         await db.commit()
         return RedirectResponse(url="/users?error=Permission+denied", status_code=303)
 

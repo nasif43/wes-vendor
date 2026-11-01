@@ -122,6 +122,9 @@ async def init_db() -> None:
                 ("can_do_qc", "BOOLEAN DEFAULT FALSE"),
                 ("can_view_all_requisitions", "BOOLEAN DEFAULT FALSE"),
                 ("is_management", "BOOLEAN DEFAULT FALSE"),
+                ("can_access_audit", "BOOLEAN DEFAULT FALSE"),
+                ("can_access_users", "BOOLEAN DEFAULT FALSE"),
+                ("can_access_settings", "BOOLEAN DEFAULT FALSE"),
                 ("username", "VARCHAR(100)"),
                 ("password_hash", "VARCHAR(255)"),
             ]:
@@ -280,6 +283,8 @@ async def init_db() -> None:
             for col, defn in [
                 ("can_view_quotations", "BOOLEAN DEFAULT 0"), ("can_do_qc", "BOOLEAN DEFAULT 0"),
                 ("can_view_all_requisitions", "BOOLEAN DEFAULT 0"), ("is_management", "BOOLEAN DEFAULT 0"),
+                ("can_access_audit", "BOOLEAN DEFAULT 0"), ("can_access_users", "BOOLEAN DEFAULT 0"),
+                ("can_access_settings", "BOOLEAN DEFAULT 0"),
                 ("username", "VARCHAR(100)"), ("password_hash", "VARCHAR(255)"),
             ]:
                 if not col_exists("user_profiles", col):

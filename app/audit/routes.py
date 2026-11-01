@@ -21,8 +21,8 @@ async def list_audit_logs(
 ):
     from app.main import templates
 
-    if not user.can_access_admin_settings:
-        return RedirectResponse(url="/", status_code=303)
+    if not user.has_audit_access:
+        return RedirectResponse(url="/?error=Permission+denied", status_code=303)
 
     result = await db.execute(
         select(AuditLog).order_by(AuditLog.created_at.desc()).limit(200)

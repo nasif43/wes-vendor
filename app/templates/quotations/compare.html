@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Compare: {{ req.title }} — WES Supplier Portal{% endblock %}
+{% block container_class %}w-full max-w-[1850px] mx-auto px-4 sm:px-6 lg:px-8 py-6{% endblock %}
 {% block nav_desktop_quo_cls %}text-brand-600 font-semibold bg-brand-50{% endblock %}
 {% block nav_quotations %}tab-active{% endblock %}
 {% block nav_quotations_icon %}text-brand-600{% endblock %}
@@ -7,478 +8,546 @@
 {% block content %}
 {% set blind = user and user.is_procurement_blind %}
 {% set is_locked = req.status.value in ('awarded', 'work_order_issued', 'receiving', 'received', 'closed') if req.status.value is defined else req.status|string in ('awarded', 'work_order_issued', 'receiving', 'received', 'closed') %}
-<div class="slide-up">
+<div class="slide-up w-full pb-14">
 
-    <div class="flex items-center gap-3 mb-5">
-        <a href="/requisitions/{{ req.id }}" class="w-9 h-9 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50 transition shadow-sm shrink-0">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
-        </a>
-        <div class="min-w-0">
-            <h1 class="text-xl font-bold text-slate-900 truncate">Compare Quotes</h1>
-            <p class="text-xs text-slate-400 mt-0.5 truncate">{{ req.title }} · {{ req.quantity | qty_format }} {{ req.unit or '' }}</p>
+    <!-- TOP BREADCRUMB & HEADER -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5">
+        <div class="flex items-center gap-3">
+            <a href="/requisitions/{{ req.id }}" class="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50 transition shadow-xs shrink-0">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+            </a>
+            <div class="min-w-0">
+                <div class="flex items-center gap-2 flex-wrap">
+                    <h1 class="text-xl font-bold text-slate-900 truncate">Quotation Comparison &amp; Supplier Allocation</h1>
+                    <span class="text-xs px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 font-mono border border-slate-200">
+                        {{ vendor_entries | length }} Quote{{ 's' if vendor_entries|length != 1 else '' }}
+                    </span>
+                </div>
+                <p class="text-xs text-slate-500 mt-0.5 truncate">
+                    Requisition: <strong>{{ req.title }}</strong> · {{ req.quantity | qty_format }} {{ req.unit or '' }}
+                </p>
+            </div>
+        </div>
+
+        <!-- RIGHT TOOLBAR CONTROLS (SORT & VIEW/EDIT TOGGLE) -->
+        <div class="flex items-center gap-3 flex-wrap self-start md:self-auto">
+            <!-- SORT DROPDOWN -->
+            <div class="flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl px-3 py-2 shadow-xs">
+                <label for="table-sort-select" class="text-xs font-semibold text-slate-500 shrink-0">Sort By:</label>
+                <select id="table-sort-select" onchange="applyColumnSort(this.value)"
+                        class="text-xs font-bold text-slate-800 bg-transparent focus:outline-none cursor-pointer">
+                    <option value="price_asc" selected>🥇 Lowest Price First</option>
+                    <option value="delivery_asc">🚚 Fastest Delivery</option>
+                    <option value="date_desc">📅 Newest Submitted</option>
+                </select>
+            </div>
+
+            <!-- VIEW / EDIT MODE TOGGLE -->
+            {% if not is_locked and user and (user.is_management or user.role == 'admin') %}
+            <div class="inline-flex rounded-xl p-1 bg-slate-200/80 border border-slate-300 shadow-2xs">
+                <button type="button" id="btn-mode-view" onclick="setMasterMode('view')"
+                        class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition shadow-xs bg-white text-brand-700">
+                    📊 Compare View
+                </button>
+                <button type="button" id="btn-mode-edit" onclick="setMasterMode('edit')"
+                        class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition text-slate-600 hover:text-slate-900">
+                    ✏️ Shortlist &amp; Assign (Edit Mode)
+                </button>
+            </div>
+            {% endif %}
         </div>
     </div>
 
-    <!-- REQ DESCRIPTION -->
-    <div class="bg-white rounded-2xl border border-slate-200 p-4 mb-5 shadow-sm">
-        <p class="text-sm text-slate-700 leading-relaxed">{{ req.item_description }}</p>
-    </div>
-
-{% if is_locked %}
-<div class="bg-emerald-50 border border-emerald-200 rounded-2xl px-4 py-3 mb-5 flex items-center gap-3">
-    <svg class="w-5 h-5 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/></svg>
-    <div>
-        <p class="text-sm font-bold text-emerald-800">Winner Selected — Comparison Locked</p>
-        <p class="text-xs text-emerald-600 mt-0.5">This requisition is in <strong>{{ req.status.value if req.status.value is defined else req.status }}</strong> status. The comparison view is read-only.</p>
-    </div>
-</div>
-{% endif %}
-
-    {% if blind %}
-    <div class="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 mb-5 text-xs text-amber-700 font-semibold flex items-center gap-2">
-        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/></svg>
-        Price details are hidden for your role. Contact management for pricing visibility.
+    <!-- REQUISITION SPECIFICATION ACCORDION / SUMMARY -->
+    {% if req.item_description %}
+    <div class="bg-white rounded-2xl border border-slate-200 p-4 mb-5 shadow-xs flex items-start gap-3">
+        <span class="text-lg">📌</span>
+        <div class="text-xs text-slate-700 leading-relaxed">
+            <span class="font-bold text-slate-900 uppercase tracking-wider text-[10px] block mb-0.5">Requisition Scope &amp; Specifications:</span>
+            {{ req.item_description }}
+        </div>
     </div>
     {% endif %}
 
-    {% set submitted = active_links %}
-    {% if submitted %}
-
-    <!-- EXECUTIVE COMPARISON SUMMARY MATRIX (Ranked by Least Total Price First) -->
-    <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm mb-6">
-        <div class="px-5 py-4 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-                <div class="flex items-center gap-2">
-                    <span class="text-base">📊</span>
-                    <h2 class="text-sm font-bold text-white tracking-wide">Executive Quotation Matrix</h2>
-                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                        Ranked: Least Total Price First
-                    </span>
-                </div>
-                <p class="text-xs text-slate-300 mt-1">Side-by-side executive evaluation to compare total offers, price deltas, delivery, and payment terms.</p>
-            </div>
-            <div class="text-left sm:text-right shrink-0">
-                <span class="text-xs text-slate-400 font-mono">{{ vendor_entries | length }} quote{{ 's' if vendor_entries|length != 1 else '' }} submitted</span>
-            </div>
-        </div>
-
-        <div class="overflow-x-auto">
-            <table class="w-full text-xs text-left border-collapse">
-                <thead>
-                    <tr class="border-b border-slate-200 bg-slate-50 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                        <th class="px-4 py-3 text-center w-16">Rank</th>
-                        <th class="px-4 py-3 min-w-[190px]">Supplier & Contact</th>
-                        <th class="px-4 py-3 text-right min-w-[130px]">Total Offer (৳)</th>
-                        <th class="px-4 py-3 text-center min-w-[150px]">Cost Variance (Δ)</th>
-                        <th class="px-4 py-3 text-center min-w-[100px]">Delivery</th>
-                        <th class="px-4 py-3 min-w-[130px]">Payment Terms</th>
-                        <th class="px-4 py-3 text-center w-20">Round</th>
-                        <th class="px-4 py-3 text-right min-w-[140px]">Action</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100">
-                    {% for entry in vendor_entries %}
-                    {% set link = entry.active %}
-                    {% set is_best = entry.is_lowest %}
-                    <tr class="transition hover:bg-slate-50/80 {% if is_best %}bg-emerald-50/30{% endif %}">
-                        <!-- RANK -->
-                        <td class="px-4 py-3.5 text-center">
-                            {% if is_best %}
-                            <span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-emerald-100 text-emerald-800 font-black text-xs shadow-xs border border-emerald-300" title="#1 Lowest Total Offer">
-                                🥇
-                            </span>
-                            {% else %}
-                            <span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-slate-100 text-slate-600 font-bold text-xs border border-slate-200">
-                                #{{ entry.rank }}
-                            </span>
-                            {% endif %}
-                        </td>
-
-                        <!-- SUPPLIER & CONTACT -->
-                        <td class="px-4 py-3.5">
-                            <div class="flex items-center gap-2.5">
-                                <div class="w-7 h-7 rounded-lg {% if is_best %}bg-emerald-600{% else %}bg-brand-600{% endif %} flex items-center justify-center shrink-0">
-                                    <span class="text-[11px] font-bold text-white">{{ link.vendor.company_name[:2] | upper }}</span>
-                                </div>
-                                <div class="min-w-0">
-                                    <div class="flex items-center gap-1.5 flex-wrap">
-                                        <span class="font-bold text-slate-900 truncate">{{ link.vendor.company_name }}</span>
-                                        {% if is_best %}
-                                        <span class="text-[9px] font-bold px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-700 border border-emerald-200">Lowest</span>
-                                        {% endif %}
-                                    </div>
-                                    <p class="text-[11px] text-slate-500 mt-0.5 truncate">
-                                        {{ link.vendor.contact_person or '—' }} · {{ link.vendor.contact_email or link.vendor.phone or '—' }}
-                                    </p>
-                                </div>
-                            </div>
-                        </td>
-
-                        <!-- TOTAL PRICE -->
-                        <td class="px-4 py-3.5 text-right font-mono">
-                            {% if blind %}
-                            <span class="text-slate-400 font-bold">— (hidden)</span>
-                            {% else %}
-                            {% if entry.total_price < 999999999999 %}
-                            <div class="text-sm font-black {% if is_best %}text-emerald-700{% else %}text-slate-900{% endif %}">
-                                ৳{{ entry.total_price | money_inr }}
-                            </div>
-                            {% else %}
-                            <span class="text-slate-400">—</span>
-                            {% endif %}
-                            {% endif %}
-                        </td>
-
-                        <!-- PRICE DELTA -->
-                        <td class="px-4 py-3.5 text-center">
-                            {% if blind %}
-                            <span class="text-slate-400 font-mono">—</span>
-                            {% elif is_best %}
-                            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
-                                ✓ Baseline (Lowest)
-                            </span>
-                            {% elif entry.delta_price is not none %}
-                            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200 font-mono">
-                                +৳{{ entry.delta_price | money_inr }} (+{{ "%.1f"|format(entry.delta_percent) }}%)
-                            </span>
-                            {% else %}
-                            <span class="text-slate-400">—</span>
-                            {% endif %}
-                        </td>
-
-                        <!-- DELIVERY -->
-                        <td class="px-4 py-3.5 text-center text-slate-700 font-medium">
-                            {{ (link.quotation.form_data or {}).get('delivery_days', '—') }} days
-                        </td>
-
-                        <!-- TERMS -->
-                        <td class="px-4 py-3.5 text-slate-600 truncate max-w-[130px]" title="{{ (link.quotation.form_data or {}).get('payment_terms', '—') }}">
-                            {{ (link.quotation.form_data or {}).get('payment_terms', '—') }}
-                        </td>
-
-                        <!-- ROUND -->
-                        <td class="px-4 py-3.5 text-center">
-                            {% if link.negotiation_version == 2 %}
-                            <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-200">v2</span>
-                            {% else %}
-                            <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">v1</span>
-                            {% endif %}
-                        </td>
-
-                        <!-- ACTION -->
-                        <td class="px-4 py-3.5 text-right whitespace-nowrap">
-                            {% if is_locked %}
-                                {% if decision and decision.winning_vendor_id == link.vendor_id %}
-                                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
-                                    Winner ✓
-                                </span>
-                                {% else %}
-                                <span class="text-[11px] text-slate-400">Not selected</span>
-                                {% endif %}
-                            {% else %}
-                                <div class="flex items-center justify-end gap-1.5">
-                                    <a href="/quotations/detail/{{ link.id }}" class="px-2.5 py-1 rounded-lg text-[11px] font-semibold text-slate-600 hover:text-brand-600 hover:bg-slate-100 transition border border-slate-200">
-                                        Detail
-                                    </a>
-                                    {% if user and (user.is_management or user.role == 'admin') %}
-                                    <form method="post" action="/decisions/new/{{ req.id }}/{{ link.vendor_id }}" class="inline">
-                                        <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1 rounded-lg text-[11px] font-bold transition shadow-xs">
-                                            Award ✓
-                                        </button>
-                                    </form>
-                                    {% endif %}
-                                </div>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+    {% if is_locked %}
+    <div class="bg-emerald-50 border border-emerald-200 rounded-2xl px-5 py-3.5 mb-5 flex items-center gap-3">
+        <svg class="w-5 h-5 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/></svg>
+        <div>
+            <p class="text-xs font-bold text-emerald-800">Winner Awarded — Comparison Mode Locked</p>
+            <p class="text-[11px] text-emerald-600 mt-0.5">This requisition is in <strong>{{ req.status.value if req.status.value is defined else req.status }}</strong> status. Line item pricing and winner details are read-only.</p>
         </div>
     </div>
+    {% endif %}
 
-    <!-- SHORTLISTING FORM (management/procurement only, no decision yet) -->
-    {% if not is_locked %}
-    {% if not decision and user and (user.is_management or user.role == 'admin') %}
-    <form method="post" action="/requisitions/{{ req.id }}/shortlist" class="mb-6" id="shortlistForm">
-        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm mb-3 overflow-hidden">
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between px-4 py-3.5 border-b border-slate-100 gap-3">
+    {% if blind %}
+    <div class="bg-amber-50 border border-amber-200 rounded-2xl px-5 py-3 mb-5 text-xs text-amber-800 font-semibold flex items-center gap-2">
+        <svg class="w-4 h-4 shrink-0 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/></svg>
+        Quotation price details are masked for your role. Contact management for financial visibility.
+    </div>
+    {% endif %}
+
+    {% if vendor_entries %}
+
+    <!-- MASTER UNIFIED COMPARISON & ALLOCATION TABLE -->
+    <form method="post" action="/requisitions/{{ req.id }}/shortlist" id="unifiedShortlistForm">
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-6">
+            <!-- Table Header Bar -->
+            <div class="px-6 py-4 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
-                    <h2 class="text-sm font-bold text-slate-900">Shortlist Suppliers</h2>
-                    <p class="text-xs text-slate-400 mt-0.5">Tick ✓ which supplier handles which item. Leave unchecked to exclude.</p>
+                    <div class="flex items-center gap-2">
+                        <span class="text-base">📊</span>
+                        <h2 class="text-sm font-bold text-white tracking-wide">Master Quotation Comparison &amp; Shortlist Matrix</h2>
+                        <span id="badge-active-mode" class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                            View Mode
+                        </span>
+                    </div>
+                    <p class="text-xs text-slate-300 mt-1">Side-by-side technical evaluation, line-item pricing, and supplier allocation in one single view.</p>
                 </div>
-                <div class="flex items-center gap-2">
-                    <button type="button" onclick="selectAllShortlistItems()" class="bg-slate-100 text-slate-700 hover:bg-slate-200 px-3 py-1.5 rounded-xl text-xs font-semibold transition border border-slate-200 shadow-xs" title="Select all items across all suppliers">
-                        ✓ Select All Items
+
+                <!-- Action Controls for Shortlist (Shown in Edit Mode) -->
+                <div id="edit-mode-top-actions" class="hidden flex items-center gap-2">
+                    <button type="button" onclick="selectAllShortlistItems()" class="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded-xl text-xs font-semibold transition border border-slate-600">
+                        ✓ Select All
                     </button>
-                    <button type="button" onclick="clearAllShortlistItems()" class="bg-slate-100 text-slate-500 hover:bg-slate-200 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition border border-slate-200 shadow-xs" title="Clear all selections">
+                    <button type="button" onclick="clearAllShortlistItems()" class="bg-slate-700 hover:bg-slate-600 text-slate-300 px-3 py-1.5 rounded-xl text-xs font-semibold transition border border-slate-600">
                         Clear All
                     </button>
-                    <button type="submit" class="bg-brand-600 text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-brand-700 transition shadow-sm active:scale-[0.97] min-h-[36px]">
-                        Save Shortlist
+                    <button type="submit" class="bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition shadow-xs active:scale-95 flex items-center gap-1.5">
+                        💾 Save Shortlist
                     </button>
                 </div>
             </div>
 
-            {% set all_v1 = submitted | list %}
-
-            {% if req.items %}
-            <!-- Per-item × per-supplier matrix -->
+            <!-- Unified Scrollable Master Grid -->
             <div class="overflow-x-auto">
-                <table class="w-full text-xs border-collapse">
+                <table class="w-full text-left border-collapse min-w-[1100px]" id="unified-matrix-table">
                     <thead>
-                        <tr class="border-b border-slate-100 bg-slate-50">
-                            <th class="px-4 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider min-w-[160px]">Item</th>
-                            <th class="px-3 py-3 text-center text-[11px] font-bold text-slate-500 uppercase tracking-wider w-16">Req. Qty</th>
-                            {% for link in all_v1 %}
-                            <th class="px-3 py-3 text-center min-w-[130px]">
-                                <div class="flex flex-col items-center gap-1.5">
-                                    <div class="w-8 h-8 rounded-lg bg-brand-600 flex items-center justify-center shadow-sm">
-                                        <span class="text-xs font-bold text-white">{{ link.vendor.company_name[:2] | upper }}</span>
+                        <tr class="border-b border-slate-200 bg-slate-50 text-[11px] font-bold text-slate-600 uppercase tracking-wider">
+                            <!-- Sticky Column 1: Requisition Item Details -->
+                            <th class="py-4 px-4 min-w-[340px] max-w-[380px] border-r border-slate-200 bg-slate-100/90 sticky left-0 z-20 shadow-xs">
+                                <div class="flex items-center justify-between">
+                                    <span>Requisition Line Items</span>
+                                    <span class="text-[10px] font-mono text-slate-500 font-normal">({{ req.items | length if req.items else 1 }} item{{ 's' if (req.items|length if req.items else 1) != 1 else '' }})</span>
+                                </div>
+                            </th>
+
+                            <!-- Dynamic Vendor Columns -->
+                            {% for entry in vendor_entries %}
+                            {% set link = entry.active %}
+                            {% set is_best = entry.is_lowest %}
+                            <th class="py-4 px-4 min-w-[280px] max-w-[320px] border-r border-slate-200 align-top vendor-column {% if is_best %}bg-emerald-50/40{% else %}bg-slate-50{% endif %}"
+                                data-vendor-id="{{ link.vendor_id }}"
+                                data-link-id="{{ link.id }}"
+                                data-price="{{ entry.total_price }}"
+                                data-delivery="{{ entry.delivery_days }}"
+                                data-timestamp="{{ entry.submission_timestamp }}">
+                                <div class="flex flex-col gap-2">
+                                    <!-- Rank & Company -->
+                                    <div class="flex items-start justify-between gap-2">
+                                        <div class="flex items-center gap-2 min-w-0">
+                                            <div class="w-8 h-8 rounded-xl {% if is_best %}bg-emerald-600 text-white{% else %}bg-brand-600 text-white{% endif %} flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
+                                                {{ link.vendor.company_name[:2] | upper }}
+                                            </div>
+                                            <div class="min-w-0">
+                                                <div class="font-bold text-xs text-slate-900 truncate" title="{{ link.vendor.company_name }}">
+                                                    {{ link.vendor.company_name }}
+                                                </div>
+                                                <div class="text-[10px] text-slate-500 truncate mt-0.5">
+                                                    {{ link.vendor.contact_person or link.vendor.contact_email or '—' }}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Rank Badge -->
+                                        {% if is_best %}
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300 shrink-0" title="Lowest Total Offer Company-wide">
+                                            🥇 #1 Best
+                                        </span>
+                                        {% else %}
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-200/80 text-slate-700 border border-slate-300 shrink-0">
+                                            #{{ entry.rank }}
+                                        </span>
+                                        {% endif %}
                                     </div>
-                                    <span class="text-[11px] font-bold text-slate-800 leading-tight text-center max-w-[110px] truncate">{{ link.vendor.company_name }}</span>
-                                    <div class="flex items-center gap-1 mt-0.5">
-                                        <button type="button" onclick="toggleAllForVendor('{{ link.id }}', true)" class="px-1.5 py-0.5 rounded bg-brand-50 hover:bg-brand-100 text-brand-700 text-[10px] font-semibold border border-brand-200" title="Select all items for this supplier">
-                                            All ✓
-                                        </button>
-                                        <button type="button" onclick="toggleAllForVendor('{{ link.id }}', false)" class="px-1.5 py-0.5 rounded bg-slate-50 hover:bg-slate-100 text-slate-500 text-[10px] font-semibold border border-slate-200" title="Clear all items for this supplier">
-                                            Clear
-                                        </button>
+
+                                    <!-- Total Quote & Delta -->
+                                    <div class="bg-white/80 rounded-xl p-2.5 border border-slate-200/80 shadow-2xs">
+                                        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Quoted Offer</div>
+                                        <div class="text-sm font-black font-mono {% if is_best %}text-emerald-700{% else %}text-slate-900{% endif %} mt-0.5">
+                                            {% if blind %}
+                                            <span class="text-slate-400 text-xs">৳ — (Hidden)</span>
+                                            {% else %}
+                                            ৳{{ entry.total_price | money_inr }}
+                                            {% endif %}
+                                        </div>
+                                        {% if not blind and entry.delta_price is not none %}
+                                        <div class="text-[10px] font-semibold mt-1">
+                                            {% if is_best %}
+                                            <span class="text-emerald-600 font-bold">✓ Lowest Overall</span>
+                                            {% else %}
+                                            <span class="text-slate-500">+৳{{ entry.delta_price | money_inr }} (+{{ entry.delta_percent | round(1) }}%)</span>
+                                            {% endif %}
+                                        </div>
+                                        {% endif %}
                                     </div>
-                                    {% if link.is_shortlisted %}
-                                    <span class="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-brand-100 text-brand-700 border border-brand-200">Shortlisted</span>
-                                    {% endif %}
+
+                                    <!-- Delivery & Terms Pills -->
+                                    <div class="flex items-center gap-1.5 flex-wrap text-[10px] font-medium text-slate-600">
+                                        <span class="px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200" title="Delivery Timeline">
+                                            🚚 {{ link.quotation.form_data.delivery_days if (link.quotation and link.quotation.form_data and link.quotation.form_data.delivery_days) else '—' }} days
+                                        </span>
+                                        {% if link.quotation and link.quotation.form_data and link.quotation.form_data.payment_terms %}
+                                        <span class="px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200 truncate max-w-[120px]" title="Payment Terms: {{ link.quotation.form_data.payment_terms }}">
+                                            💳 {{ link.quotation.form_data.payment_terms }}
+                                        </span>
+                                        {% endif %}
+                                        {% if link.negotiation_version == 2 %}
+                                        <span class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 font-bold border border-amber-200">v2</span>
+                                        {% endif %}
+                                    </div>
+
+                                    <!-- VIEW MODE ACTIONS -->
+                                    <div class="view-mode-actions flex items-center justify-between gap-2 pt-2 border-t border-slate-200/60">
+                                        <a href="/quotations/detail/{{ link.id }}" class="text-[11px] font-bold text-brand-600 hover:text-brand-800 inline-flex items-center gap-1">
+                                            View Quote ↗
+                                        </a>
+
+                                        {% if is_locked %}
+                                            {% if decision and decision.winning_vendor_id == link.vendor_id %}
+                                            <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                                Winner ✓
+                                            </span>
+                                            {% endif %}
+                                        {% else %}
+                                            {% if user and (user.is_management or user.role == 'admin') %}
+                                            <button type="submit"
+                                                    formaction="/decisions/new/{{ req.id }}/{{ link.vendor_id }}"
+                                                    formmethod="post"
+                                                    onclick="return confirm('Award entire requisition to {{ link.vendor.company_name }}?')"
+                                                    class="bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1 rounded-lg text-[10px] font-bold transition shadow-2xs active:scale-95">
+                                                Award Entire Order ✓
+                                            </button>
+                                            {% endif %}
+                                        {% endif %}
+                                    </div>
+
+                                    <!-- EDIT MODE ALLOCATION ACTIONS -->
+                                    <div class="edit-mode-actions hidden flex items-center justify-between gap-1.5 pt-2 border-t border-slate-200/60">
+                                        <div class="flex items-center gap-1">
+                                            <button type="button" onclick="toggleAllForVendor('{{ link.id }}', true)"
+                                                    class="px-2 py-1 rounded-md bg-brand-50 hover:bg-brand-100 text-brand-700 text-[10px] font-bold border border-brand-200 transition">
+                                                ✓ All
+                                            </button>
+                                            <button type="button" onclick="toggleAllForVendor('{{ link.id }}', false)"
+                                                    class="px-2 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-600 text-[10px] font-semibold border border-slate-200 transition">
+                                                Clear
+                                            </button>
+                                        </div>
+                                        {% if link.is_shortlisted %}
+                                        <span class="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-800 border border-amber-300">Shortlisted</span>
+                                        {% endif %}
+                                    </div>
                                 </div>
                             </th>
                             {% endfor %}
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-slate-100">
-                        {% for item in req.items %}
-                        {% set item_idx = loop.index0 %}
-                        <tr class="hover:bg-brand-50/30 transition group">
-                            <td class="px-4 py-3.5">
-                                <p class="font-semibold text-slate-900">{{ item.name }}</p>
-                                {% if item.description %}
-                                <p class="text-slate-400 mt-0.5 text-[11px] leading-snug">{{ item.description }}</p>
+
+                    <tbody class="divide-y divide-slate-100 text-xs">
+                        {% if req.items %}
+                            {% for item in req.items %}
+                            {% set item_idx = loop.index0 %}
+                            {% set best_rate = item_lowest_rates.get(item_idx) %}
+                            <tr class="hover:bg-slate-50/70 transition group">
+                                <!-- Sticky Item Column -->
+                                <td class="py-3 px-4 border-r border-slate-200 bg-white sticky left-0 z-10 group-hover:bg-slate-50/90 shadow-xs align-top">
+                                    <div class="flex items-start gap-2.5">
+                                        <span class="inline-flex items-center justify-center w-6 h-6 rounded-md bg-slate-100 text-slate-600 font-mono font-bold text-[11px] shrink-0">
+                                            {{ loop.index }}
+                                        </span>
+                                        <div class="min-w-0">
+                                            <div class="font-bold text-slate-900 text-xs">{{ item.name }}</div>
+                                            {% if item.description %}
+                                            <div class="text-[11px] text-slate-500 leading-snug mt-1 font-sans">{{ item.description }}</div>
+                                            {% endif %}
+                                            <div class="mt-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-mono text-[10px] font-semibold">
+                                                Req Qty: {{ item.qty | qty_format }} {{ item.unit or req.unit or '' }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+
+                                <!-- Supplier Offer Cells -->
+                                {% for entry in vendor_entries %}
+                                {% set link = entry.active %}
+                                {% set link_id = link.id %}
+                                {% set im = entry.item_map.get(item_idx) %}
+                                {% set cb_id = "cb_" ~ link_id ~ "_" ~ item_idx %}
+
+                                <!-- Determine if previously shortlisted -->
+                                {% set pre_checked = false %}
+                                {% set pre_qty = item.qty %}
+                                {% if link.shortlisted_items %}
+                                    {% for si in link.shortlisted_items %}
+                                        {% if si.item_index == item_idx %}
+                                            {% set pre_checked = true %}
+                                            {% if si.shortlisted_qty is not none %}{% set pre_qty = si.shortlisted_qty %}{% endif %}
+                                        {% endif %}
+                                    {% endfor %}
+                                {% elif link.is_shortlisted and not link.shortlisted_items %}
+                                    {% set pre_checked = true %}
+                                    {% if link.allocated_quantity is not none %}{% set pre_qty = link.allocated_quantity %}{% endif %}
                                 {% endif %}
-                            </td>
-                            <td class="px-3 py-3.5 text-center font-mono font-semibold text-slate-600 text-[11px]">{{ item.qty | qty_format }}</td>
-                            {% for link in all_v1 %}
-                            {% set link_id = link.id %}
-                            {% set cb_id = "cb_" ~ link_id ~ "_" ~ item_idx %}
-                            <!-- Check if this item is already shortlisted for this link -->
-                            {% set pre_checked = false %}
-                            {% if link.shortlisted_items %}
-                                {% for si in link.shortlisted_items %}
-                                    {% if si.item_index == item_idx %}{% set pre_checked = true %}{% endif %}
+
+                                <td class="py-3 px-4 border-r border-slate-200 align-top vendor-cell {% if entry.is_lowest %}bg-emerald-50/20{% endif %}"
+                                    data-link-id="{{ link_id }}">
+                                    <!-- 1. VIEW MODE PRESENTATION -->
+                                    <div class="cell-view-mode space-y-1">
+                                        {% if im and im.unit_price > 0 %}
+                                            <div class="flex items-center justify-between gap-2">
+                                                <span class="text-[11px] text-slate-400">Unit Rate:</span>
+                                                <span class="font-mono font-bold text-slate-900 text-xs">
+                                                    {% if blind %}৳ —{% else %}৳{{ im.unit_price | money_inr }}{% endif %}
+                                                </span>
+                                            </div>
+                                            <div class="flex items-center justify-between gap-2">
+                                                <span class="text-[11px] text-slate-400">Subtotal:</span>
+                                                <span class="font-mono font-semibold text-slate-700 text-xs">
+                                                    {% if blind %}৳ —{% else %}৳{{ im.total | money_inr }}{% endif %}
+                                                </span>
+                                            </div>
+                                            {% if not blind and best_rate and im.unit_price == best_rate %}
+                                            <div class="pt-1">
+                                                <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[9px] font-black border border-emerald-300">
+                                                    🥇 Lowest Rate
+                                                </span>
+                                            </div>
+                                            {% endif %}
+                                        {% else %}
+                                            <div class="text-slate-400 italic text-[11px] text-center py-2">
+                                                — No price specified —
+                                            </div>
+                                        {% endif %}
+                                    </div>
+
+                                    <!-- 2. EDIT MODE (SHORTLIST & ALLOCATE) -->
+                                    <div class="cell-edit-mode hidden">
+                                        <div class="p-2.5 rounded-xl border border-slate-200 bg-white shadow-2xs space-y-2.5">
+                                            <!-- Checkbox toggle -->
+                                            <label class="flex items-center gap-2 cursor-pointer select-none">
+                                                <input type="checkbox"
+                                                       id="{{ cb_id }}"
+                                                       name="shortlisted_ids"
+                                                       value="{{ link_id }}"
+                                                       {% if pre_checked %}checked{% endif %}
+                                                       onchange="toggleItemCell('{{ link_id }}', {{ item_idx }}, this.checked)"
+                                                       class="w-4 h-4 rounded text-brand-600 focus:ring-brand-500 cursor-pointer">
+                                                <span class="text-xs font-bold text-slate-800">Assign Item</span>
+                                            </label>
+
+                                            <!-- Editable Order Quantity Input -->
+                                            <div>
+                                                <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+                                                    Order Qty:
+                                                </label>
+                                                <div class="relative">
+                                                    <input type="number"
+                                                           name="qty_{{ link_id }}_{{ item_idx }}"
+                                                           id="qty_{{ link_id }}_{{ item_idx }}"
+                                                           min="0.01" step="any"
+                                                           value="{{ pre_qty }}"
+                                                           onchange="updateVendorTotal('{{ link_id }}')"
+                                                           class="w-full px-2 py-1.5 border border-slate-300 rounded-lg text-xs font-mono font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500 transition {% if not pre_checked %}bg-slate-50 text-slate-400{% else %}bg-white{% endif %}">
+                                                </div>
+                                            </div>
+
+                                            <!-- Quoted Reference Rate -->
+                                            {% if im and im.unit_price > 0 %}
+                                            <div class="text-[10px] text-slate-500 pt-1 border-t border-slate-100 flex items-center justify-between">
+                                                <span>Quoted:</span>
+                                                <span class="font-mono font-semibold text-slate-800">৳{{ im.unit_price | money_inr }}</span>
+                                            </div>
+                                            {% endif %}
+
+                                            <!-- Hidden Real Submit Input for Item Index -->
+                                            <input type="hidden"
+                                                   name="items_{{ link_id }}[]"
+                                                   value="{{ item_idx }}"
+                                                   id="hidden_{{ link_id }}_{{ item_idx }}"
+                                                   {% if not pre_checked %}disabled{% endif %}>
+                                        </div>
+                                    </div>
+                                </td>
                                 {% endfor %}
-                            {% elif link.is_shortlisted and not link.shortlisted_items %}
-                                {% set pre_checked = true %}
-                            {% endif %}
-                            <td class="px-3 py-3.5 text-center">
-                                <div class="flex flex-col items-center gap-2">
-                                    <!-- Checkbox styled -->
-                                    <label for="{{ cb_id }}" class="cursor-pointer flex items-center justify-center w-6 h-6 rounded-md border-2
-                                        {% if pre_checked %}border-brand-500 bg-brand-500{% else %}border-slate-300 bg-white hover:border-brand-400{% endif %}
-                                        transition shadow-sm group/cb">
-                                        <input type="checkbox" id="{{ cb_id }}"
-                                               name="shortlisted_ids"
-                                               value="{{ link_id }}"
-                                               {% if pre_checked %}checked{% endif %}
-                                               onchange="toggleItemCell('{{ link_id }}', {{ item_idx }}, this.checked)"
-                                               class="sr-only">
-                                        <svg class="w-3.5 h-3.5 text-white {% if not pre_checked %}opacity-0{% endif %} transition" id="check_{{ link_id }}_{{ item_idx }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
-                                    </label>
-                                    <!-- Qty input -->
-                                    <input type="number"
-                                           name="qty_{{ link_id }}_{{ item_idx }}"
-                                           min="0.01" step="any"
-                                           value="{{ item.qty }}"
-                                           id="qty_{{ link_id }}_{{ item_idx }}"
-                                           onchange="updateTotal('{{ link_id }}')"
-                                           class="w-16 px-1.5 py-1 border border-slate-200 rounded-lg text-[11px] text-center font-mono focus:outline-none focus:ring-2 focus:ring-brand-500 transition
-                                               {% if not pre_checked %}opacity-0 pointer-events-none{% endif %}">
-                                    <!-- Hidden real submit input -->
-                                    <input type="hidden"
-                                           name="items_{{ link_id }}[]"
-                                           value="{{ item_idx }}"
-                                           id="hidden_{{ link_id }}_{{ item_idx }}"
-                                           {% if not pre_checked %}disabled{% endif %}>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <!-- Single Item Requisition Fallback -->
+                            <tr class="hover:bg-slate-50/70 transition group">
+                                <td class="py-3 px-4 border-r border-slate-200 bg-white sticky left-0 z-10 group-hover:bg-slate-50/90 shadow-xs align-top">
+                                    <div class="flex items-start gap-2.5">
+                                        <span class="inline-flex items-center justify-center w-6 h-6 rounded-md bg-slate-100 text-slate-600 font-mono font-bold text-[11px] shrink-0">1</span>
+                                        <div>
+                                            <div class="font-bold text-slate-900 text-xs">{{ req.title }}</div>
+                                            {% if req.item_description %}
+                                            <div class="text-[11px] text-slate-500 leading-snug mt-1 font-sans">{{ req.item_description }}</div>
+                                            {% endif %}
+                                            <div class="mt-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-mono text-[10px] font-semibold">
+                                                Req Qty: {{ req.quantity | qty_format }} {{ req.unit or '' }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+
+                                {% for entry in vendor_entries %}
+                                {% set link = entry.active %}
+                                {% set link_id = link.id %}
+                                {% set im = entry.item_map.get(0) %}
+                                <td class="py-3 px-4 border-r border-slate-200 align-top vendor-cell {% if entry.is_lowest %}bg-emerald-50/20{% endif %}"
+                                    data-link-id="{{ link_id }}">
+                                    <!-- View Mode -->
+                                    <div class="cell-view-mode space-y-1">
+                                        <div class="flex items-center justify-between gap-2">
+                                            <span class="text-[11px] text-slate-400">Total:</span>
+                                            <span class="font-mono font-bold text-slate-900 text-xs">
+                                                {% if blind %}৳ —{% else %}৳{{ entry.total_price | money_inr }}{% endif %}
+                                            </span>
+                                        </div>
+                                        {% if not blind and entry.is_lowest %}
+                                        <div class="pt-1">
+                                            <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[9px] font-black border border-emerald-300">
+                                                🥇 Lowest Offer
+                                            </span>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+
+                                    <!-- Edit Mode -->
+                                    <div class="cell-edit-mode hidden">
+                                        <div class="p-2.5 rounded-xl border border-slate-200 bg-white shadow-2xs space-y-2">
+                                            <label class="flex items-center gap-2 cursor-pointer select-none">
+                                                <input type="checkbox" name="shortlisted_ids" value="{{ link_id }}"
+                                                       {% if link.is_shortlisted %}checked{% endif %}
+                                                       class="w-4 h-4 rounded text-brand-600 focus:ring-brand-500">
+                                                <span class="text-xs font-bold text-slate-800">Shortlist Supplier</span>
+                                            </label>
+                                            <div>
+                                                <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Allocated Qty:</label>
+                                                <input type="number" name="alloc_qty_{{ link_id }}" min="0.01" step="any"
+                                                       value="{{ link.allocated_quantity or req.quantity }}"
+                                                       class="w-full px-2 py-1.5 border border-slate-300 rounded-lg text-xs font-mono font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                                {% endfor %}
+                            </tr>
+                        {% endif %}
+                    </tbody>
+
+                    <!-- SUMMARY TOTALS FOOTER -->
+                    <tfoot class="bg-slate-100/90 border-t-2 border-slate-300 font-bold text-xs select-none">
+                        <tr>
+                            <td class="py-3 px-4 border-r border-slate-300 bg-slate-200/90 sticky left-0 z-20 shadow-xs">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-slate-700">Summary &amp; Allocations</span>
+                                    <span class="text-slate-500 font-mono font-normal text-[11px]">Req: {{ req.quantity | qty_format }} {{ req.unit or '' }}</span>
                                 </div>
                             </td>
-                            {% endfor %}
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                    <tfoot class="border-t-2 border-slate-200 bg-slate-50">
-                        <tr>
-                            <td class="px-4 py-2.5 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Allocated Total</td>
-                            <td></td>
-                            {% for link in all_v1 %}
-                            <td class="px-3 py-2.5 text-center">
-                                <span class="text-xs font-bold font-mono text-brand-700" id="total_{{ link.id }}">—</span>
+
+                            {% for entry in vendor_entries %}
+                            {% set link = entry.active %}
+                            <td class="py-3 px-4 border-r border-slate-300 font-mono vendor-footer-cell" data-link-id="{{ link.id }}">
+                                <div class="cell-view-mode">
+                                    <div class="text-[10px] font-normal text-slate-500 uppercase tracking-wider">Offer Total</div>
+                                    <div class="text-xs font-bold text-slate-900 mt-0.5">
+                                        {% if blind %}৳ —{% else %}৳{{ entry.total_price | money_inr }}{% endif %}
+                                    </div>
+                                </div>
+                                <div class="cell-edit-mode hidden">
+                                    <div class="text-[10px] font-normal text-slate-500 uppercase tracking-wider">Allocated Qty</div>
+                                    <div class="text-xs font-bold text-brand-700 mt-0.5" id="alloc_sum_{{ link.id }}">
+                                        —
+                                    </div>
+                                </div>
                             </td>
                             {% endfor %}
                         </tr>
                     </tfoot>
                 </table>
             </div>
-            {% else %}
-            <!-- Fallback if no items: per-vendor checkboxes -->
-            <div class="p-4 space-y-2">
-                <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-100">
-                    <span class="text-xs font-semibold text-slate-500">Suppliers:</span>
-                    <div class="flex items-center gap-2">
-                        <button type="button" onclick="selectAllShortlistItems()" class="text-xs text-brand-600 hover:text-brand-700 font-semibold">Select All</button>
-                        <span class="text-slate-300">·</span>
-                        <button type="button" onclick="clearAllShortlistItems()" class="text-xs text-slate-500 hover:text-slate-700">Clear</button>
-                    </div>
+
+            <!-- Bottom Floating Action Bar in Edit Mode -->
+            {% if not is_locked and user and (user.is_management or user.role == 'admin') %}
+            <div id="edit-mode-bottom-bar" class="hidden px-6 py-4 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div class="flex items-center gap-2">
+                    <button type="button" onclick="selectAllShortlistItems()" class="px-3 py-2 rounded-xl bg-white hover:bg-slate-100 text-slate-700 text-xs font-semibold border border-slate-300 shadow-2xs transition">
+                        ✓ Select All Items Across All Suppliers
+                    </button>
+                    <button type="button" onclick="clearAllShortlistItems()" class="px-3 py-2 rounded-xl bg-white hover:bg-slate-100 text-slate-500 text-xs font-semibold border border-slate-300 shadow-2xs transition">
+                        Clear All
+                    </button>
                 </div>
-                {% for link in all_v1 %}
-                <label class="flex items-center gap-3 p-3 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer transition">
-                    <input type="checkbox" name="shortlisted_ids" value="{{ link.id }}"
-                        {% if link.is_shortlisted %}checked{% endif %}
-                        class="w-4 h-4 rounded text-brand-600 border-slate-300">
-                    <span class="flex-1 text-sm font-semibold text-slate-900">{{ link.vendor.company_name }}</span>
-                    <input type="number" name="alloc_qty_{{ link.id }}" min="0.01" step="any"
-                        value="{{ link.allocated_quantity or req.quantity }}"
-                        class="w-20 px-2 py-1 border border-slate-200 rounded-lg text-xs text-center focus:outline-none focus:ring-2 focus:ring-brand-500">
-                    {% if link.is_shortlisted %}
-                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-brand-100 text-brand-700">Shortlisted</span>
-                    {% endif %}
-                </label>
-                {% endfor %}
+
+                <div class="flex items-center gap-3">
+                    <button type="submit" class="bg-brand-600 hover:bg-brand-700 text-white px-6 py-2.5 rounded-xl text-xs font-bold transition shadow-sm active:scale-95 flex items-center gap-1.5">
+                        💾 Save Shortlist &amp; Allocation
+                    </button>
+                </div>
             </div>
             {% endif %}
         </div>
     </form>
 
-    <!-- NEGOTIATE BUTTON -->
-    {% set shortlisted_count = submitted | selectattr('is_shortlisted') | list | length %}
-    {% if shortlisted_count > 0 %}
-    <form method="post" action="/requisitions/{{ req.id }}/negotiate" class="mb-5">
-        <button type="submit" class="w-full bg-amber-600 text-white py-3 rounded-xl text-sm font-bold hover:bg-amber-700 transition shadow-sm active:scale-[0.98] flex items-center justify-center gap-2">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
-            Start Negotiation — Send v2 Links to {{ shortlisted_count }} Supplier{{ 's' if shortlisted_count > 1 else '' }}
-        </button>
-    </form>
+    <!-- NEGOTIATE BUTTON (Send v2 Links to Shortlisted Suppliers) -->
+    {% set shortlisted_count = active_links | selectattr('is_shortlisted') | list | length %}
+    {% if not is_locked and shortlisted_count > 0 and user and (user.is_management or user.role == 'admin') %}
+    <div class="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/80 rounded-2xl p-5 shadow-xs mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <h3 class="text-sm font-bold text-amber-900 flex items-center gap-2">
+                🤝 Ready for Negotiation Round?
+            </h3>
+            <p class="text-xs text-amber-700 mt-1">
+                You have <strong>{{ shortlisted_count }} supplier{{ 's' if shortlisted_count != 1 else '' }}</strong> shortlisted. Click below to issue revised v2 negotiation invitations with their allocated items.
+            </p>
+        </div>
+
+        <form method="post" action="/requisitions/{{ req.id }}/negotiate" class="shrink-0"
+              onsubmit="return confirm('Start negotiation round? This will immediately send revised v2 links to the {{ shortlisted_count }} shortlisted supplier(s).')">
+            <button type="submit" class="bg-amber-600 hover:bg-amber-700 text-white px-5 py-3 rounded-xl text-xs font-bold transition shadow-sm active:scale-95 flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
+                Start Negotiation — Send v2 Links
+            </button>
+        </form>
+    </div>
     {% endif %}
-    {% endif %}
-    {% endif %}
 
-<script>
-function toggleItemCell(linkId, itemIdx, checked) {
-    const qtyEl = document.getElementById(`qty_${linkId}_${itemIdx}`);
-    const hiddenEl = document.getElementById(`hidden_${linkId}_${itemIdx}`);
-    const checkIcon = document.getElementById(`check_${linkId}_${itemIdx}`);
-    const label = document.querySelector(`label[for="cb_${linkId}_${itemIdx}"]`);
-    const cb = document.getElementById(`cb_${linkId}_${itemIdx}`);
-    if (cb) cb.checked = checked;
-
-    if (checked) {
-        qtyEl?.classList.remove('opacity-0', 'pointer-events-none');
-        if (hiddenEl) hiddenEl.disabled = false;
-        checkIcon?.classList.remove('opacity-0');
-        label?.classList.add('border-brand-500', 'bg-brand-500');
-        label?.classList.remove('border-slate-300', 'bg-white');
-    } else {
-        qtyEl?.classList.add('opacity-0', 'pointer-events-none');
-        if (hiddenEl) hiddenEl.disabled = true;
-        checkIcon?.classList.add('opacity-0');
-        label?.classList.remove('border-brand-500', 'bg-brand-500');
-        label?.classList.add('border-slate-300', 'bg-white');
-    }
-    updateTotal(linkId);
-}
-
-function toggleAllForVendor(linkId, selectState) {
-    const cbs = document.querySelectorAll(`input[id^="cb_${linkId}_"]`);
-    cbs.forEach(cb => {
-        const itemIdx = cb.id.split('_').pop();
-        cb.checked = selectState;
-        toggleItemCell(linkId, itemIdx, selectState);
-    });
-}
-
-function selectAllShortlistItems() {
-    // For itemized matrix
-    document.querySelectorAll(`input[id^="cb_"]`).forEach(cb => {
-        const parts = cb.id.split('_'); // cb, linkId, itemIdx
-        if (parts.length >= 3) {
-            const linkId = parts[1];
-            const itemIdx = parts[2];
-            cb.checked = true;
-            toggleItemCell(linkId, itemIdx, true);
-        }
-    });
-    // For fallback list
-    document.querySelectorAll('input[name="shortlisted_ids"]').forEach(cb => {
-        cb.checked = true;
-    });
-}
-
-function clearAllShortlistItems() {
-    // For itemized matrix
-    document.querySelectorAll(`input[id^="cb_"]`).forEach(cb => {
-        const parts = cb.id.split('_');
-        if (parts.length >= 3) {
-            const linkId = parts[1];
-            const itemIdx = parts[2];
-            cb.checked = false;
-            toggleItemCell(linkId, itemIdx, false);
-        }
-    });
-    // For fallback list
-    document.querySelectorAll('input[name="shortlisted_ids"]').forEach(cb => {
-        cb.checked = false;
-    });
-}
-
-function updateTotal(linkId) {
-    let total = 0;
-    // Find all active qty inputs for this link
-    document.querySelectorAll(`[id^="qty_${linkId}_"]`).forEach(el => {
-        if (!el.classList.contains('opacity-0')) {
-            total += parseFloat(el.value || 0);
-        }
-    });
-    const totalEl = document.getElementById(`total_${linkId}`);
-    if (totalEl) totalEl.textContent = total > 0 ? total.toFixed(2) : '—';
-}
-
-// Init totals on load
-document.addEventListener('DOMContentLoaded', () => {
-    document.querySelectorAll('[id^="total_"]').forEach(el => {
-        const linkId = el.id.replace('total_', '');
-        updateTotal(linkId);
-    });
-});
-</script>
-
-    <!-- V1 vs V2 DELTA TABLE -->
+    <!-- V1 vs V2 NEGOTIATION DELTA SUMMARY TABLE -->
     {% set v1_links = links | selectattr('quotation') | selectattr('negotiation_version', 'equalto', 1) | list %}
     {% set v2_links = links | selectattr('quotation') | selectattr('negotiation_version', 'equalto', 2) | list %}
     {% if v2_links | length > 0 %}
-    <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm mb-5">
-        <div class="px-4 py-3 bg-amber-50 border-b border-amber-100">
-            <h2 class="text-sm font-bold text-amber-900">v1 → v2 Negotiation Delta</h2>
-            <p class="text-xs text-amber-700 mt-0.5">Price and quantity changes from initial to revised quotes</p>
+    <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs mb-6">
+        <div class="px-5 py-3 bg-amber-50/80 border-b border-amber-100 flex items-center justify-between">
+            <div>
+                <h3 class="text-xs font-bold text-amber-900">v1 → v2 Negotiation Delta Summary</h3>
+                <p class="text-[11px] text-amber-700 mt-0.5">Price and quantity adjustments achieved across negotiation rounds.</p>
+            </div>
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200">v2 Active</span>
         </div>
         <div class="overflow-x-auto">
-            <table class="w-full text-sm">
+            <table class="w-full text-xs text-left border-collapse">
                 <thead>
-                    <tr class="border-b border-slate-100 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                        <th class="px-4 py-3 text-left">Supplier</th>
-                        <th class="px-4 py-3 text-right">v1 Rate</th>
-                        <th class="px-4 py-3 text-right">v2 Rate</th>
-                        <th class="px-4 py-3 text-right">Δ Rate</th>
-                        <th class="px-4 py-3 text-right">v1 Qty</th>
-                        <th class="px-4 py-3 text-right">v2 Qty</th>
-                        <th class="px-4 py-3 text-right">Δ Qty</th>
+                    <tr class="border-b border-slate-100 bg-slate-50 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                        <th class="px-4 py-2.5">Supplier</th>
+                        <th class="px-4 py-2.5 text-right">v1 Rate</th>
+                        <th class="px-4 py-2.5 text-right">v2 Rate</th>
+                        <th class="px-4 py-2.5 text-right">Rate Variance (Δ)</th>
+                        <th class="px-4 py-2.5 text-right">v1 Qty</th>
+                        <th class="px-4 py-2.5 text-right">v2 Qty</th>
+                        <th class="px-4 py-2.5 text-right">Qty Variance (Δ)</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-slate-100">
+                <tbody class="divide-y divide-slate-100 font-sans">
                     {% for v2 in v2_links %}
                     {% set v1 = v1_links | selectattr('vendor_id', 'equalto', v2.vendor_id) | first %}
                     {% if v1 and v1.quotation and v1.quotation.form_data and v2.quotation and v2.quotation.form_data %}
@@ -488,22 +557,22 @@ document.addEventListener('DOMContentLoaded', () => {
                     {% set v1_qty = v1.quotation.quoted_quantity or req.quantity %}
                     {% set v2_qty = v2.quotation.quoted_quantity or req.quantity %}
                     {% set delta_qty = (v2_qty | float(0)) - (v1_qty | float(0)) %}
-                    <tr>
-                        <td class="px-4 py-3 font-semibold text-slate-900">{{ v2.vendor.company_name }}</td>
+                    <tr class="hover:bg-slate-50/50">
+                        <td class="px-4 py-2.5 font-bold text-slate-900">{{ v2.vendor.company_name }}</td>
                         {% if blind %}
-                        <td class="px-4 py-3 text-right text-slate-400 font-mono">—</td>
-                        <td class="px-4 py-3 text-right text-slate-400 font-mono">—</td>
-                        <td class="px-4 py-3 text-right text-slate-400 font-mono">—</td>
+                        <td class="px-4 py-2.5 text-right text-slate-400 font-mono">—</td>
+                        <td class="px-4 py-2.5 text-right text-slate-400 font-mono">—</td>
+                        <td class="px-4 py-2.5 text-right text-slate-400 font-mono">—</td>
                         {% else %}
-                        <td class="px-4 py-3 text-right font-mono text-slate-700">৳{{ v1_price | money_inr }}</td>
-                        <td class="px-4 py-3 text-right font-mono text-slate-700">৳{{ v2_price | money_inr }}</td>
-                        <td class="px-4 py-3 text-right font-mono font-bold {% if delta_price < 0 %}text-emerald-600{% elif delta_price > 0 %}text-red-600{% else %}text-slate-500{% endif %}">
+                        <td class="px-4 py-2.5 text-right font-mono text-slate-600">৳{{ v1_price | money_inr }}</td>
+                        <td class="px-4 py-2.5 text-right font-mono text-slate-900 font-bold">৳{{ v2_price | money_inr }}</td>
+                        <td class="px-4 py-2.5 text-right font-mono font-bold {% if delta_price < 0 %}text-emerald-600{% elif delta_price > 0 %}text-red-600{% else %}text-slate-500{% endif %}">
                             {% if delta_price > 0 %}+{% endif %}৳{{ delta_price | money_inr }}
                         </td>
                         {% endif %}
-                        <td class="px-4 py-3 text-right font-mono text-slate-700">{{ v1_qty | qty_format }}</td>
-                        <td class="px-4 py-3 text-right font-mono text-slate-700">{{ v2_qty | qty_format }}</td>
-                        <td class="px-4 py-3 text-right font-mono font-bold {% if delta_qty < 0 %}text-amber-600{% elif delta_qty > 0 %}text-emerald-600{% else %}text-slate-500{% endif %}">
+                        <td class="px-4 py-2.5 text-right font-mono text-slate-600">{{ v1_qty | qty_format }}</td>
+                        <td class="px-4 py-2.5 text-right font-mono text-slate-900 font-bold">{{ v2_qty | qty_format }}</td>
+                        <td class="px-4 py-2.5 text-right font-mono font-bold {% if delta_qty < 0 %}text-amber-600{% elif delta_qty > 0 %}text-emerald-600{% else %}text-slate-500{% endif %}">
                             {% if delta_qty > 0 %}+{% endif %}{{ delta_qty | qty_format }}
                         </td>
                     </tr>
@@ -515,241 +584,235 @@ document.addEventListener('DOMContentLoaded', () => {
     </div>
     {% endif %}
 
-
-    <!-- Mobile: stacked cards. Desktop: 2-col grid -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {% for entry in vendor_entries %}
-        {% set link = entry.active %}
-        {% set history = entry.history %}
-        <div class="bg-white rounded-2xl border {% if entry.is_lowest %}border-emerald-300 ring-2 ring-emerald-500/20 shadow-md{% else %}border-slate-200 shadow-sm{% endif %} overflow-hidden">
-
-            <!-- VENDOR HEADER -->
-            <div class="px-4 py-3.5 {% if entry.is_lowest %}bg-emerald-50/50 border-b border-emerald-100{% else %}bg-slate-50 border-b border-slate-200{% endif %} flex items-center justify-between">
-                <div class="flex items-center gap-2.5 min-w-0">
-                    <div class="w-8 h-8 rounded-lg {% if entry.is_lowest %}bg-emerald-600{% else %}bg-brand-600{% endif %} flex items-center justify-center shrink-0">
-                        <span class="text-xs font-bold text-white">{{ link.vendor.company_name[:2] | upper }}</span>
-                    </div>
-                    <div>
-                        <div class="flex items-center gap-1.5 flex-wrap">
-                            <span class="font-bold text-sm text-slate-900 truncate">{{ link.vendor.company_name }}</span>
-                            {% if entry.is_lowest %}
-                            <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">🏆 #1 Lowest Offer</span>
-                            {% else %}
-                            <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">#{{ entry.rank }}</span>
-                            {% endif %}
-                            {% if link.negotiation_version == 2 %}
-                            <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">v2</span>
-                            {% endif %}
-                        </div>
-                        {% if link.allocated_quantity %}
-                        <div class="text-xs text-slate-500 mt-0.5">Allocated: {{ link.allocated_quantity }} {{ req.unit or '' }}</div>
-                        {% endif %}
-                    </div>
-                </div>
-                <span class="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide
-                    {% if link.status == 'accepted' %}bg-emerald-100 text-emerald-700
-                    {% elif link.status == 'flagged' %}bg-red-100 text-red-700
-                    {% else %}bg-slate-100 text-slate-600{% endif %}">
-                    {{ link.status }}
-                </span>
-            </div>
-
-            <!-- QUOTE DATA -->
-            <div class="p-4">
-                {% if link.quotation %}
-                    {% if link.quotation.submission_type == 'form' and link.quotation.form_data %}
-                    
-                    {% if link.quotation.form_data.get('items') %}
-                    <div class="mb-4 border border-slate-200 rounded-xl overflow-hidden">
-                        <table class="w-full text-left text-xs border-collapse">
-                            <thead class="bg-slate-50 border-b border-slate-200 text-slate-500">
-                                <tr>
-                                    <th class="px-3 py-2 font-semibold">Item</th>
-                                    <th class="px-3 py-2 font-semibold text-center">Qty</th>
-                                    <th class="px-3 py-2 font-semibold text-right">Price (৳)</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-slate-100">
-                                {% for item in link.quotation.form_data.get('items') %}
-                                <tr>
-                                    <td class="px-3 py-2 font-medium text-slate-900">{{ item.name }}</td>
-                                    <td class="px-3 py-2 text-center text-slate-700">{{ item.qty | qty_format }}</td>
-                                    <td class="px-3 py-2 text-right font-mono text-slate-700">{% if blind %}—{% else %}৳{{ item.price | money_inr }}{% endif %}</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                            <tfoot class="bg-slate-50 border-t border-slate-200">
-                                <tr>
-                                    <td colspan="2" class="px-3 py-2 font-bold text-right text-slate-700">Total:</td>
-                                    <td class="px-3 py-2 font-bold text-right font-mono text-slate-900">{% if blind %}—{% else %}৳{{ link.quotation.form_data.price | money_inr }}{% endif %}</td>
-                                </tr>
-                                {% if not blind and link.quotation.form_data.price %}
-                                <tr>
-                                    <td colspan="3" class="px-3 py-1.5 bg-slate-100/70 border-t border-slate-200 text-[11px] text-slate-700">
-                                        <span class="font-bold text-slate-500 uppercase text-[9px] tracking-wider">In Words:</span>
-                                        <span class="font-bold text-slate-900 ml-1">{{ link.quotation.form_data.price | in_words }}</span>
-                                    </td>
-                                </tr>
-                                {% endif %}
-                            </tfoot>
-                        </table>
-                    </div>
-                    {% endif %}
-
-                    <div class="space-y-0 text-sm">
-                        {% if not link.quotation.form_data.get('items') %}
-                        <div class="flex justify-between items-center py-3 border-b border-slate-100">
-                            <span class="text-slate-500">Unit Rate</span>
-                            {% if blind %}
-                            <span class="font-bold text-slate-400">— (hidden)</span>
-                            {% else %}
-                            <span class="font-bold text-slate-900 text-base">৳{{ link.quotation.form_data.price | money_inr }}</span>
-                            {% endif %}
-                        </div>
-                        <div class="flex justify-between items-center py-3 border-b border-slate-100">
-                            <span class="text-slate-500">Qty Offered</span>
-                            <span class="font-semibold text-slate-800">{{ (link.quotation.quoted_quantity or req.quantity) | qty_format }} {{ req.unit or '' }}</span>
-                        </div>
-                        {% if not blind %}
-                        <div class="flex justify-between items-center py-3 border-b border-slate-100">
-                            <span class="text-slate-500">Subtotal</span>
-                            {% set unit_price = link.quotation.form_data.price | float(0) %}
-                            {% set qty = link.quotation.quoted_quantity | float(req.quantity) %}
-                            <span class="font-bold text-slate-900">৳{{ (unit_price * qty) | money_inr }}</span>
-                        </div>
-                        <div class="py-1.5 text-[11px] text-slate-600 border-b border-slate-100">
-                            <span class="text-slate-400 font-bold uppercase text-[9px]">In Words:</span>
-                            <span class="font-semibold text-slate-800 ml-1">{{ (unit_price * qty) | in_words }}</span>
-                        </div>
-                        {% endif %}
-                        {% endif %}
-                        <div class="flex justify-between items-center py-3 border-b border-slate-100">
-                            <span class="text-slate-500">Delivery</span>
-                            <span class="font-semibold text-slate-800">{{ link.quotation.form_data.delivery_days or '—' }} days</span>
-                        </div>
-                        {% if link.quotation.form_data.payment_terms %}
-                        <div class="flex justify-between items-center py-3 border-b border-slate-100">
-                            <span class="text-slate-500">Payment</span>
-                            <span class="font-semibold text-slate-800">{{ link.quotation.form_data.payment_terms }}</span>
-                        </div>
-                        {% endif %}
-                        {% if link.quotation.form_data.warranty %}
-                        <div class="flex justify-between items-center py-3">
-                            <span class="text-slate-500">Warranty</span>
-                            <span class="font-semibold text-slate-800">{{ link.quotation.form_data.warranty }}</span>
-                        </div>
-                        {% endif %}
-                    </div>
-                    {% endif %}
-                    {% if link.quotation.submission_type == 'image' and link.quotation.image_url %}
-                    <img src="{{ link.quotation.image_url }}" alt="Quote" class="w-full rounded-xl border border-slate-200">
-                    {% endif %}
-                {% endif %}
-            </div>
-
-            <!-- ACTIONS -->
-            <div class="px-4 py-3.5 border-t border-slate-100 flex items-center justify-between bg-slate-50">
-                <a href="/quotations/detail/{{ link.id }}" class="text-xs font-semibold text-brand-600 hover:text-brand-700 flex items-center gap-1">
-                    View Detail
-                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-                </a>
-{% if is_locked %}
-    {% if decision and decision.winning_vendor_id == link.vendor_id %}
-    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
-        <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
-        Winner ✓
-    </span>
     {% else %}
-    <span class="text-xs font-medium text-slate-400">Not selected</span>
-    {% endif %}
-{% else %}
-    {% if user and (user.is_management or user.role == 'admin') %}
-    <form method="post" action="/decisions/new/{{ req.id }}/{{ link.vendor_id }}" class="inline">
-        <button type="submit" class="bg-emerald-600 text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-emerald-700 transition shadow-sm active:scale-[0.97] min-h-[36px]">
-            ✓ Select as Winner
-        </button>
-    </form>
-    {% endif %}
-{% endif %}
-            </div>
-
-            <!-- COLLAPSIBLE QUOTE HISTORY (only shown if multiple versions exist) -->
-            {% if history | length > 1 %}
-            {% set hist_id = "hist_" ~ link.vendor_id | replace("-","") %}
-            <div class="border-t border-slate-100">
-                <button type="button"
-                    onclick="const el=document.getElementById('{{ hist_id }}');const icon=document.getElementById('{{ hist_id }}_icon');el.classList.toggle('hidden');icon.classList.toggle('rotate-180');"
-                    class="w-full flex items-center justify-between px-4 py-2.5 text-xs font-semibold text-slate-500 hover:bg-slate-50 transition">
-                    <span class="flex items-center gap-1.5">
-                        <svg class="w-3.5 h-3.5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                        Quote History ({{ history | length }} versions)
-                    </span>
-                    <svg id="{{ hist_id }}_icon" class="w-3.5 h-3.5 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-                </button>
-                <div id="{{ hist_id }}" class="hidden divide-y divide-slate-100 bg-slate-50/60">
-                    {% for h_link in history %}
-                    {% set hq = h_link.quotation %}
-                    <div class="px-4 py-3 text-xs">
-                        <div class="flex items-center justify-between mb-1.5">
-                            <span class="font-bold text-slate-700 flex items-center gap-1.5">
-                                {% if h_link.negotiation_version == 2 %}
-                                <span class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 font-bold text-[10px]">v2</span>
-                                {% else %}
-                                <span class="px-1.5 py-0.5 rounded bg-slate-200 text-slate-600 font-bold text-[10px]">v1</span>
-                                {% endif %}
-                                {% if h_link.id == link.id %}<span class="text-brand-600 font-semibold">(current)</span>{% endif %}
-                            </span>
-                            {% if hq and hq.submitted_at %}
-                            <span class="text-slate-400">{{ hq.submitted_at | format_datetime_bst('%d %b %Y, %I:%M %p BST') }}</span>
-                            {% endif %}
-                        </div>
-                        {% if hq and hq.form_data %}
-                            {% if hq.form_data.get('items') %}
-                            <div class="space-y-1">
-                                {% for item in hq.form_data.get('items') %}
-                                <div class="flex justify-between text-slate-600">
-                                    <span>{{ item.name }}</span>
-                                    {% if blind %}<span class="text-slate-400">— (hidden)</span>{% else %}<span class="font-mono font-semibold text-slate-800">৳{{ item.price | money_inr }}</span>{% endif %}
-                                </div>
-                                {% endfor %}
-                                {% if not blind %}
-                                <div class="flex justify-between font-bold text-slate-800 border-t border-slate-200 pt-1 mt-1">
-                                    <span>Total</span>
-                                    <span class="font-mono">৳{{ hq.form_data.price | money_inr }}</span>
-                                </div>
-                                {% endif %}
-                            </div>
-                            {% elif not blind %}
-                            <div class="flex justify-between text-slate-600">
-                                <span>Unit Rate</span>
-                                <span class="font-mono font-semibold text-slate-800">৳{{ hq.form_data.price | money_inr }}</span>
-                            </div>
-                            {% endif %}
-                            {% if hq.form_data.get('notes') %}
-                            <p class="text-slate-400 italic mt-1.5">{{ hq.form_data.notes }}</p>
-                            {% endif %}
-                        {% elif hq and hq.image_url %}
-                        <a href="{{ hq.image_url }}" target="_blank" class="text-brand-600 underline">View submitted image</a>
-                        {% endif %}
-                    </div>
-                    {% endfor %}
-                </div>
-            </div>
-            {% endif %}
-
+    <!-- EMPTY STATE -->
+    <div class="bg-white rounded-2xl border border-slate-200 p-16 text-center shadow-xs">
+        <div class="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-4">
+            <svg class="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
         </div>
-        {% endfor %}
-    </div>
-
-    {% else %}
-    <div class="bg-white rounded-2xl border border-slate-200 p-14 text-center shadow-sm">
-        <div class="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-4">
-            <svg class="w-7 h-7 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-        </div>
-        <p class="text-sm font-semibold text-slate-900 mb-1">No quotations received yet</p>
-        <p class="text-xs text-slate-400">Quotations appear here once suppliers submit</p>
+        <h3 class="text-sm font-bold text-slate-900 mb-1">No Quotations Received Yet</h3>
+        <p class="text-xs text-slate-400">Quotations will populate this matrix once suppliers submit their offers.</p>
     </div>
     {% endif %}
 
 </div>
+
+<script>
+// Master Mode State: 'view' or 'edit'
+let currentMasterMode = 'view';
+
+function setMasterMode(mode) {
+    currentMasterMode = mode;
+    const btnView = document.getElementById('btn-mode-view');
+    const btnEdit = document.getElementById('btn-mode-edit');
+    const badge = document.getElementById('badge-active-mode');
+    const topActions = document.getElementById('edit-mode-top-actions');
+    const bottomBar = document.getElementById('edit-mode-bottom-bar');
+
+    const viewActions = document.querySelectorAll('.view-mode-actions');
+    const editActions = document.querySelectorAll('.edit-mode-actions');
+    const viewCells = document.querySelectorAll('.cell-view-mode');
+    const editCells = document.querySelectorAll('.cell-edit-mode');
+
+    if (mode === 'edit') {
+        if (btnEdit) {
+            btnEdit.classList.add('bg-white', 'text-brand-700', 'shadow-xs');
+            btnEdit.classList.remove('text-slate-600');
+        }
+        if (btnView) {
+            btnView.classList.remove('bg-white', 'text-brand-700', 'shadow-xs');
+            btnView.classList.add('text-slate-600');
+        }
+        if (badge) {
+            badge.textContent = 'Edit Mode (Assign & Shortlist)';
+            badge.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30';
+        }
+        topActions?.classList.remove('hidden');
+        bottomBar?.classList.remove('hidden');
+
+        viewActions.forEach(el => el.classList.add('hidden'));
+        editActions.forEach(el => el.classList.remove('hidden'));
+        viewCells.forEach(el => el.classList.add('hidden'));
+        editCells.forEach(el => el.classList.remove('hidden'));
+    } else {
+        if (btnView) {
+            btnView.classList.add('bg-white', 'text-brand-700', 'shadow-xs');
+            btnView.classList.remove('text-slate-600');
+        }
+        if (btnEdit) {
+            btnEdit.classList.remove('bg-white', 'text-brand-700', 'shadow-xs');
+            btnEdit.classList.add('text-slate-600');
+        }
+        if (badge) {
+            badge.textContent = 'View Mode';
+            badge.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30';
+        }
+        topActions?.classList.add('hidden');
+        bottomBar?.classList.add('hidden');
+
+        viewActions.forEach(el => el.classList.remove('hidden'));
+        editActions.forEach(el => el.classList.add('hidden'));
+        viewCells.forEach(el => el.classList.remove('hidden'));
+        editCells.forEach(el => el.classList.add('hidden'));
+    }
+}
+
+function toggleItemCell(linkId, itemIdx, checked) {
+    const qtyEl = document.getElementById(`qty_${linkId}_${itemIdx}`);
+    const hiddenEl = document.getElementById(`hidden_${linkId}_${itemIdx}`);
+    const cb = document.getElementById(`cb_${linkId}_${itemIdx}`);
+    if (cb) cb.checked = checked;
+
+    if (checked) {
+        if (qtyEl) {
+            qtyEl.classList.remove('bg-slate-50', 'text-slate-400');
+            qtyEl.classList.add('bg-white');
+        }
+        if (hiddenEl) hiddenEl.disabled = false;
+    } else {
+        if (qtyEl) {
+            qtyEl.classList.add('bg-slate-50', 'text-slate-400');
+            qtyEl.classList.remove('bg-white');
+        }
+        if (hiddenEl) hiddenEl.disabled = true;
+    }
+    updateVendorTotal(linkId);
+}
+
+function toggleAllForVendor(linkId, selectState) {
+    const checkboxes = document.querySelectorAll(`input[id^="cb_${linkId}_"]`);
+    checkboxes.forEach(cb => {
+        const parts = cb.id.split('_');
+        const itemIdx = parts[2];
+        cb.checked = selectState;
+        toggleItemCell(linkId, itemIdx, selectState);
+    });
+    // In case single item fallback
+    const singleCb = document.querySelector(`input[name="shortlisted_ids"][value="${linkId}"]`);
+    if (singleCb) singleCb.checked = selectState;
+    updateVendorTotal(linkId);
+}
+
+function selectAllShortlistItems() {
+    document.querySelectorAll(`input[id^="cb_"]`).forEach(cb => {
+        const parts = cb.id.split('_');
+        if (parts.length >= 3) {
+            const linkId = parts[1];
+            const itemIdx = parts[2];
+            cb.checked = true;
+            toggleItemCell(linkId, itemIdx, true);
+        }
+    });
+    document.querySelectorAll('input[name="shortlisted_ids"]').forEach(cb => {
+        cb.checked = true;
+    });
+    recalculateAllVendorTotals();
+}
+
+function clearAllShortlistItems() {
+    document.querySelectorAll(`input[id^="cb_"]`).forEach(cb => {
+        const parts = cb.id.split('_');
+        if (parts.length >= 3) {
+            const linkId = parts[1];
+            const itemIdx = parts[2];
+            cb.checked = false;
+            toggleItemCell(linkId, itemIdx, false);
+        }
+    });
+    document.querySelectorAll('input[name="shortlisted_ids"]').forEach(cb => {
+        cb.checked = false;
+    });
+    recalculateAllVendorTotals();
+}
+
+function updateVendorTotal(linkId) {
+    let total = 0;
+    let count = 0;
+    document.querySelectorAll(`[id^="qty_${linkId}_"]`).forEach(el => {
+        const parts = el.id.split('_');
+        const itemIdx = parts[2];
+        const cb = document.getElementById(`cb_${linkId}_${itemIdx}`);
+        if (cb && cb.checked) {
+            count += 1;
+            total += parseFloat(el.value || 0);
+        }
+    });
+    const allocEl = document.getElementById(`alloc_sum_${linkId}`);
+    if (allocEl) {
+        allocEl.textContent = count > 0 ? `${total.toFixed(2)} (${count} item${count > 1 ? 's' : ''})` : '—';
+    }
+}
+
+function recalculateAllVendorTotals() {
+    document.querySelectorAll('.vendor-column').forEach(col => {
+        const linkId = col.dataset.linkId;
+        if (linkId) updateVendorTotal(linkId);
+    });
+}
+
+// Client-side DOM sorting of vendor columns
+function applyColumnSort(criteria) {
+    const table = document.getElementById('unified-matrix-table');
+    if (!table) return;
+
+    const theadRow = table.querySelector('thead tr');
+    const tbodyRows = table.querySelectorAll('tbody tr');
+    const tfootRow = table.querySelector('tfoot tr');
+
+    const vendorHeaders = Array.from(theadRow.querySelectorAll('.vendor-column'));
+    if (vendorHeaders.length <= 1) return;
+
+    vendorHeaders.sort((a, b) => {
+        if (criteria === 'price_asc') {
+            const pa = parseFloat(a.dataset.price || '999999999');
+            const pb = parseFloat(b.dataset.price || '999999999');
+            if (pa !== pb) return pa - pb;
+            const da = parseFloat(a.dataset.timestamp || '0');
+            const db = parseFloat(b.dataset.timestamp || '0');
+            return db - da;
+        } else if (criteria === 'delivery_asc') {
+            const da = parseFloat(a.dataset.delivery || '999999');
+            const db = parseFloat(b.dataset.delivery || '999999');
+            if (da !== db) return da - db;
+            const pa = parseFloat(a.dataset.price || '999999999');
+            const pb = parseFloat(b.dataset.price || '999999999');
+            return pa - pb;
+        } else if (criteria === 'date_desc') {
+            const ta = parseFloat(a.dataset.timestamp || '0');
+            const tb = parseFloat(b.dataset.timestamp || '0');
+            return tb - ta;
+        }
+        return 0;
+    });
+
+    // Reorder thead
+    vendorHeaders.forEach(th => theadRow.appendChild(th));
+
+    // Reorder tbody cells for each row
+    tbodyRows.forEach(row => {
+        const cells = Array.from(row.querySelectorAll('.vendor-cell'));
+        const cellMap = {};
+        cells.forEach(c => { cellMap[c.dataset.linkId] = c; });
+        vendorHeaders.forEach(th => {
+            const linkId = th.dataset.linkId;
+            if (cellMap[linkId]) row.appendChild(cellMap[linkId]);
+        });
+    });
+
+    // Reorder tfoot cells
+    if (tfootRow) {
+        const footCells = Array.from(tfootRow.querySelectorAll('.vendor-footer-cell'));
+        const footMap = {};
+        footCells.forEach(c => { footMap[c.dataset.linkId] = c; });
+        vendorHeaders.forEach(th => {
+            const linkId = th.dataset.linkId;
+            if (footMap[linkId]) tfootRow.appendChild(footMap[linkId]);
+        });
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    recalculateAllVendorTotals();
+});
+</script>
 {% endblock %}

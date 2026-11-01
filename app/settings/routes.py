@@ -4,27 +4,36 @@ that are automatically included in all outbound Resend emails.
 """
 import logging
 
-from fastapi import APIRouter, Depends, Form, Request, UploadFile, File
+from fastapi import APIRouter, Depends, Form, HTTPException, Request, UploadFile, File
 from fastapi.responses import RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.models import UserProfile
 from app.database import get_db
-from app.dependencies import require_role
+from app.dependencies import get_current_user
 from app.main import templates
 from app.settings.models import SystemSettings
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-_MANAGEMENT_ROLES = ("management", "admin")
+
+async def require_settings_access(
+    user: UserProfile = Depends(get_current_user),
+) -> UserProfile:
+    if not user.has_settings_access:
+        raise HTTPException(
+            status_code=403,
+            detail="Insufficient permissions to access system settings",
+        )
+    return user
 
 
 @router.get("")
 async def settings_page(
     request: Request,
-    user: UserProfile = Depends(require_role(*_MANAGEMENT_ROLES)),
+    user: UserProfile = Depends(require_settings_access),
     db: AsyncSession = Depends(get_db),
 ):
     cc_row = await db.get(SystemSettings, SystemSettings.cc_emails_key())
@@ -61,7 +70,7 @@ async def settings_page(
 async def add_cc_email(
     request: Request,
     email: str = Form(...),
-    user: UserProfile = Depends(require_role(*_MANAGEMENT_ROLES)),
+    user: UserProfile = Depends(require_settings_access),
     db: AsyncSession = Depends(get_db),
 ):
     email = email.strip().lower()
@@ -89,7 +98,7 @@ async def add_cc_email(
 async def remove_cc_email(
     request: Request,
     email: str = Form(...),
-    user: UserProfile = Depends(require_role(*_MANAGEMENT_ROLES)),
+    user: UserProfile = Depends(require_settings_access),
     db: AsyncSession = Depends(get_db),
 ):
     email = email.strip().lower()
@@ -109,7 +118,7 @@ async def upload_letterhead(
     request: Request,
     letterhead_image: UploadFile = File(...),
     slot: str = Form(...),
-    user: UserProfile = Depends(require_role(*_MANAGEMENT_ROLES)),
+    user: UserProfile = Depends(require_settings_access),
     db: AsyncSession = Depends(get_db),
 ):
     from app.storage import BUCKET_NAME, upload_file
@@ -140,7 +149,7 @@ async def upload_letterhead(
 async def activate_letterhead(
     request: Request,
     slot: str = Form(...),
-    user: UserProfile = Depends(require_role(*_MANAGEMENT_ROLES)),
+    user: UserProfile = Depends(require_settings_access),
     db: AsyncSession = Depends(get_db),
 ):
     if slot not in ['1', '2', '3', '4']:
@@ -161,7 +170,7 @@ async def rename_letterhead(
     request: Request,
     slot: str = Form(...),
     name: str = Form(...),
-    user: UserProfile = Depends(require_role(*_MANAGEMENT_ROLES)),
+    user: UserProfile = Depends(require_settings_access),
     db: AsyncSession = Depends(get_db),
 ):
     if slot not in ['1', '2', '3', '4']:
