@@ -144,8 +144,29 @@ async def generate_work_order_pdf(work_order, letterhead_url: str | None) -> byt
         bg_style = ""
         container_style = ""
         if letterhead_url:
-            bg_style = f"background-image: url('{letterhead_url}'); background-size: cover; background-position: center;"
-            container_style = "background: rgba(255,255,255,0.94); padding: 24px 28px; border-radius: 8px;"
+            actual_bg_url = letterhead_url
+            try:
+                import os
+                from app.config import get_settings
+                settings = get_settings()
+                if "uploads/" in letterhead_url or letterhead_url.startswith("http://localhost"):
+                    clean_lh = (
+                        letterhead_url
+                        .replace("http://localhost:8000", "")
+                        .replace(settings.app_url, "")
+                        .removeprefix("/uploads/")
+                    )
+                    local_lh = os.path.join(settings.upload_dir, clean_lh)
+                    if os.path.exists(local_lh):
+                        actual_bg_url = f"file://{os.path.abspath(local_lh)}"
+                    elif not letterhead_url.startswith("http"):
+                        actual_bg_url = None
+            except Exception:
+                actual_bg_url = letterhead_url
+
+            if actual_bg_url:
+                bg_style = f"background-image: url('{actual_bg_url}'); background-size: cover; background-position: center;"
+                container_style = "background: rgba(255,255,255,0.94); padding: 24px 28px; border-radius: 8px;"
 
         html_content = f"""
         <!DOCTYPE html>

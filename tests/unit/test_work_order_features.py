@@ -215,3 +215,93 @@ def test_status_badge_colors_are_unique():
 
     assert len(rendered_colors) == 9
 
+
+def test_work_order_detail_template_renders_without_dict_items_error():
+    """Verify that work_orders/detail.html can iterate over quote_data['items'] dict.
+    
+    Prevents TypeError: 'builtin_function_or_method' object is not iterable.
+    """
+    from app.main import templates
+    from unittest.mock import MagicMock
+    from datetime import datetime, timezone
+
+    wo = MagicMock()
+    wo.id = "4d4f563a-1670-475b-9d12-99d05e0e3faf"
+    wo.reference_code = "WO-04A7E919"
+    wo.status = "issued"
+    wo.pdf_url = "http://localhost:8000/uploads/work_orders/test.pdf"
+    wo.issued_at = datetime(2026, 10, 26, 12, 0, tzinfo=timezone.utc)
+    wo.delivery_started_at = datetime(2026, 10, 26, 12, 0, tzinfo=timezone.utc)
+    wo.notes = "Special delivery"
+    wo.requisition = MagicMock(id="04a7e919-2b09-4840-bfdb-1c26163e5be7", title="PP Virgin", reference_code="REQ-04A7E919")
+    wo.vendor = MagicMock(company_name="Apex Polymer", contact_person="Karim", contact_email="karim@apex.com", phone="01700000000")
+    wo.issuer = MagicMock(full_name="Sadik Rahman", email="procurement@wenerbd.com")
+
+    quote_data = {
+        "price": 150000.0,
+        "items": [
+            {"name": "PP Virgin Raw Resin", "description": "Grade A pellets", "qty": 1000, "price": 150.0}
+        ],
+        "delivery_days": "10",
+        "payment_terms": "30 days net",
+    }
+
+    user = MagicMock(full_name="Sadik Rahman", role="admin", can_see_all_requisitions=True, is_procurement=True)
+    request = MagicMock()
+    request.query_params = {}
+    request.url = MagicMock(path="/work-orders/4d4f563a-1670-475b-9d12-99d05e0e3faf")
+
+    template = templates.get_template("work_orders/detail.html")
+    rendered = template.render(request=request, user=user, wo=wo, quote_data=quote_data)
+
+    assert "WO-04A7E919" in rendered
+    assert "PP Virgin" in rendered
+    assert "PP Virgin Raw Resin" in rendered
+    assert "150.00" in rendered or "150" in rendered
+    assert "/work-orders/4d4f563a-1670-475b-9d12-99d05e0e3faf/pdf" in rendered
+
+
+@pytest.mark.asyncio
+async def test_download_work_order_pdf_endpoint_regenerates_when_missing():
+    """Verify download_work_order_pdf route regenerates PDF when file is missing from disk."""
+    from unittest.mock import AsyncMock, patch, MagicMock
+    from app.work_orders.routes import download_work_order_pdf
+    from fastapi import HTTPException
+
+    wo = MagicMock()
+    wo.id = "4d4f563a-1670-475b-9d12-99d05e0e3faf"
+    wo.reference_code = "WO-04A7E919"
+    wo.pdf_url = "http://localhost:8000/uploads/work_orders/test.pdf"
+    wo.issued_by = "user-123"
+    wo.letterhead_slot = None
+
+    user = MagicMock()
+    user.id = "user-123"
+    user.can_see_all_requisitions = True
+    user.is_procurement = True
+
+    db = AsyncMock()
+    mock_result = MagicMock()
+    mock_result.scalar_one_or_none.return_value = wo
+    db.execute.return_value = mock_result
+
+    with patch("os.path.exists", return_value=False), \
+         patch("app.work_orders.routes.generate_work_order_pdf", new_callable=AsyncMock) as mock_gen, \
+         patch("app.storage.upload_file", new_callable=AsyncMock) as mock_upload:
+        
+        mock_gen.return_value = b"%PDF-1.4 test generated pdf"
+        mock_upload.return_value = "http://localhost:8000/uploads/work_orders/new.pdf"
+
+        response = await download_work_order_pdf(
+            wo_id=wo.id,
+            user=user,
+            db=db,
+        )
+
+        assert response.status_code == 200
+        assert response.media_type == "application/pdf"
+        assert b"%PDF-1.4 test generated pdf" in response.body
+        assert 'filename="PO_WO-04A7E919.pdf"' in response.headers["Content-Disposition"]
+        assert mock_gen.called
+
+

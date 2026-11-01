@@ -83,6 +83,84 @@ async def view_work_order(
     )
 
 
+@router.get("/{wo_id}/pdf")
+async def download_work_order_pdf(
+    wo_id: str,
+    user: UserProfile = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Serve or dynamically regenerate the Work Order PDF.
+    
+    Guarantees no 404s even across ephemeral container deployments.
+    """
+    import os
+    import uuid as _uuid
+    from fastapi import HTTPException
+    from fastapi.responses import Response
+    from app.config import get_settings
+    from app.settings.models import SystemSettings
+    from app.storage import upload_file, BUCKET_NAME
+
+    result = await db.execute(select(WorkOrder).where(WorkOrder.id == wo_id))
+    wo = result.scalar_one_or_none()
+    if not wo:
+        raise HTTPException(status_code=404, detail="Work Order not found")
+    if not (user.can_see_all_requisitions or user.is_procurement or wo.issued_by == user.id):
+        raise HTTPException(status_code=403, detail="Permission denied")
+
+    settings = get_settings()
+    pdf_bytes = None
+
+    # Check if local PDF file already exists on disk and is non-empty
+    if wo.pdf_url:
+        clean_path = (
+            wo.pdf_url
+            .replace("http://localhost:8000", "")
+            .replace(settings.app_url, "")
+            .removeprefix("/uploads/")
+        )
+        full_path = os.path.join(settings.upload_dir, clean_path)
+        if os.path.exists(full_path) and os.path.getsize(full_path) > 0:
+            try:
+                with open(full_path, "rb") as f:
+                    pdf_bytes = f.read()
+            except Exception:
+                logger.warning("Failed to read cached PDF file at %s, will regenerate", full_path)
+                pdf_bytes = None
+
+    # If missing or unreadable on disk, dynamically generate on the fly
+    if not pdf_bytes:
+        letterhead_url = None
+        if wo.letterhead_slot:
+            lh_row = await db.get(SystemSettings, f"letterhead_{wo.letterhead_slot}")
+            if lh_row:
+                letterhead_url = lh_row.value
+
+        pdf_bytes = await generate_work_order_pdf(wo, letterhead_url)
+        if not pdf_bytes:
+            raise HTTPException(status_code=500, detail="Failed to generate work order PDF")
+
+        # Cache back to storage directory
+        try:
+            remote_path = f"work_orders/{wo.id}/{_uuid.uuid4()}.pdf"
+            new_url = await upload_file(BUCKET_NAME, remote_path, pdf_bytes, "application/pdf")
+            if new_url:
+                wo.pdf_url = new_url
+                await db.commit()
+        except Exception:
+            logger.warning("Failed to cache regenerated PDF for WO %s", wo.id)
+
+    filename = f"PO_{wo.reference_code}.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'inline; filename="{filename}"',
+            "Cache-Control": "private, max-age=3600",
+        },
+    )
+
+
 @router.post("/issue/{req_id}/{rv_id}")
 async def issue_work_order(
     request: Request,
