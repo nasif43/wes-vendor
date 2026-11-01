@@ -405,8 +405,13 @@ async def delete_user(
     user: UserProfile = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    from sqlalchemy import delete
+    from sqlalchemy import delete, update
     from app.audit.models import AuditLog
+    from app.requisitions.models import Requisition
+    from app.vendors.models import Vendor
+    from app.decisions.models import Decision
+    from app.work_orders.models import WorkOrder, SupplierRating
+    from app.cash_purchases.models import CashPurchase
 
     if not user.has_users_access:
         await db.commit()
@@ -426,20 +431,64 @@ async def delete_user(
     user_email = target_user.email
 
     try:
-        # Clean audit logs by this actor so foreign keys allow deletion
-        await db.execute(delete(AuditLog).where(AuditLog.actor_id == target_user.id))
+        # 1. Nullify nullable references to target user
+        await db.execute(
+            update(AuditLog).where(AuditLog.actor_id == target_user.id).values(actor_id=None)
+        )
+        await db.execute(
+            update(Requisition).where(Requisition.qc_done_by == target_user.id).values(qc_done_by=None)
+        )
+        await db.execute(
+            update(Vendor).where(Vendor.created_by == target_user.id).values(created_by=None)
+        )
+        await db.execute(
+            update(Decision).where(Decision.approved_by == target_user.id).values(approved_by=None)
+        )
+        await db.execute(
+            update(CashPurchase).where(CashPurchase.updated_by == target_user.id).values(updated_by=None)
+        )
+
+        # 2. Reassign non-nullable references to the active administrator performing the deletion
+        await db.execute(
+            update(Requisition).where(Requisition.created_by == target_user.id).values(created_by=user.id)
+        )
+        await db.execute(
+            update(Decision).where(Decision.decided_by == target_user.id).values(decided_by=user.id)
+        )
+        await db.execute(
+            update(WorkOrder).where(WorkOrder.issued_by == target_user.id).values(issued_by=user.id)
+        )
+        await db.execute(
+            update(SupplierRating).where(SupplierRating.rated_by == target_user.id).values(rated_by=user.id)
+        )
+        await db.execute(
+            update(CashPurchase).where(CashPurchase.created_by == target_user.id).values(created_by=user.id)
+        )
+
+        # 3. Delete the target user
         await db.delete(target_user)
         await db.commit()
         return RedirectResponse(
             url=f"/users?success=User+{user_name.replace(' ', '+')}+permanently+deleted",
             status_code=303,
         )
-    except Exception:
-        # Fallback to deactivate if other business records (e.g. requisitions) reference this user
-        target_user.is_active = False
-        await db.commit()
-        return RedirectResponse(
-            url=f"/users?success=User+{user_name.replace(' ', '+')}+deactivated+(referenced+in+records)",
-            status_code=303,
-        )
+    except Exception as e:
+        await db.rollback()
+        logger.exception("Failed to delete user %s: %s", target_user_id, e)
+        try:
+            target_user_ref = await db.get(UserProfile, target_user_id)
+            if target_user_ref:
+                target_user_ref.is_active = False
+                await db.commit()
+            return RedirectResponse(
+                url=f"/users?success=User+{user_name.replace(' ', '+')}+deactivated+instead",
+                status_code=303,
+            )
+        except Exception as inner_e:
+            await db.rollback()
+            logger.exception("Failed to deactivate user %s after failed deletion: %s", target_user_id, inner_e)
+            return RedirectResponse(
+                url=f"/users?error=Could+not+delete+user+{user_name.replace(' ', '+')}",
+                status_code=303,
+            )
 

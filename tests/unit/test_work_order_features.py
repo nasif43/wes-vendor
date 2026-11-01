@@ -644,5 +644,77 @@ def test_unified_quotation_comparison_table_and_no_review_status():
     assert "value=\"flagged\"" not in detail_content
 
 
+@pytest.mark.asyncio
+async def test_delete_user_reassigns_foreign_keys_safely(async_db):
+    """Verify delete_user reassigns foreign keys and deletes user without PendingRollbackError."""
+    from app.users.routes import delete_user
+    from app.auth.models import UserProfile, UserRole
+    from app.requisitions.models import Requisition
+    from app.audit.models import AuditLog
+    from starlette.requests import Request
+
+    admin = UserProfile(
+        id="admin-user-001",
+        email="admin@wenerbd.cloud",
+        full_name="Admin User",
+        role=UserRole.ADMIN,
+        can_access_users=True,
+    )
+    target = UserProfile(
+        id="target-user-002",
+        email="delete-me@test.com",
+        full_name="Delete Me",
+        role=UserRole.PROCUREMENT,
+    )
+    async_db.add_all([admin, target])
+    await async_db.commit()
+
+    # Create a requisition created by target
+    req = Requisition(
+        id="req-user-test-01",
+        title="Test Requisition",
+        created_by=target.id,
+        qc_done_by=target.id,
+    )
+    log = AuditLog(
+        id="log-001",
+        action="CREATE",
+        actor_name=target.full_name,
+        actor_email=target.email,
+        actor_role=target.role.value,
+        entity_type="requisition",
+        entity_id=req.id,
+        actor_id=target.id,
+    )
+    async_db.add_all([req, log])
+    await async_db.commit()
+
+    # Call delete_user
+    mock_request = MagicMock(spec=Request)
+    response = await delete_user(
+        target_user_id=target.id,
+        request=mock_request,
+        user=admin,
+        db=async_db,
+    )
+
+    assert response.status_code == 303
+    assert "permanently+deleted" in response.headers["location"]
+
+    # Target should be deleted
+    deleted_user = await async_db.get(UserProfile, target.id)
+    assert deleted_user is None
+
+    # Requisition should have created_by reassigned to admin, and qc_done_by set to None
+    updated_req = await async_db.get(Requisition, req.id)
+    assert updated_req.created_by == admin.id
+    assert updated_req.qc_done_by is None
+
+    # Audit log actor_id should be None
+    updated_log = await async_db.get(AuditLog, log.id)
+    assert updated_log.actor_id is None
+
+
+
 
 
