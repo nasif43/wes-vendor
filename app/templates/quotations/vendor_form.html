@@ -99,8 +99,8 @@
                     <thead class="bg-slate-100 border-b border-slate-300 text-xs text-slate-700">
                         <tr>
                             <th class="px-3 py-2.5 border-r border-slate-300 font-bold" data-i18n-bn="পণ্যের নাম" data-i18n-en="Item Name">পণ্যের নাম</th>
-                            <th class="px-3 py-2.5 border-r border-slate-300 font-bold" data-i18n-bn="বিবরণ" data-i18n-en="Description">বিবরণ</th>
-                            <th class="px-3 py-2.5 border-r border-slate-300 font-bold text-center w-16" data-i18n-bn="পরিমাণ" data-i18n-en="Qty">পরিমাণ</th>
+                            <th class="px-3 py-2.5 border-r border-slate-300 font-bold" data-i18n-bn="স্পেসিফিকেশন" data-i18n-en="Specification">স্পেসিফিকেশন</th>
+                            <th class="px-3 py-2.5 border-r border-slate-300 font-bold text-center w-24" data-i18n-bn="পরিমাণ" data-i18n-en="Quantity">পরিমাণ</th>
                             <th class="px-3 py-2.5 font-bold text-right w-32" data-i18n-bn="একক মূল্য (৳)" data-i18n-en="Unit Price (৳)">একক মূল্য (৳)</th>
                         </tr>
                     </thead>
@@ -109,8 +109,11 @@
                         <tr class="border-b border-slate-200">
                             <input type="hidden" name="item_original_index[]" value="{{ item.original_index if item.original_index is defined else loop.index0 }}">
                             <td class="px-3 py-2 border-r border-slate-300 font-medium">{{ item.name }}</td>
-                            <td class="px-3 py-2 border-r border-slate-300 text-xs text-slate-500">{{ item.description }}</td>
-                            <td class="px-3 py-2 border-r border-slate-300 text-center font-bold text-slate-700">{{ (item.shortlisted_qty if item.shortlisted_qty is defined else item.qty) | qty_format }}</td>
+                            <td class="px-3 py-2 border-r border-slate-300 text-xs text-slate-600 leading-relaxed">{{ item.description }}</td>
+                            <td class="px-3 py-2 border-r border-slate-300 text-center font-bold text-slate-700 font-mono">
+                                {{ (item.shortlisted_qty if item.shortlisted_qty is defined else item.qty) | qty_format }}
+                                <span class="text-xs font-normal text-slate-500 block">{{ item.unit or req.unit or '' }}</span>
+                            </td>
                             <td class="px-2 py-1 bg-yellow-50">
                                 <input type="number" name="item_price[]" required min="0" step="any" placeholder="0.00"
                                     class="w-full px-2 py-1 bg-transparent border border-slate-300 rounded-sm text-sm text-right item-price-input focus:outline-none focus:border-blue-500 focus:bg-white transition-colors"

@@ -225,17 +225,26 @@ async def update_requisition(
     item_names = form_data.getlist("item_name[]")
     item_descs = form_data.getlist("item_desc[]")
     item_qtys = form_data.getlist("item_qty[]")
+    item_units = form_data.getlist("item_unit[]")
     
     items = []
     total_qty = 0.0
-    for n, d, q in zip(item_names, item_descs, item_qtys):
+    for i in range(len(item_names)):
+        n = item_names[i].strip() if item_names[i] else ""
+        if not n:
+            continue
+        d = item_descs[i].strip() if i < len(item_descs) else ""
+        q = item_qtys[i] if i < len(item_qtys) else 0.0
+        u = item_units[i].strip() if i < len(item_units) else ""
         qty = float(q) if q else 0.0
-        items.append({"name": n, "description": d, "qty": qty})
+        items.append({"name": n, "description": d, "qty": qty, "unit": u})
         total_qty += qty
 
     req.title = title
     req.items = items
     req.quantity = total_qty
+    if items and items[0].get("unit"):
+        req.unit = items[0]["unit"]
     req.item_description = "Multiple items" if items else ""
     req.notes = notes or None
     
@@ -298,18 +307,26 @@ async def create_requisition(
     item_names = form_data.getlist("item_name[]")
     item_descs = form_data.getlist("item_desc[]")
     item_qtys = form_data.getlist("item_qty[]")
+    item_units = form_data.getlist("item_unit[]")
     
     items = []
     total_qty = 0.0
-    for n, d, q in zip(item_names, item_descs, item_qtys):
+    for i in range(len(item_names)):
+        n = item_names[i].strip() if item_names[i] else ""
+        if not n:
+            continue
+        d = item_descs[i].strip() if i < len(item_descs) else ""
+        q = item_qtys[i] if i < len(item_qtys) else 0.0
+        u = item_units[i].strip() if i < len(item_units) else ""
         qty = float(q) if q else 0.0
-        items.append({"name": n, "description": d, "qty": qty})
+        items.append({"name": n, "description": d, "qty": qty, "unit": u})
         total_qty += qty
 
     req = Requisition(
         title=title,
         item_description="Multiple items" if items else "",
         quantity=total_qty,
+        unit=items[0].get("unit") if (items and items[0].get("unit")) else None,
         items=items,
         notes=notes or None,
         status=RequisitionStatus.DRAFT,

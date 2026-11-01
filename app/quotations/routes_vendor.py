@@ -366,6 +366,7 @@ async def submit_quotation(
             if hasattr(link.requisition.creator, "is_procurement_blind"):
                 is_blind = link.requisition.creator.is_procurement_blind
                 
+            req_ref = link.requisition.reference_code if (link.requisition and hasattr(link.requisition, "reference_code")) else ""
             notification_payloads = await build_submission_notification(
                 to=link.requisition.creator.email,
                 vendor_name=link.vendor.company_name if link.vendor else "Supplier",
@@ -374,16 +375,21 @@ async def submit_quotation(
                 pdf_bytes=pdf_bytes,
                 is_blind=is_blind,
                 compare_url=compare_url,
+                requisition_ref=req_ref,
             )
             email_params.extend(notification_payloads)
 
         if link.vendor and link.vendor.contact_email:
+            req_ref = link.requisition.reference_code if (link.requisition and hasattr(link.requisition, "reference_code")) else ""
             email_params.append(
                 await build_submission_confirmation(
                     to=link.vendor.contact_email,
                     vendor_name=link.vendor.contact_person or link.vendor.company_name,
                     requisition_title=link.requisition.title if link.requisition else "Quotation",
                     pdf_bytes=pdf_bytes,
+                    company_name=link.vendor.company_name if link.vendor else None,
+                    contact_person=link.vendor.contact_person if link.vendor else None,
+                    requisition_ref=req_ref,
                 )
             )
 

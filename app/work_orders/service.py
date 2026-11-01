@@ -72,7 +72,10 @@ async def generate_work_order_pdf(work_order, letterhead_url: str | None) -> byt
                 except Exception:
                     total = 0.0
                 grand_total += total
+                unit = item.get("unit") or (req.unit if req else "") or ""
                 qty_display = format_quantity(qty)
+                if unit:
+                    qty_display = f"{qty_display} {unit}"
                 price_display = format_indian_number(price)
                 total_display = format_indian_number(total)
                 rows_html += (
@@ -264,11 +267,11 @@ async def generate_work_order_pdf(work_order, letterhead_url: str | None) -> byt
             <thead>
                 <tr>
                     <th style="width:6%;">S/N</th>
-                    <th style="width:30%;text-align:left;">Item Name</th>
-                    <th style="width:34%;text-align:left;">Specification / Description</th>
-                    <th style="width:9%;">Qty</th>
-                    <th style="width:10%;text-align:right;">Rate (BDT)</th>
-                    <th style="width:11%;text-align:right;">Total (BDT)</th>
+                    <th style="width:28%;text-align:left;">Item Name</th>
+                    <th style="width:36%;text-align:left;">Specification</th>
+                    <th style="width:12%;">Quantity</th>
+                    <th style="width:9%;text-align:right;">Rate (Tk)</th>
+                    <th style="width:9%;text-align:right;">Total (Tk)</th>
                 </tr>
             </thead>
             <tbody>

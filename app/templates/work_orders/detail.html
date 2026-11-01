@@ -140,9 +140,9 @@
             <table class="w-full text-left text-sm">
                 <thead class="bg-slate-50 text-[11px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200">
                     <tr>
-                        <th class="px-4 py-3">Item</th>
-                        <th class="px-4 py-3">Description</th>
-                        <th class="px-4 py-3 text-center">Qty</th>
+                        <th class="px-4 py-3">Item Name</th>
+                        <th class="px-4 py-3">Specification</th>
+                        <th class="px-4 py-3 text-center">Quantity</th>
                         <th class="px-4 py-3 text-right">Unit Price (৳)</th>
                         <th class="px-4 py-3 text-right">Subtotal (৳)</th>
                     </tr>
@@ -152,8 +152,11 @@
                     {% set item_total = (item.qty|float(0)) * (item.price|float(0)) %}
                     <tr class="hover:bg-slate-50/50">
                         <td class="px-4 py-3 font-semibold text-slate-900">{{ item.name }}</td>
-                        <td class="px-4 py-3 text-xs text-slate-500">{{ item.description }}</td>
-                        <td class="px-4 py-3 text-center font-bold text-slate-700">{{ item.qty | qty_format }}</td>
+                        <td class="px-4 py-3 text-xs text-slate-600 leading-relaxed">{{ item.description }}</td>
+                        <td class="px-4 py-3 text-center font-bold text-slate-700">
+                            {{ item.qty | qty_format }}
+                            {% if item.unit %}<span class="text-xs text-slate-500 font-normal ml-0.5">{{ item.unit }}</span>{% endif %}
+                        </td>
                         <td class="px-4 py-3 text-right font-mono text-slate-800">৳{{ item.price | money_inr }}</td>
                         <td class="px-4 py-3 text-right font-mono font-bold text-slate-900">৳{{ item_total | money_inr }}</td>
                     </tr>

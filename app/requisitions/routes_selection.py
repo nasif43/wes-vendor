@@ -153,6 +153,7 @@ async def send_requisition(
                 with open(pdf_path, "wb") as f:
                     f.write(pdf_bytes)
 
+            req_ref = req.reference_code if hasattr(req, "reference_code") else f"REQ-{req.id[:8].upper()}"
             email_params.append(
                 await build_vendor_invitation(
                     to=vendor.contact_email,
@@ -160,6 +161,9 @@ async def send_requisition(
                     requisition_title=req.title,
                     quote_url=quote_url,
                     pdf_bytes=pdf_bytes,
+                    company_name=vendor.company_name,
+                    contact_person=vendor.contact_person,
+                    requisition_ref=req_ref,
                 )
             )
             emailed_links.append(link)
@@ -494,6 +498,7 @@ async def start_negotiation(
                         f.write(pdf_bytes)
 
                 
+                req_ref = req.reference_code if hasattr(req, "reference_code") else f"REQ-{req.id[:8].upper()}"
                 email_params.append(
                     await build_negotiation_invitation(
                         to=vendor.contact_email,
@@ -501,6 +506,9 @@ async def start_negotiation(
                         requisition_title=req.title,
                         quote_url=quote_url,
                         pdf_bytes=pdf_bytes,
+                        company_name=vendor.company_name,
+                        contact_person=vendor.contact_person,
+                        requisition_ref=req_ref,
                     )
                 )
                 email_links.append(v2_lnk)
@@ -643,6 +651,7 @@ async def resend_supplier_link(
             issuer_name=user.full_name or user.username,
             issued_at=datetime.now(UTC),
         )
+        req_ref = req.reference_code if hasattr(req, "reference_code") else f"REQ-{req.id[:8].upper()}"
         if link.negotiation_version == 2:
             email_params.append(
                 await build_negotiation_invitation(
@@ -651,6 +660,9 @@ async def resend_supplier_link(
                     requisition_title=req.title,
                     quote_url=quote_url,
                     pdf_bytes=pdf_bytes,
+                    company_name=vendor.company_name,
+                    contact_person=vendor.contact_person,
+                    requisition_ref=req_ref,
                 )
             )
         else:
@@ -661,6 +673,9 @@ async def resend_supplier_link(
                     requisition_title=req.title,
                     quote_url=quote_url,
                     pdf_bytes=pdf_bytes,
+                    company_name=vendor.company_name,
+                    contact_person=vendor.contact_person,
+                    requisition_ref=req_ref,
                 )
             )
     else:
@@ -669,6 +684,7 @@ async def resend_supplier_link(
             issuer_name=user.full_name or user.username,
             issued_at=datetime.now(UTC),
         )
+        req_ref = req.reference_code if hasattr(req, "reference_code") else f"REQ-{req.id[:8].upper()}"
         email_params.append(
             await build_vendor_invitation(
                 to=vendor.contact_email,
@@ -676,6 +692,9 @@ async def resend_supplier_link(
                 requisition_title=req.title,
                 quote_url=quote_url,
                 pdf_bytes=pdf_bytes,
+                company_name=vendor.company_name,
+                contact_person=vendor.contact_person,
+                requisition_ref=req_ref,
             )
         )
 
@@ -750,8 +769,13 @@ async def forward_all_quotes_to_cc(
             status_code=303,
         )
 
-    payloads = []
+    attachments = []
+    table_rows = []
     forwarded_vendors = []
+    compare_url = f"{str(request.base_url).rstrip('/')}/quotations/compare/{req_id}"
+
+    from app.utils.number_formatting import format_indian_number
+
     for link in submitted_links:
         form_data = link.quotation.form_data if (link.quotation and link.quotation.form_data) else {}
         vendor_name = link.vendor.company_name if link.vendor else "Supplier"
@@ -762,61 +786,100 @@ async def forward_all_quotes_to_cc(
             req_title=req.title,
             vendor_name=vendor_name,
         )
-
-        submitted_str = "Recent"
-        if link.quotation and link.quotation.submitted_at:
-            try:
-                from zoneinfo import ZoneInfo
-                from datetime import timezone as _tz, timedelta as _td
-                dt = link.quotation.submitted_at
-                dhaka = dt.astimezone(ZoneInfo("Asia/Dhaka")) if dt.tzinfo else dt.replace(tzinfo=_tz.utc).astimezone(ZoneInfo("Asia/Dhaka"))
-                submitted_str = dhaka.strftime("%B %d, %Y at %I:%M %p BST")
-            except Exception:
-                submitted_str = link.quotation.submitted_at.strftime("%B %d, %Y (%I:%M %p)")
-
-        compare_url = f"{str(request.base_url).rstrip('/')}/quotations/compare/{req_id}"
-        html = f"""
-        <h2>Quotation Copy: {vendor_name}</h2>
-        <p>Submitted quotation copy forwarded for requisition: <strong>{req.title}</strong>.</p>
-        <table style="font-family:sans-serif;font-size:13px;margin:16px 0;line-height:1.6;">
-          <tr><td style="padding:4px 8px;color:#666;">Supplier:</td><td style="padding:4px 8px;font-weight:bold;">{vendor_name}</td></tr>
-          <tr><td style="padding:4px 8px;color:#666;">Contact:</td><td style="padding:4px 8px;">{link.vendor.contact_person or '—'} ({link.vendor.contact_email or '—'})</td></tr>
-          <tr><td style="padding:4px 8px;color:#666;">Negotiation Round:</td><td style="padding:4px 8px;font-weight:bold;">Round {link.negotiation_version}</td></tr>
-          <tr><td style="padding:4px 8px;color:#666;">Submitted At:</td><td style="padding:4px 8px;">{submitted_str}</td></tr>
-          <tr><td style="padding:4px 8px;color:#666;">Forwarded By:</td><td style="padding:4px 8px;">{user.full_name} ({user.email})</td></tr>
-        </table>
-        <div style="margin: 20px 0 16px 0;">
-          <a href="{compare_url}" style="display:inline-block;background:#1d4ed8;color:#ffffff;padding:11px 22px;border-radius:8px;text-decoration:none;font-weight:700;font-size:13px;box-shadow:0 1px 3px rgba(0,0,0,0.1);">
-            📊 Compare All Quotations Side-by-Side
-          </a>
-        </div>
-        <p><a href="{view_url}" style="font-size:13px;color:#2563eb;">View this specific quotation details in portal &rarr;</a></p>
-        <p style="font-size:12px;color:#888;margin-top:20px;">The official quotation summary PDF is attached.</p>
-        """
-
-        p = {
-            "from": f"Wener Supplier Management <{email_settings.mail_from}>",
-            "to": cc,
-            "subject": f"Quotation Copy: {req.title} - {vendor_name}",
-            "html": html,
-        }
         if pdf_bytes:
-            p["attachments"] = [{
+            attachments.append({
                 "filename": f"Quotation_{vendor_name.replace(' ', '_')}.pdf",
                 "content": list(pdf_bytes),
                 "content_type": "application/pdf"
-            }]
-        payloads.append(p)
+            })
+
+        # Calculate price display
+        raw_price = form_data.get("price")
+        price_display = "—"
+        if raw_price is not None:
+            try:
+                price_display = f"৳{format_indian_number(float(raw_price))}"
+            except Exception:
+                price_display = f"৳{raw_price}"
+
+        delivery = form_data.get("delivery_days", "—")
+        contact_str = f"{link.vendor.contact_person or '—'} ({link.vendor.contact_email or '—'})" if link.vendor else "—"
+
+        table_rows.append(f"""
+        <tr style="border-bottom:1px solid #e2e8f0;">
+          <td style="padding:10px 12px; font-weight:bold; color:#0f172a;">{vendor_name}</td>
+          <td style="padding:10px 12px; color:#475569; font-size:12px;">{contact_str}</td>
+          <td style="padding:10px 12px; text-align:right; font-weight:bold; color:#0f172a; font-family:monospace;">{price_display}</td>
+          <td style="padding:10px 12px; text-align:center; color:#334155;">{delivery} days</td>
+          <td style="padding:10px 12px; text-align:center;"><span style="background:#fef3c7; color:#92400e; padding:2px 6px; border-radius:4px; font-size:11px; font-weight:bold;">v{link.negotiation_version}</span></td>
+          <td style="padding:10px 12px; text-align:center;"><a href="{view_url}" style="color:#2563eb; font-size:12px; font-weight:600; text-decoration:none;">View Detail &rarr;</a></td>
+        </tr>
+        """)
         forwarded_vendors.append(vendor_name)
 
-    if payloads:
-        sent = await send_batch(payloads)
-        if not sent:
-            await db.commit()
-            return RedirectResponse(
-                url=f"/requisitions/{req_id}?error=Failed+to+forward+emails+via+Resend.+Check+Resend+API+key+or+quota.",
-                status_code=303,
-            )
+    from app.email.resend import _email_footer
+    footer = _email_footer()
+    req_ref = req.reference_code if hasattr(req, "reference_code") else f"REQ-{req.id[:8].upper()}"
+
+    html = f"""
+    <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; color:#1e293b; max-width:680px; line-height:1.5;">
+      <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:14px 18px; margin-bottom:20px;">
+        <span style="font-size:11px; font-weight:bold; color:#64748b; text-transform:uppercase; letter-spacing:0.05em;">Requisition Grouped Quotations Summary</span>
+        <h2 style="margin:4px 0 6px 0; font-size:18px; color:#0f172a;">[{req_ref}] {req.title}</h2>
+        <p style="margin:0; font-size:13px; color:#475569;">
+          <strong>Total Submitted Quotes:</strong> {len(submitted_links)} &nbsp;|&nbsp;
+          <strong>Forwarded By:</strong> {user.full_name} ({user.email})
+        </p>
+      </div>
+
+      <p style="font-size:14px; margin-bottom:12px;">Here is the executive summary of all submitted supplier quotations for this requisition:</p>
+
+      <table style="width:100%; border-collapse:collapse; font-size:13px; margin:16px 0; background:#ffffff; border:1px solid #e2e8f0; border-radius:8px; overflow:hidden;">
+        <thead>
+          <tr style="background:#f1f5f9; text-align:left; border-bottom:2px solid #cbd5e1; font-size:11px; text-transform:uppercase; color:#64748b; letter-spacing:0.05em;">
+            <th style="padding:10px 12px;">Supplier</th>
+            <th style="padding:10px 12px;">Contact</th>
+            <th style="padding:10px 12px; text-align:right;">Offered Total</th>
+            <th style="padding:10px 12px; text-align:center;">Delivery</th>
+            <th style="padding:10px 12px; text-align:center;">Round</th>
+            <th style="padding:10px 12px; text-align:center;">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {"".join(table_rows)}
+        </tbody>
+      </table>
+
+      <div style="margin:24px 0;">
+        <a href="{compare_url}" style="display:inline-block; background:#1d4ed8; color:#ffffff; padding:12px 24px; border-radius:8px; text-decoration:none; font-weight:700; font-size:14px; box-shadow:0 1px 3px rgba(0,0,0,0.1);">
+          📊 Open Side-by-Side Comparison Matrix in Portal
+        </a>
+      </div>
+
+      <p style="font-size:12px; color:#64748b; margin-top:20px; border-top:1px solid #e2e8f0; padding-top:12px;">
+        📎 <strong>Attachments:</strong> All {len(attachments)} quotation summary PDF document(s) are attached to this email.
+      </p>
+
+      {footer}
+    </div>
+    """
+
+    payload = {
+        "from": f"Wener Supplier Management <{email_settings.mail_from}>",
+        "to": cc,
+        "subject": f"[{req_ref}] Quotations Summary: {req.title} ({len(submitted_links)} Quotes Submitted)",
+        "html": html,
+    }
+    if attachments:
+        payload["attachments"] = attachments
+
+    sent = await send_batch([payload])
+    if not sent:
+        await db.commit()
+        return RedirectResponse(
+            url=f"/requisitions/{req_id}?error=Failed+to+forward+email+via+Resend.+Check+Resend+API+key+or+quota.",
+            status_code=303,
+        )
 
     await log_action(
         db,
@@ -825,13 +888,13 @@ async def forward_all_quotes_to_cc(
         entity_type="requisition",
         entity_id=req.id,
         entity_label=req.title,
-        notes=f"Forwarded {len(payloads)} quotation copies and PDFs ({', '.join(forwarded_vendors)}) to CCs: {', '.join(cc)} by {user.full_name}.",
+        notes=f"Forwarded consolidated quotations summary email with {len(attachments)} PDFs ({', '.join(forwarded_vendors)}) to CCs: {', '.join(cc)} by {user.full_name}.",
     )
     await db.flush()
     await db.commit()
 
     return RedirectResponse(
-        url=f"/requisitions/{req_id}?success=Forwarded+{len(payloads)}+quotation+copies+and+PDFs+to+management+CCs",
+        url=f"/requisitions/{req_id}?success=Forwarded+consolidated+quotations+summary+and+{len(attachments)}+PDFs+to+management+CCs",
         status_code=303,
     )
 

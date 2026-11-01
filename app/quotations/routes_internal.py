@@ -188,8 +188,20 @@ async def forward_quotation_to_cc(
         except Exception:
             submitted_str = link.quotation.submitted_at.strftime("%B %d, %Y (%I:%M %p)")
 
+    req_ref = link.requisition.reference_code if (link.requisition and hasattr(link.requisition, "reference_code")) else ""
+    prefix = f"[{req_ref}] " if req_ref else ""
+    from app.email.resend import _format_recipient_cc_box, _email_footer
+    cc_box = _format_recipient_cc_box(
+        to=link.vendor.contact_email or "No email",
+        vendor_name=vendor_name,
+        company_name=link.vendor.company_name,
+        contact_person=link.vendor.contact_person,
+    )
+    footer = _email_footer()
+
     compare_url = f"{str(request.base_url).rstrip('/')}/quotations/compare/{link.requisition_id}"
     html = f"""
+    {cc_box}
     <h2>Quotation Copy: {vendor_name}</h2>
     <p>Submitted quotation copy forwarded for requisition: <strong>{req_title}</strong>.</p>
     <table style="font-family:sans-serif;font-size:13px;margin:16px 0;line-height:1.6;">
@@ -206,12 +218,13 @@ async def forward_quotation_to_cc(
     </div>
     <p><a href="{view_url}" style="font-size:13px;color:#2563eb;">View this specific quotation details in portal &rarr;</a></p>
     <p style="font-size:12px;color:#888;margin-top:20px;">The official quotation summary PDF is attached.</p>
+    {footer}
     """
 
     payload = {
         "from": f"Wener Supplier Management <{email_settings.mail_from}>",
         "to": cc,
-        "subject": f"Quotation Copy: {req_title} - {vendor_name}",
+        "subject": f"{prefix}Quotation Copy: {req_title} - {vendor_name}",
         "html": html,
     }
     if pdf_bytes:
@@ -313,7 +326,7 @@ async def compare_quotations(
             if link.negotiation_version > vendor_map[vid]["active"].negotiation_version:
                 vendor_map[vid]["active"] = link
 
-    # Sort each vendor's history newest-first, then sort vendors by latest submission date desc
+    # Sort each vendor's history newest-first, then calculate total offer price for sorting
     def latest_submitted_at(entry):
         dates = [
             q.submitted_at
@@ -323,14 +336,75 @@ async def compare_quotations(
         ]
         return max(dates) if dates else None
 
+    def get_entry_total_price(entry, req_qty: float = 1.0) -> float:
+        link = entry.get("active")
+        if not link or not link.quotation:
+            return float("inf")
+        fd = link.quotation.form_data or {}
+        items = fd.get("items") or []
+        if items:
+            raw = fd.get("price")
+            if raw is not None:
+                try:
+                    v = float(raw)
+                    if v > 0:
+                        return v
+                except (ValueError, TypeError):
+                    pass
+            total = 0.0
+            has_val = False
+            for it in items:
+                try:
+                    p = float(it.get("price", 0))
+                    total += p
+                    has_val = True
+                except (ValueError, TypeError):
+                    pass
+            if has_val and total > 0:
+                return total
+            return float("inf")
+        else:
+            raw = fd.get("price")
+            if raw is not None:
+                try:
+                    unit_price = float(raw)
+                    quoted_qty = link.quotation.quoted_quantity
+                    qty = float(quoted_qty) if quoted_qty is not None and float(quoted_qty) > 0 else req_qty
+                    return unit_price * qty
+                except (ValueError, TypeError):
+                    pass
+        return float("inf")
+
+    req_qty = float(req.quantity or 1.0)
     for entry in vendor_map.values():
         entry["history"].sort(key=lambda l: l.negotiation_version, reverse=True)
+        entry["total_price"] = get_entry_total_price(entry, req_qty)
 
+    # Sort vendors by total price ascending (companies with least total price first).
+    # Inf / missing prices are placed at the end; secondary sort by submission date desc.
     vendor_entries = sorted(
         vendor_map.values(),
-        key=lambda e: latest_submitted_at(e) or __import__('datetime').datetime.min,
-        reverse=True,
+        key=lambda e: (
+            e["total_price"],
+            -(latest_submitted_at(e).timestamp() if latest_submitted_at(e) else 0),
+        ),
     )
+
+    valid_prices = [e["total_price"] for e in vendor_entries if e["total_price"] < float("inf")]
+    lowest_price = min(valid_prices) if valid_prices else None
+
+    for idx, entry in enumerate(vendor_entries):
+        entry["rank"] = idx + 1
+        tp = entry["total_price"]
+        if lowest_price is not None and tp < float("inf"):
+            entry["is_lowest"] = (tp == lowest_price)
+            delta = tp - lowest_price
+            entry["delta_price"] = delta
+            entry["delta_percent"] = (delta / lowest_price * 100) if lowest_price > 0 else 0
+        else:
+            entry["is_lowest"] = False
+            entry["delta_price"] = None
+            entry["delta_percent"] = None
 
     # Flat list of active links (for the shortlist matrix, backward-compat)
     active_links = [e["active"] for e in vendor_entries]

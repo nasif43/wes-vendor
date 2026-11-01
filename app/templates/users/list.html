@@ -77,6 +77,7 @@
                             class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition">
                         <option value="procurement" selected>Procurement Officer</option>
                         <option value="qc_receiver">QC &amp; Delivery Receiver</option>
+                        <option value="operations_manager">Operations Manager (All Mgmt Rights, No Settings/Audit/Users)</option>
                         <option value="management">Management Executive</option>
                         <option value="admin">System Administrator</option>
                     </select>
@@ -126,12 +127,32 @@
         <div class="overflow-x-auto">
             <table class="w-full text-left border-collapse min-w-[950px]">
                 <thead>
-                    <tr class="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                    <tr class="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                         <th class="py-3.5 px-4">Employee &amp; Credentials</th>
-                        <th class="py-3.5 px-3 text-center">👁️ All Orders</th>
-                        <th class="py-3.5 px-3 text-center">📄 Quotations</th>
-                        <th class="py-3.5 px-3 text-center">🚚 QC &amp; Delivery</th>
-                        <th class="py-3.5 px-3 text-center">🔒 Management</th>
+                        <th class="py-3.5 px-3 text-center cursor-help group" title="All Orders Permission: Allows user to view, monitor, and search ALL requisitions and work orders company-wide, not just those they created.">
+                            <span class="inline-flex items-center gap-1 border-b border-dotted border-slate-400">
+                                👁️ All Orders
+                                <svg class="w-3 h-3 text-slate-400 group-hover:text-brand-600 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            </span>
+                        </th>
+                        <th class="py-3.5 px-3 text-center cursor-help group" title="Quotation Pricing Permission: Allows user to inspect supplier quotations, item rates, pricing breakdowns, and uploaded quotation documents (bypasses blind procurement restriction).">
+                            <span class="inline-flex items-center gap-1 border-b border-dotted border-slate-400">
+                                📄 Quotations
+                                <svg class="w-3 h-3 text-slate-400 group-hover:text-brand-600 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            </span>
+                        </th>
+                        <th class="py-3.5 px-3 text-center cursor-help group" title="QC & Delivery Rights: Grants authority to inspect incoming shipments, record defect counts and reasons, complete QC approval, and finalize invoices.">
+                            <span class="inline-flex items-center gap-1 border-b border-dotted border-slate-400">
+                                🚚 QC &amp; Delivery
+                                <svg class="w-3 h-3 text-slate-400 group-hover:text-brand-600 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            </span>
+                        </th>
+                        <th class="py-3.5 px-3 text-center cursor-help group" title="Executive Management Rights: Grants authority to shortlist suppliers, select award winners, issue revised negotiation rounds, and cancel requisitions. Full Management also has Settings & Audit access.">
+                            <span class="inline-flex items-center gap-1 border-b border-dotted border-slate-400">
+                                🔒 Management
+                                <svg class="w-3 h-3 text-slate-400 group-hover:text-brand-600 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            </span>
+                        </th>
                         <th class="py-3.5 px-4 text-right">Actions</th>
                     </tr>
                 </thead>
@@ -161,6 +182,7 @@
                                         <select name="role" class="text-[11px] font-semibold py-1 px-2 rounded-lg bg-slate-100 border border-slate-200 text-slate-800 focus:outline-none focus:ring-1 focus:ring-brand-500">
                                             <option value="procurement" {% if role_str == 'procurement' %}selected{% endif %}>Procurement</option>
                                             <option value="qc_receiver" {% if role_str == 'qc_receiver' %}selected{% endif %}>QC Receiver</option>
+                                            <option value="operations_manager" {% if role_str == 'operations_manager' %}selected{% endif %}>Operations Manager (No Settings/Audit/Users)</option>
                                             <option value="management" {% if role_str == 'management' %}selected{% endif %}>Management</option>
                                             <option value="admin" {% if role_str == 'admin' %}selected{% endif %}>Admin</option>
                                         </select>
@@ -404,6 +426,11 @@ function applyRoleDefaults(role) {
         viewQuotes.checked = true;
         doQc.checked = true;
         isMgmt.checked = true;
+    } else if (role === 'operations_manager') {
+        viewAll.checked = true;
+        viewQuotes.checked = true;
+        doQc.checked = true;
+        isMgmt.checked = false; // Has management authority via role, but excluded from system settings/users/audit
     } else if (role === 'qc_receiver') {
         viewAll.checked = true;
         viewQuotes.checked = false;

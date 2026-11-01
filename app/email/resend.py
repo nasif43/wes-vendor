@@ -141,22 +141,81 @@ async def send_batch(params: list[dict]) -> bool:
 # Email builders — all pull CC from DB via get_cc_emails()
 # ──────────────────────────────────────────────────────────────────────────────
 
+def _format_supplier_salutation(
+    vendor_name: str,
+    company_name: str | None = None,
+    contact_person: str | None = None,
+) -> str:
+    """Format salutation as: To [supplier name] from [supplier organisation name in bold]."""
+    comp = (company_name or vendor_name or "").strip()
+    contact = (contact_person or "").strip()
+    if contact and comp and contact.lower() != comp.lower():
+        return f"To {contact} from <strong>{comp}</strong>,"
+    elif comp:
+        return f"To <strong>{comp}</strong>,"
+    elif contact:
+        return f"To <strong>{contact}</strong>,"
+    return "To Valued Supplier,"
+
+
+def _format_recipient_cc_box(
+    to: str,
+    vendor_name: str,
+    company_name: str | None = None,
+    contact_person: str | None = None,
+) -> str:
+    """Explicitly show management CC who was the supplier and which email address received it."""
+    comp = (company_name or vendor_name or "").strip()
+    contact = (contact_person or "").strip()
+    contact_str = f"{contact} &lt;{to}&gt;" if contact else f"&lt;{to}&gt;"
+    return f"""
+    <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:10px 14px; margin-bottom:16px; font-size:12px; color:#475569; line-height:1.5;">
+      <span style="font-size:10px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:2px;">Dispatched To Supplier:</span>
+      <strong>To:</strong> {contact_str}<br>
+      <strong>Organization:</strong> <strong>{comp}</strong>
+    </div>
+    """
+
+
+def _email_footer() -> str:
+    return """
+    <p style="margin-top:24px; color:#334155; line-height:1.6; font-size:13px;">
+    Regards,<br>
+    <strong>Wener Trading Company</strong>
+    </p>
+    """
+
+
 async def build_vendor_invitation(
-    to: str, vendor_name: str, requisition_title: str, quote_url: str, pdf_bytes: bytes | None = None
+    to: str,
+    vendor_name: str,
+    requisition_title: str,
+    quote_url: str,
+    pdf_bytes: bytes | None = None,
+    company_name: str | None = None,
+    contact_person: str | None = None,
+    requisition_ref: str = "",
 ) -> dict:
     cc = await get_cc_emails()
+    salutation = _format_supplier_salutation(vendor_name, company_name, contact_person)
+    cc_box = _format_recipient_cc_box(to, vendor_name, company_name, contact_person) if cc else ""
+    footer = _email_footer()
+    prefix = f"[{requisition_ref}] " if requisition_ref else ""
+
     html = f"""
+    {cc_box}
     <h2>Quotation Request</h2>
-    <p>Dear {vendor_name},</p>
+    <p>{salutation}</p>
     <p>You have been invited to submit a quotation for: <strong>{requisition_title}</strong>.</p>
-    <p>Please review the attached Request for Quotation (RFQ) document.</p>
-    <p><a href="{quote_url}">Click here to submit your quotation online</a></p>
+    <p>Please review the attached Request for Quotation (RFQ) document with specifications.</p>
+    <p><a href="{quote_url}" style="display:inline-block;background:#1d4ed8;color:white;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:600;margin:15px 0;">Click here to submit your quotation online</a></p>
     <p>This link is unique to you. Do not share it.</p>
+    {footer}
     """
     payload = {
         "from": f"Wener Supplier Management <{settings.mail_from}>",
         "to": [to],
-        "subject": f"Quotation Request: {requisition_title}",
+        "subject": f"{prefix}Quotation Request: {requisition_title}",
         "html": html,
     }
     if pdf_bytes:
@@ -165,21 +224,34 @@ async def build_vendor_invitation(
 
 
 async def build_decision_notification(
-    to: str, vendor_name: str, requisition_title: str, approved: bool | None
+    to: str,
+    vendor_name: str,
+    requisition_title: str,
+    approved: bool | None,
+    company_name: str | None = None,
+    contact_person: str | None = None,
+    requisition_ref: str = "",
 ) -> dict | None:
+    prefix = f"[{requisition_ref}] " if requisition_ref else ""
+    salutation = _format_supplier_salutation(vendor_name, company_name, contact_person)
+    cc_box = _format_recipient_cc_box(to, vendor_name, company_name, contact_person)
+    footer = _email_footer()
+
     if approved is True:
-        subject = f"Congratulations! Your quote for {requisition_title} was accepted"
+        subject = f"{prefix}Congratulations! Your quote for {requisition_title} was accepted"
         body = (
-            f"Dear {vendor_name},<p>Your quotation for "
+            f"{cc_box}<p>{salutation}</p><p>Your quotation for "
             f"<strong>{requisition_title}</strong> has been accepted. "
-            f"We will be in touch shortly with next steps.</p>"
+            f"We will be in touch shortly with official next steps.</p>"
+            f"{footer}"
         )
     elif approved is False:
-        subject = f"Update on your quote for {requisition_title}"
+        subject = f"{prefix}Update on your quote for {requisition_title}"
         body = (
-            f"Dear {vendor_name},<p>Thank you for your quotation for "
+            f"{cc_box}<p>{salutation}</p><p>Thank you for your quotation for "
             f"<strong>{requisition_title}</strong>. Unfortunately, "
             f"we have decided to go with another vendor this time.</p>"
+            f"{footer}"
         )
     else:
         return None
@@ -201,8 +273,12 @@ async def build_submission_notification(
     pdf_bytes: bytes | None = None,
     is_blind: bool = False,
     compare_url: str | None = None,
+    requisition_ref: str = "",
 ) -> list[dict]:
     cc = await get_cc_emails()
+    prefix = f"[{requisition_ref}] " if requisition_ref else ""
+    footer = _email_footer()
+
     compare_block = ""
     if compare_url:
         compare_block = f"""
@@ -218,6 +294,7 @@ async def build_submission_notification(
     <p>Supplier <strong>{vendor_name}</strong> has submitted a quotation for your requisition: <strong>{requisition_title}</strong>.</p>
     {compare_block}
     <p><a href="{view_url}" style="font-size:13px;color:#2563eb;">View this quotation details in the portal &rarr;</a></p>
+    {footer}
     """
     
     payloads = []
@@ -226,7 +303,7 @@ async def build_submission_notification(
     to_payload = {
         "from": f"Wener Supplier Management <{settings.mail_from}>",
         "to": [to],
-        "subject": f"{requisition_title} - {vendor_name}",
+        "subject": f"{prefix}{requisition_title} - {vendor_name}",
         "html": html,
     }
     
@@ -241,13 +318,18 @@ async def build_submission_notification(
         # If blind, do NOT attach CCs to the procurement email
         payloads.append(to_payload)
         
-        # 2. Separate email for CCs (Management) so they get the PDF
+        # 2. Separate email for CCs (Management) so they get the PDF and recipient info
         if cc:
+            cc_box = f"""
+            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:10px 14px; margin-bottom:16px; font-size:12px; color:#475569;">
+              <strong>Submitted By:</strong> <strong>{vendor_name}</strong> &nbsp;|&nbsp; <strong>Requisition:</strong> {requisition_title}
+            </div>
+            """
             cc_payload = {
                 "from": f"Wener Supplier Management <{settings.mail_from}>",
                 "to": cc,
-                "subject": f"Management Copy: {requisition_title} - {vendor_name}",
-                "html": html,
+                "subject": f"{prefix}Management Copy: {requisition_title} - {vendor_name}",
+                "html": f"{cc_box}{html}",
             }
             if pdf_bytes:
                 cc_payload["attachments"] = [{"filename": f"Quotation_{vendor_name.replace(' ', '_')}.pdf", "content": list(pdf_bytes), "content_type": "application/pdf"}]
@@ -257,19 +339,32 @@ async def build_submission_notification(
 
 
 async def build_submission_confirmation(
-    to: str, vendor_name: str, requisition_title: str, pdf_bytes: bytes | None = None
+    to: str,
+    vendor_name: str,
+    requisition_title: str,
+    pdf_bytes: bytes | None = None,
+    company_name: str | None = None,
+    contact_person: str | None = None,
+    requisition_ref: str = "",
 ) -> dict:
     cc = await get_cc_emails()
+    salutation = _format_supplier_salutation(vendor_name, company_name, contact_person)
+    cc_box = _format_recipient_cc_box(to, vendor_name, company_name, contact_person) if cc else ""
+    footer = _email_footer()
+    prefix = f"[{requisition_ref}] " if requisition_ref else ""
+
     html = f"""
+    {cc_box}
     <h2>Quotation Received</h2>
-    <p>Dear {vendor_name},</p>
+    <p>{salutation}</p>
     <p>Thank you for submitting your quotation for <strong>{requisition_title}</strong>. We have received it successfully and will review it shortly.</p>
     <p>Attached is a copy of your submitted quotation for your records.</p>
+    {footer}
     """
     payload = {
         "from": f"Wener Supplier Management <{settings.mail_from}>",
         "to": [to],
-        "subject": f"Quotation Received: {requisition_title}",
+        "subject": f"{prefix}Quotation Received: {requisition_title}",
         "html": html,
     }
     if pdf_bytes:
@@ -287,23 +382,33 @@ async def build_work_order_email(
     requisition_title: str,
     pdf_bytes: bytes,
     work_order_ref: str = "",
+    company_name: str | None = None,
+    contact_person: str | None = None,
+    requisition_ref: str = "",
 ) -> dict:
     """Work order email with PDF attachment sent to winning supplier + management CC."""
     cc = await get_cc_emails()
+    salutation = _format_supplier_salutation(supplier_name, company_name, contact_person)
+    cc_box = _format_recipient_cc_box(to, supplier_name, company_name, contact_person) if cc else ""
+    footer = _email_footer()
+    prefix = f"[{requisition_ref or work_order_ref}] " if (requisition_ref or work_order_ref) else ""
+
     html = f"""
+    {cc_box}
     <h2>Work Order Issued</h2>
-    <p>Dear {supplier_name},</p>
+    <p>{salutation}</p>
     <p>Please find attached the official Work Order / Purchase Order for
     <strong>{requisition_title}</strong>.</p>
     <p>Kindly proceed with the delivery of the requested items as per the agreed
     specifications and timeline.</p>
     {f'<p>Work Order Reference: <strong>{work_order_ref}</strong></p>' if work_order_ref else ''}
     <p>If you have any questions regarding this order, please contact us directly.</p>
+    {footer}
     """
     payload = {
         "from": f"Wener Supplier Management <{settings.mail_from}>",
         "to": [to],
-        "subject": f"Work Order: {requisition_title}",
+        "subject": f"{prefix}Work Order: {requisition_title}",
         "html": html,
         "attachments": [{
             "filename": f"WorkOrder_{work_order_ref or 'ref'}.pdf",
@@ -320,10 +425,16 @@ async def build_invoice_email(
     invoice_number: str,
     grand_total: float,
     pdf_bytes: bytes,
+    requisition_ref: str = "",
 ) -> dict:
     """Invoice email with PDF attachment sent to management CC on invoice finalization."""
     cc = await get_cc_emails()
+    prefix = f"[{requisition_ref}] " if requisition_ref else ""
+    cc_box = _format_recipient_cc_box(to, supplier_name) if cc else ""
+    footer = _email_footer()
+
     html = f"""
+    {cc_box}
     <h2>Invoice Generated</h2>
     <p>The invoice for requisition <strong>{requisition_title}</strong> has been
     generated and finalized.</p>
@@ -337,11 +448,12 @@ async def build_invoice_email(
     </table>
     <p style="font-size: 12px; color: #888;">This invoice reflects accepted quantities only.
     Rejected items have been excluded from the total.</p>
+    {footer}
     """
     payload = {
         "from": f"Wener Supplier Management <{settings.mail_from}>",
         "to": [to],
-        "subject": f"Invoice #{invoice_number} — {requisition_title} (BDT {grand_total:.2f})",
+        "subject": f"{prefix}Invoice #{invoice_number} — {requisition_title} (BDT {grand_total:.2f})",
         "html": html,
         "attachments": [{
             "filename": f"Invoice_{invoice_number}.pdf",
@@ -356,16 +468,25 @@ async def build_negotiation_invitation(
     supplier_name: str,
     requisition_title: str,
     quote_url: str,
-    pdf_bytes: bytes | None = None
+    pdf_bytes: bytes | None = None,
+    company_name: str | None = None,
+    contact_person: str | None = None,
+    requisition_ref: str = "",
 ) -> dict:
     """v2 negotiation invitation — clearly labeled as a revision request.
     
     Sent to shortlisted suppliers when management starts the negotiation round.
     """
     cc = await get_cc_emails()
+    salutation = _format_supplier_salutation(supplier_name, company_name, contact_person)
+    cc_box = _format_recipient_cc_box(to, supplier_name, company_name, contact_person) if cc else ""
+    footer = _email_footer()
+    prefix = f"[{requisition_ref}] " if requisition_ref else ""
+
     html = f"""
+    {cc_box}
     <h2>Revised Quotation Request (Round 2)</h2>
-    <p>Dear {supplier_name},</p>
+    <p>{salutation}</p>
     <p>You have been shortlisted for the next round of evaluation for:
     <strong>{requisition_title}</strong>.</p>
     <p>We invite you to submit a <strong>revised quotation</strong> for the specific
@@ -374,13 +495,12 @@ async def build_negotiation_invitation(
     padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:600;
     margin:20px 0;">Submit Revised Quotation</a></p>
     <p>This link is unique to you. Do not share it.</p>
-    <hr>
-    <p style="font-size: 12px; color: #666;">This is an automated system notification.</p>
+    {footer}
     """
     payload = {
         "from": f"Wener Supplier Management <{settings.mail_from}>",
         "to": [to],
-        "subject": f"Revised Quotation Request (Round 2): {requisition_title}",
+        "subject": f"{prefix}Revised Quotation Request (Round 2): {requisition_title}",
         "html": html,
     }
     if pdf_bytes:
@@ -398,7 +518,10 @@ async def build_negotiation_procurement_notification(
 ) -> dict:
     """Notify the procurement officer that negotiation requests have been dispatched to specific suppliers."""
     cc = await get_cc_emails()
+    prefix = f"[{requisition_ref}] " if requisition_ref else ""
     suppliers_list_html = "".join(f"<li><strong>{s}</strong></li>" for s in contacted_suppliers)
+    footer = _email_footer()
+
     html = f"""
     <h2>Negotiation Started: {requisition_ref} — {requisition_title}</h2>
     <p>Dear {procurement_officer_name},</p>
@@ -411,13 +534,12 @@ async def build_negotiation_procurement_notification(
     <p><a href="{requisition_url}" style="display:inline-block;background:#2563eb;color:white;
     padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:600;
     margin:15px 0;">View Requisition &amp; Quotation Links</a></p>
-    <hr>
-    <p style="font-size: 12px; color: #666;">This is an automated system notification.</p>
+    {footer}
     """
     return _apply_cc({
         "from": f"Wener Supplier Management <{settings.mail_from}>",
         "to": [to],
-        "subject": f"Negotiation Started: {requisition_ref} ({requisition_title})",
+        "subject": f"{prefix}Negotiation Started: {requisition_ref} ({requisition_title})",
         "html": html,
     }, cc)
 
@@ -426,22 +548,32 @@ async def build_rejection_notification(
     to: str,
     supplier_name: str,
     requisition_title: str,
+    company_name: str | None = None,
+    contact_person: str | None = None,
+    requisition_ref: str = "",
 ) -> dict:
     """Rejection notification sent to non-shortlisted suppliers after negotiation starts."""
     cc = await get_cc_emails()
+    prefix = f"[{requisition_ref}] " if requisition_ref else ""
+    salutation = _format_supplier_salutation(supplier_name, company_name, contact_person)
+    cc_box = _format_recipient_cc_box(to, supplier_name, company_name, contact_person) if cc else ""
+    footer = _email_footer()
+
     html = f"""
+    {cc_box}
     <h2>Update on Your Quotation</h2>
-    <p>Dear {supplier_name},</p>
+    <p>{salutation}</p>
     <p>Thank you for your quotation for <strong>{requisition_title}</strong>.</p>
     <p>After careful evaluation, we regret to inform you that we will not be
     proceeding with your quotation for this particular requisition.</p>
     <p>We appreciate your participation and hope to work with you on future
     opportunities.</p>
+    {footer}
     """
     return _apply_cc({
         "from": f"Wener Supplier Management <{settings.mail_from}>",
         "to": [to],
-        "subject": f"Update on Your Quotation: {requisition_title}",
+        "subject": f"{prefix}Update on Your Quotation: {requisition_title}",
         "html": html,
     }, cc)
 
@@ -450,25 +582,66 @@ async def build_award_notification(
     to: str,
     supplier_name: str,
     requisition_title: str,
+    company_name: str | None = None,
+    contact_person: str | None = None,
+    requisition_ref: str = "",
 ) -> dict:
     """Award notification sent to winning supplier when management selects them.
     
     Informs the winner that they've been selected and to expect a Work Order.
     """
     cc = await get_cc_emails()
+    prefix = f"[{requisition_ref}] " if requisition_ref else ""
+    salutation = _format_supplier_salutation(supplier_name, company_name, contact_person)
+    cc_box = _format_recipient_cc_box(to, supplier_name, company_name, contact_person) if cc else ""
+    footer = _email_footer()
+
     html = f"""
+    {cc_box}
     <h2>Congratulations! Your Quotation Has Been Accepted</h2>
-    <p>Dear {supplier_name},</p>
+    <p>{salutation}</p>
     <p>We are pleased to inform you that your quotation for
     <strong>{requisition_title}</strong> has been accepted.</p>
     <p>You will shortly receive an official <strong>Work Order / Purchase Order</strong>
     with the full details of the items to be supplied.</p>
     <p>Please be prepared to proceed with delivery upon receiving the Work Order.</p>
+    {footer}
     """
     return _apply_cc({
         "from": f"Wener Supplier Management <{settings.mail_from}>",
         "to": [to],
-        "subject": f"Award Notification: {requisition_title}",
+        "subject": f"{prefix}Award Notification: {requisition_title}",
+        "html": html,
+    }, cc)
+
+
+async def build_cancellation_notification(
+    to: str,
+    supplier_name: str,
+    requisition_title: str,
+    company_name: str | None = None,
+    contact_person: str | None = None,
+    requisition_ref: str = "",
+) -> dict:
+    cc = await get_cc_emails()
+    prefix = f"[{requisition_ref}] " if requisition_ref else ""
+    salutation = _format_supplier_salutation(supplier_name, company_name, contact_person)
+    cc_box = _format_recipient_cc_box(to, supplier_name, company_name, contact_person) if cc else ""
+    footer = _email_footer()
+
+    html = f"""
+    {cc_box}
+    <h2>Update: Quotation Request Cancelled</h2>
+    <p>{salutation}</p>
+    <p>This is to inform you that the Request for Quotation (RFQ) for <strong>{requisition_title}</strong> has been cancelled by our management team.</p>
+    <p>If you were preparing a quotation for this request, please do not submit it, as the submission link has been deactivated.</p>
+    <p>We apologize for any inconvenience this may cause and look forward to working with you on future opportunities.</p>
+    {footer}
+    """
+    return _apply_cc({
+        "from": f"Wener Supplier Management <{settings.mail_from}>",
+        "to": [to],
+        "subject": f"{prefix}Update: RFQ Cancelled - {requisition_title}",
         "html": html,
     }, cc)
 

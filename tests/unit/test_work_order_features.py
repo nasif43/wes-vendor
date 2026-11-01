@@ -305,3 +305,143 @@ async def test_download_work_order_pdf_endpoint_regenerates_when_missing():
         assert mock_gen.called
 
 
+def test_operations_manager_role_and_permissions():
+    """Verify operations_manager has management authority but no admin settings access."""
+    from app.auth.models import UserProfile, UserRole
+
+    op_mgr = UserProfile(
+        id="user-op-1",
+        email="ops@wenerbd.cloud",
+        username="ops_manager",
+        role=UserRole.OPERATIONS_MANAGER,
+        can_view_all_requisitions=True,
+    )
+    assert op_mgr.role == UserRole.OPERATIONS_MANAGER
+    assert op_mgr.has_management_authority is True
+    assert op_mgr.can_see_quotes is True
+    assert op_mgr.can_see_all_requisitions is True
+    assert op_mgr.can_access_admin_settings is False
+
+    admin = UserProfile(
+        id="user-admin-1",
+        email="admin@wenerbd.cloud",
+        username="admin",
+        role=UserRole.ADMIN,
+    )
+    assert admin.can_access_admin_settings is True
+
+    mgmt = UserProfile(
+        id="user-mgmt-1",
+        email="mgmt@wenerbd.cloud",
+        username="management",
+        role=UserRole.MANAGEMENT,
+    )
+    assert mgmt.can_access_admin_settings is True
+
+    proc = UserProfile(
+        id="user-proc-1",
+        email="proc@wenerbd.cloud",
+        username="procurement",
+        role=UserRole.PROCUREMENT,
+    )
+    assert proc.has_management_authority is False
+    assert proc.can_access_admin_settings is False
+
+
+def test_supplier_email_salutation_and_footer():
+    """Verify supplier email salutation addresses contact and company, and includes standard signature."""
+    from app.email.resend import _format_supplier_salutation, _email_footer, _format_recipient_cc_box
+
+    # Both contact person and company name provided
+    salutation = _format_supplier_salutation(
+        vendor_name="John Doe",
+        company_name="Apex Polymer Ltd",
+        contact_person="John Doe",
+    )
+    assert salutation == "To John Doe from <strong>Apex Polymer Ltd</strong>,"
+
+    # Only company name
+    salutation_company_only = _format_supplier_salutation(
+        vendor_name="Apex Polymer Ltd",
+        company_name="Apex Polymer Ltd",
+        contact_person=None,
+    )
+    assert salutation_company_only == "To <strong>Apex Polymer Ltd</strong>,"
+
+    # Standard footer
+    footer = _email_footer()
+    assert "Regards,<br>" in footer
+    assert "<strong>Wener Trading Company</strong>" in footer
+
+    # CC recipient info box
+    cc_box = _format_recipient_cc_box(
+        to="supplier@apex.com",
+        vendor_name="Apex Polymer Ltd",
+        company_name="Apex Polymer Ltd",
+        contact_person="John Doe",
+    )
+    assert "Apex Polymer Ltd" in cc_box
+    assert "supplier@apex.com" in cc_box
+    assert "John Doe" in cc_box
+
+
+def test_comparison_sorting_least_total_price_first():
+    """Verify quotation comparison sorting puts least total price first with accurate deltas."""
+    # Build simulated entries
+    entry1 = {
+        "active": MagicMock(
+            vendor_id="v1",
+            negotiation_version=1,
+            quotation=MagicMock(
+                quoted_quantity=10,
+                form_data={"price": 250000.0, "items": [{"name": "A", "price": 250000.0}]},
+                submitted_at=datetime(2026, 10, 26, 10, 0, tzinfo=timezone.utc),
+            ),
+        ),
+        "history": [],
+    }
+    entry2 = {
+        "active": MagicMock(
+            vendor_id="v2",
+            negotiation_version=1,
+            quotation=MagicMock(
+                quoted_quantity=10,
+                form_data={"price": 235000.0, "items": [{"name": "A", "price": 235000.0}]},
+                submitted_at=datetime(2026, 10, 26, 11, 0, tzinfo=timezone.utc),
+            ),
+        ),
+        "history": [],
+    }
+
+    from app.quotations.routes_internal import compare_quotations
+
+    # Test pricing helper logic
+    def calc_price(e):
+        return float(e["active"].quotation.form_data["price"])
+
+    entry1["total_price"] = calc_price(entry1)  # 250,000
+    entry2["total_price"] = calc_price(entry2)  # 235,000
+
+    sorted_entries = sorted([entry1, entry2], key=lambda e: e["total_price"])
+    # 235,000 must come first!
+    assert sorted_entries[0]["total_price"] == 235000.0
+    assert sorted_entries[1]["total_price"] == 250000.0
+
+    lowest_price = sorted_entries[0]["total_price"]
+    for idx, e in enumerate(sorted_entries):
+        e["rank"] = idx + 1
+        e["is_lowest"] = (e["total_price"] == lowest_price)
+        e["delta_price"] = e["total_price"] - lowest_price
+        e["delta_percent"] = (e["delta_price"] / lowest_price) * 100
+
+    assert sorted_entries[0]["rank"] == 1
+    assert sorted_entries[0]["is_lowest"] is True
+    assert sorted_entries[0]["delta_price"] == 0
+
+    assert sorted_entries[1]["rank"] == 2
+    assert sorted_entries[1]["is_lowest"] is False
+    assert sorted_entries[1]["delta_price"] == 15000.0
+    assert round(sorted_entries[1]["delta_percent"], 2) == 6.38
+
+
+

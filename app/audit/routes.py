@@ -21,7 +21,7 @@ async def list_audit_logs(
 ):
     from app.main import templates
 
-    if user.role not in ALLOWED_ROLES:
+    if not user.can_access_admin_settings:
         return RedirectResponse(url="/", status_code=303)
 
     result = await db.execute(

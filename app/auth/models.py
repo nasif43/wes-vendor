@@ -11,6 +11,7 @@ from app.database import Base
 class UserRole(enum.StrEnum):
     PROCUREMENT = "procurement"
     QC_RECEIVER = "qc_receiver"
+    OPERATIONS_MANAGER = "operations_manager"
     MANAGEMENT = "management"
     ADMIN = "admin"
 
@@ -22,6 +23,8 @@ class UserRole(enum.StrEnum):
                 return cls.PROCUREMENT
             if val_lower in ("receiver", "qc", "receiver_and_qc", "qc_and_receiver"):
                 return cls.QC_RECEIVER
+            if val_lower in ("operations_manager", "operation_manager", "manager", "approver", "op_manager"):
+                return cls.OPERATIONS_MANAGER
             for member in cls:
                 if member.value.lower() == val_lower or member.name.lower() == val_lower:
                     return member
@@ -71,25 +74,35 @@ class UserProfile(Base):
     @property
     def can_create_requisitions(self) -> bool:
         role_str = str(self.role.value) if hasattr(self.role, "value") else str(self.role or "")
-        return bool(role_str in ("procurement", "management", "admin") or self.is_management)
+        return bool(role_str in ("procurement", "management", "admin", "operations_manager") or self.is_management)
 
 
     @property
     def can_see_quotes(self) -> bool:
         role_str = str(self.role.value) if hasattr(self.role, "value") else str(self.role or "")
         # Procurement by default cannot see quotation details/pricing unless explicitly granted can_view_quotations by management
-        return bool(self.can_view_quotations or self.is_management or role_str in ("management", "admin"))
+        return bool(self.can_view_quotations or self.is_management or role_str in ("management", "admin", "operations_manager"))
 
 
     @property
     def can_perform_qc(self) -> bool:
         role_str = str(self.role.value) if hasattr(self.role, "value") else str(self.role or "")
-        return bool(self.can_do_qc or self.is_management or role_str in ("qc_receiver", "management", "admin"))
+        return bool(self.can_do_qc or self.is_management or role_str in ("qc_receiver", "management", "admin", "operations_manager"))
 
     @property
     def has_management_authority(self) -> bool:
         role_str = str(self.role.value) if hasattr(self.role, "value") else str(self.role or "")
-        return bool(self.is_management or role_str in ("management", "admin"))
+        return bool(self.is_management or role_str in ("management", "admin", "operations_manager"))
+
+    @property
+    def can_access_admin_settings(self) -> bool:
+        """Full system administrators and management executives have access to
+        Activity Audit Log, User Administration, and System Settings.
+        Operations Managers have all operational & decision privileges MINUS these admin areas."""
+        role_str = str(self.role.value) if hasattr(self.role, "value") else str(self.role or "")
+        if role_str == "operations_manager":
+            return False
+        return bool(role_str in ("admin", "management") or self.is_management)
 
     @property
     def can_see_all_requisitions(self) -> bool:

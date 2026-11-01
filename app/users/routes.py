@@ -19,7 +19,7 @@ async def list_users(
 ):
     from app.main import templates
 
-    if not user.has_management_authority:
+    if not user.can_access_admin_settings:
         await db.commit()
         return RedirectResponse(url="/users?error=Permission+denied", status_code=303)
 
@@ -49,7 +49,7 @@ async def create_user(
     db: AsyncSession = Depends(get_db),
 ):
     from sqlalchemy import func
-    if not user.has_management_authority and user.role != UserRole.ADMIN:
+    if not user.can_access_admin_settings:
         await db.commit()
         return RedirectResponse(url="/users?error=Permission+denied", status_code=303)
 
@@ -138,7 +138,7 @@ async def edit_user_profile(
 ):
     from sqlalchemy import func
 
-    if not user.has_management_authority and user.role != UserRole.ADMIN:
+    if not user.can_access_admin_settings:
         await db.commit()
         return RedirectResponse(url="/users?error=Permission+denied", status_code=303)
 
@@ -222,7 +222,7 @@ async def update_user_permissions(
     user: UserProfile = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if not user.has_management_authority:
+    if not user.can_access_admin_settings:
         await db.commit()
         return RedirectResponse(url="/users?error=Permission+denied", status_code=303)
 
@@ -295,7 +295,7 @@ async def toggle_user_active(
     user: UserProfile = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if not user.has_management_authority and user.role != UserRole.ADMIN:
+    if not user.can_access_admin_settings:
         await db.commit()
         return RedirectResponse(url="/users?error=Permission+denied", status_code=303)
 
@@ -338,7 +338,7 @@ async def reset_user_password(
     user: UserProfile = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if not user.has_management_authority and user.role != UserRole.ADMIN:
+    if not user.can_access_admin_settings:
         await db.commit()
         return RedirectResponse(url="/users?error=Permission+denied", status_code=303)
 
@@ -382,7 +382,7 @@ async def delete_user(
     from sqlalchemy import delete
     from app.audit.models import AuditLog
 
-    if not user.has_management_authority and user.role != UserRole.ADMIN:
+    if not user.can_access_admin_settings:
         await db.commit()
         return RedirectResponse(url="/users?error=Permission+denied", status_code=303)
 
