@@ -114,7 +114,7 @@ async def init_db() -> None:
                 ("image_url", "VARCHAR(512)"),
             ]:
                 if not col_exists("vendors", col):
-                    await conn.execute(text(f"ALTER TABLE vendors ADD COLUMN {col} {defn}"))
+                    await conn.execute(text(f"ALTER TABLE vendors ADD COLUMN IF NOT EXISTS {col} {defn}"))
 
             # ── user_profiles ────────────────────────────────────────────────────────
             for col, defn in [
@@ -129,7 +129,7 @@ async def init_db() -> None:
                 ("password_hash", "VARCHAR(255)"),
             ]:
                 if not col_exists("user_profiles", col):
-                    await conn.execute(text(f"ALTER TABLE user_profiles ADD COLUMN {col} {defn}"))
+                    await conn.execute(text(f"ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS {col} {defn}"))
 
             try:
                 await conn.execute(text("UPDATE user_profiles SET username = split_part(email, '@', 1) WHERE username IS NULL"))
@@ -200,7 +200,7 @@ async def init_db() -> None:
                 ("items", "JSONB"),
             ]:
                 if not col_exists("requisitions", col):
-                    await conn.execute(text(f"ALTER TABLE requisitions ADD COLUMN {col} {defn}"))
+                    await conn.execute(text(f"ALTER TABLE requisitions ADD COLUMN IF NOT EXISTS {col} {defn}"))
 
             # ── requisition_vendors ──────────────────────────────────────────────────
             for col, defn in [
@@ -209,7 +209,7 @@ async def init_db() -> None:
                 ("negotiation_version", "INTEGER DEFAULT 1"),
             ]:
                 if not col_exists("requisition_vendors", col):
-                    await conn.execute(text(f"ALTER TABLE requisition_vendors ADD COLUMN {col} {defn}"))
+                    await conn.execute(text(f"ALTER TABLE requisition_vendors ADD COLUMN IF NOT EXISTS {col} {defn}"))
 
             # ── quotations ───────────────────────────────────────────────────────────
             for col, defn in [
@@ -217,7 +217,7 @@ async def init_db() -> None:
                 ("quoted_quantity", "NUMERIC"),
             ]:
                 if not col_exists("quotations", col):
-                    await conn.execute(text(f"ALTER TABLE quotations ADD COLUMN {col} {defn}"))
+                    await conn.execute(text(f"ALTER TABLE quotations ADD COLUMN IF NOT EXISTS {col} {defn}"))
 
             # ── decisions ────────────────────────────────────────────────────────────
             for col, defn in [
@@ -225,7 +225,7 @@ async def init_db() -> None:
                 ("work_order_url", "VARCHAR(512)"),
             ]:
                 if not col_exists("decisions", col):
-                    await conn.execute(text(f"ALTER TABLE decisions ADD COLUMN {col} {defn}"))
+                    await conn.execute(text(f"ALTER TABLE decisions ADD COLUMN IF NOT EXISTS {col} {defn}"))
 
             # ── work_orders ──────────────────────────────────────────────────────────
             for col, defn in [
@@ -235,7 +235,7 @@ async def init_db() -> None:
                 ("delivery_completed_at", "TIMESTAMP WITH TIME ZONE"),
             ]:
                 if not col_exists("work_orders", col):
-                    await conn.execute(text(f"ALTER TABLE work_orders ADD COLUMN {col} {defn}"))
+                    await conn.execute(text(f"ALTER TABLE work_orders ADD COLUMN IF NOT EXISTS {col} {defn}"))
 
             # ── Indexes — CREATE INDEX IF NOT EXISTS (idempotent, one-time cost) ─────
             for idx_sql in [
