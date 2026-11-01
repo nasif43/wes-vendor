@@ -1,14 +1,43 @@
 {% extends "base.html" %}
 {% block title %}Requisitions &amp; Pipeline — WES Supplier Portal{% endblock %}
+{% block container_class %}w-full max-w-[1750px] mx-auto px-4 sm:px-6 lg:px-8 py-6{% endblock %}
 {% block nav_desktop_req_cls %}text-brand-600 font-semibold bg-brand-50{% endblock %}
 {% block nav_requisitions %}tab-active{% endblock %}
 {% block nav_requisitions_icon %}text-brand-600{% endblock %}
 {% block nav_requisitions_label %}text-brand-600 font-semibold{% endblock %}
 {% block content %}
-<div class="slide-up max-w-7xl mx-auto pb-8">
+<style>
+@media print {
+    @page { size: A4 landscape; margin: 10mm 12mm; }
+    body { background: white !important; color: black !important; font-size: 8.5pt !important; }
+    .no-print, header, nav, footer, #mobile-nav, .tab-bar { display: none !important; }
+    .print-only { display: block !important; }
+    table { width: 100% !important; border-collapse: collapse !important; border: 1.5px solid #0f172a !important; }
+    th { background-color: #f1f5f9 !important; border: 1px solid #334155 !important; padding: 5px 6px !important; }
+    td { border: 1px solid #64748b !important; padding: 5px 6px !important; }
+}
+@media screen {
+    .print-only { display: none !important; }
+}
+</style>
+
+<div class="slide-up w-full pb-8">
+
+    <!-- DEDICATED PRINT HEADER -->
+    <div class="print-only mb-4 border-b-2 border-slate-900 pb-3">
+        <div class="flex justify-between items-center">
+            <div>
+                <h1 class="text-xl font-black text-slate-900 uppercase">WENER TRADING COMPANY</h1>
+                <p class="text-xs text-slate-600 font-semibold">Requisition &amp; Procurement Register (All Orders)</p>
+            </div>
+            <div class="text-right text-xs font-mono text-slate-600">
+                Printed: {{ bst_now | format_datetime_bst if bst_now else 'BST' }}
+            </div>
+        </div>
+    </div>
 
     <!-- HEADER & CONTROLS BAR -->
-    <div class="flex flex-col gap-4 mb-6">
+    <div class="no-print flex flex-col gap-4 mb-6">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
                 <h1 class="text-xl font-bold text-slate-900 flex items-center gap-2">
@@ -19,7 +48,13 @@
                 </p>
             </div>
 
-            <div class="flex items-center gap-3">
+            <div class="flex items-center gap-2.5">
+                <button type="button" onclick="window.print()"
+                        class="inline-flex items-center gap-1.5 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 px-3.5 py-2 rounded-xl text-xs font-bold transition shadow-xs active:scale-95">
+                    <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                    🖨️ Print Register (A4)
+                </button>
+
                 <!-- VIEW TOGGLE BUTTONS -->
                 {% if user and (user.is_management or user.role == 'admin') %}
                 <div class="inline-flex p-1 bg-slate-200/80 rounded-xl border border-slate-200">
@@ -77,96 +112,99 @@
         </form>
     </div>
 
-    {% if items %}    <!-- 1. TABLE VIEW CONTAINER -->
-    <div id="view-container-table" class="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100 overflow-hidden shadow-xs">
-        {% for item in items %}
-        {% set req = item.req %}
-        <a href="/requisitions/{{ req.id }}" class="flex flex-col sm:flex-row sm:items-center justify-between p-4 hover:bg-slate-50/80 transition group gap-3">
-            <div class="flex items-center gap-3.5 min-w-0">
-                <div class="w-10 h-10 rounded-xl shrink-0 flex items-center justify-center
-                    {% if item.stage == 'draft' %}bg-slate-100 text-slate-500
-                    {% elif item.stage == 'new' %}bg-sky-50 text-sky-600
-                    {% elif item.stage == 'in_progress' %}bg-amber-50 text-amber-600
-                    {% elif item.stage == 'negotiating' %}bg-orange-50 text-orange-600
-                    {% elif item.stage == 'awarded' %}bg-indigo-50 text-indigo-600
-                    {% elif item.stage in ('work_order_issued', 'submitted') %}bg-purple-50 text-purple-600
-                    {% elif item.stage in ('receiving', 'received') %}bg-teal-50 text-teal-600
-                    {% elif item.stage == 'closed' %}bg-emerald-50 text-emerald-600
-                    {% elif item.stage in ('cancelled', 'rejected') %}bg-rose-50 text-rose-600{% endif %}">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                </div>
-                <div class="min-w-0">
-                    <span class="inline-block font-mono text-[11px] font-bold text-brand-700 bg-brand-50 px-1.5 py-0.5 rounded border border-brand-200/70 mb-0.5 tracking-wide">{{ req.reference_code }}</span>
-                    <div class="font-bold text-sm text-slate-900 group-hover:text-brand-600 transition truncate">{{ req.title }}</div>
-                    <div class="text-xs text-slate-500 truncate mt-0.5">
-                        {{ req.quantity | qty_format }} {{ req.unit or 'units' }}
-                        {% if req.creator %} · By {{ req.creator.full_name }}{% endif %}
-                        {% if item.confirmed_at %} · Confirmed {{ item.confirmed_at | format_date_bst('%b %d') }}{% endif %}
-                    </div>
-                </div>
-            </div>
-
-            <div class="flex items-center gap-3 shrink-0 self-end sm:self-auto">
-                {% if item.qc_done_at %}
-                <span class="text-xs font-semibold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200/60">
-                    QC done on {{ item.qc_done_at | format_date_bst('%b %d, %Y') }}
-                </span>
-                {% elif item.confirmed_at %}
-                <span class="text-xs font-semibold text-purple-700 bg-purple-50 px-2.5 py-1 rounded-lg border border-purple-200/60">
-                    Confirmed on {{ item.confirmed_at | format_date_bst('%b %d, %Y') }}
-                </span>
-                {% endif %}
-
-                {% if item.lead_time_days is not none %}
-                <span class="text-xs font-bold text-purple-700 bg-purple-50 px-2.5 py-1 rounded-lg border border-purple-200/60">
-                    ⏱️ {{ item.lead_time_days }}d lead time
-                </span>
-                {% endif %}
-
-                <span class="text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider
-                    {% if item.stage == 'draft' %}bg-slate-100 text-slate-700 border border-slate-300
-                    {% elif item.stage == 'new' %}bg-sky-100 text-sky-800 border border-sky-300
-                    {% elif item.stage == 'in_progress' %}bg-amber-100 text-amber-800 border border-amber-300
-                    {% elif item.stage == 'negotiating' %}bg-orange-100 text-orange-800 border border-orange-300
-                    {% elif item.stage == 'awarded' %}bg-indigo-100 text-indigo-800 border border-indigo-300
-                    {% elif item.stage in ('work_order_issued', 'submitted') %}bg-purple-100 text-purple-800 border border-purple-300
-                    {% elif item.stage in ('receiving', 'received') %}bg-teal-100 text-teal-800 border border-teal-300
-                    {% elif item.stage == 'closed' %}bg-emerald-100 text-emerald-800 border border-emerald-300
-                    {% elif item.stage in ('cancelled', 'rejected') %}bg-rose-100 text-rose-800 border border-rose-300{% endif %}">
-                    {% if item.stage == 'draft' %}Draft
-                    {% elif item.stage == 'new' %}RFQ / Tender
-                    {% elif item.stage == 'in_progress' %}Quotation
-                    {% elif item.stage == 'negotiating' %}Negotiating (v2)
-                    {% elif item.stage == 'awarded' %}Awarded
-                    {% elif item.stage in ('work_order_issued', 'submitted') %}WO Issued
-                    {% elif item.stage in ('receiving', 'received') %}Receiving
-                    {% elif item.stage == 'closed' %}Closed
-                    {% elif item.stage in ('cancelled', 'rejected') %}Cancelled{% endif %}
-                </span>
-                {% if user and user.can_perform_qc and item.stage in ('submitted', 'received') %}
-                <div class="flex items-center gap-1.5" onclick="event.stopPropagation()">
-                    {% if item.stage == 'submitted' %}
-                    <a href="/requisitions/{{ req.id }}/receive"
-                       class="text-xs font-bold px-2.5 py-1.5 rounded-xl shadow-xs transition active:scale-95 flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white">
-                        🚚 Receive
-                    </a>
-                    <a href="/requisitions/{{ req.id }}/receive?qc=1"
-                       class="text-xs font-bold px-2.5 py-1.5 rounded-xl shadow-xs transition active:scale-95 flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white">
-                        ✅ Do QC
-                    </a>
-                    {% else %}
-                    <a href="/requisitions/{{ req.id }}/receive?qc=1"
-                       class="text-xs font-bold px-3 py-1.5 rounded-xl shadow-xs transition active:scale-95 flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white">
-                        ✅ Do QC
-                    </a>
-                    {% endif %}
-                </div>
-                {% endif %}
-                <svg class="w-4 h-4 text-slate-300 group-hover:translate-x-0.5 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-            </div>
-        </a>
-
-        {% endfor %}
+    {% if items %}
+    <!-- 1. EXCEL TABULAR VIEW CONTAINER -->
+    <div id="view-container-table" class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse min-w-[1050px]" id="excel-requisitions-table">
+                <thead>
+                    <tr class="bg-slate-100 border-b border-slate-200 text-[11px] font-bold text-slate-600 uppercase tracking-wider select-none">
+                        <th class="py-3 px-3 text-center w-12 border-r border-slate-200 bg-slate-200/70">#</th>
+                        <th class="py-3 px-3 w-32 border-r border-slate-200">Ref Code</th>
+                        <th class="py-3 px-4 min-w-[280px] border-r border-slate-200">Requisition / Project</th>
+                        <th class="py-3 px-4 min-w-[240px] border-r border-slate-200">Line Items Summary</th>
+                        <th class="py-3 px-3 text-center w-32 border-r border-slate-200">Total Qty</th>
+                        <th class="py-3 px-3 text-center w-36 border-r border-slate-200">Created (BST)</th>
+                        <th class="py-3 px-3 text-center w-36 border-r border-slate-200">Status</th>
+                        <th class="py-3 px-3 text-center w-32 no-print">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 text-xs">
+                    {% for item in items %}
+                    {% set req = item.req %}
+                    <tr class="hover:bg-blue-50/20 transition group">
+                        <td class="py-3 px-3 text-center font-mono font-bold text-slate-400 bg-slate-50/50 border-r border-slate-200 select-none">
+                            {{ loop.index }}
+                        </td>
+                        <td class="py-3 px-3 border-r border-slate-200 font-mono font-bold text-brand-700 whitespace-nowrap">
+                            <a href="/requisitions/{{ req.id }}" class="hover:underline">
+                                {{ req.reference_code }}
+                            </a>
+                        </td>
+                        <td class="py-3 px-4 border-r border-slate-200">
+                            <a href="/requisitions/{{ req.id }}" class="font-bold text-slate-900 group-hover:text-brand-600 transition block">
+                                {{ req.title }}
+                            </a>
+                            <div class="text-[11px] text-slate-400 mt-0.5">
+                                {% if req.creator %}By {{ req.creator.full_name }}{% endif %}
+                                {% if item.confirmed_at %} · Confirmed {{ item.confirmed_at | format_date_bst('%b %d') }}{% endif %}
+                            </div>
+                        </td>
+                        <td class="py-3 px-4 border-r border-slate-200 text-slate-600">
+                            {% if req.items %}
+                                <div class="font-semibold text-slate-800">{{ req.items|length }} Line Item(s)</div>
+                                <div class="text-[11px] text-slate-400 truncate max-w-[260px]">
+                                    {% for itm in req.items[:2] %}{{ itm.name }}{% if not loop.last %}, {% endif %}{% endfor %}{% if req.items|length > 2 %}...{% endif %}
+                                </div>
+                            {% else %}
+                                <div class="text-slate-700 truncate max-w-[260px]">{{ req.item_description or 'Single line item' }}</div>
+                            {% endif %}
+                        </td>
+                        <td class="py-3 px-3 text-center border-r border-slate-200 font-mono font-bold text-slate-900">
+                            {{ req.quantity | qty_format }} <span class="text-[10px] text-slate-500 font-normal">{{ req.unit or '' }}</span>
+                        </td>
+                        <td class="py-3 px-3 text-center border-r border-slate-200 text-slate-600 text-[11px] whitespace-nowrap">
+                            {{ req.created_at | format_date_bst('%b %d, %Y') }}
+                        </td>
+                        <td class="py-3 px-3 text-center border-r border-slate-200">
+                            <span class="inline-block text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider
+                                {% if item.stage == 'draft' %}bg-slate-100 text-slate-700 border border-slate-300
+                                {% elif item.stage == 'new' %}bg-sky-100 text-sky-800 border border-sky-300
+                                {% elif item.stage == 'in_progress' %}bg-amber-100 text-amber-800 border border-amber-300
+                                {% elif item.stage == 'negotiating' %}bg-orange-100 text-orange-800 border border-orange-300
+                                {% elif item.stage == 'awarded' %}bg-indigo-100 text-indigo-800 border border-indigo-300
+                                {% elif item.stage in ('work_order_issued', 'submitted') %}bg-purple-100 text-purple-800 border border-purple-300
+                                {% elif item.stage in ('receiving', 'received') %}bg-teal-100 text-teal-800 border border-teal-300
+                                {% elif item.stage == 'closed' %}bg-emerald-100 text-emerald-800 border border-emerald-300
+                                {% elif item.stage in ('cancelled', 'rejected') %}bg-rose-100 text-rose-800 border border-rose-300{% endif %}">
+                                {% if item.stage == 'draft' %}Draft
+                                {% elif item.stage == 'new' %}RFQ / Tender
+                                {% elif item.stage == 'in_progress' %}Quotation
+                                {% elif item.stage == 'negotiating' %}Negotiating (v2)
+                                {% elif item.stage == 'awarded' %}Awarded
+                                {% elif item.stage in ('work_order_issued', 'submitted') %}WO Issued
+                                {% elif item.stage in ('receiving', 'received') %}Receiving
+                                {% elif item.stage == 'closed' %}Closed
+                                {% elif item.stage in ('cancelled', 'rejected') %}Cancelled{% endif %}
+                            </span>
+                        </td>
+                        <td class="py-3 px-3 text-center no-print whitespace-nowrap">
+                            <div class="flex items-center justify-center gap-1.5">
+                                <a href="/requisitions/{{ req.id }}" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition">
+                                    Open &rarr;
+                                </a>
+                                {% if user and user.can_perform_qc and item.stage in ('submitted', 'received') %}
+                                <a href="/requisitions/{{ req.id }}/receive?qc=1" class="text-xs font-bold px-2 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition">
+                                    QC
+                                </a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
 
     <!-- 2. KANBAN BOARD CONTAINER -->

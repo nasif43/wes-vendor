@@ -1,470 +1,884 @@
 {% extends "base.html" %}
 {% block title %}{{ req.reference_code }} · {{ req.title }} — WES Supplier Portal{% endblock %}
+{% block container_class %}w-full max-w-[1750px] mx-auto px-4 sm:px-6 lg:px-8 py-6{% endblock %}
 {% block nav_desktop_req_cls %}text-brand-600 font-semibold bg-brand-50{% endblock %}
 {% block nav_requisitions %}tab-active{% endblock %}
 {% block nav_requisitions_icon %}text-brand-600{% endblock %}
 {% block nav_requisitions_label %}text-brand-600 font-semibold{% endblock %}
+
 {% block content %}
 {% set status_str = (req.status.value if req.status.value is defined else req.status|string)|lower %}
 {% set role_str = (user.role.value if user.role.value is defined else user.role|string)|lower if user else '' %}
-<div class="slide-up max-w-lg mx-auto">
+{% set is_editable = status_str in ('draft', 'new', 'in_progress') and (user and (user.is_procurement or user.is_management or user.role == 'admin' or req.created_by == user.id)) %}
 
-    <!-- PAGE HEADER -->
-    <div class="flex items-center gap-3 mb-5">
-        <a href="/requisitions" class="w-9 h-9 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50 transition shadow-sm shrink-0">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
-        </a>
-        <div class="min-w-0 flex-1">
-            <span class="inline-block font-mono text-xs font-bold text-brand-700 bg-brand-50 px-2 py-0.5 rounded border border-brand-200/80 mb-1 tracking-wide">{{ req.reference_code }}</span>
-            <h1 class="text-xl font-bold text-slate-900 truncate">{{ req.title }}</h1>
-            <p class="text-xs text-slate-400 mt-0.5">{{ req.created_at | format_datetime_bst('%b %d, %Y at %I:%M %p BST') }}</p>
+<!-- INLINE STYLES FOR SCREEN & A4 PRINT -->
+<style>
+@media screen {
+    .print-only { display: none !important; }
+}
+
+@media print {
+    @page {
+        size: A4 portrait;
+        margin: 12mm 15mm 15mm 15mm;
+    }
+    body {
+        background: #ffffff !important;
+        color: #000000 !important;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+        font-size: 9pt !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+    .no-print, header, nav, footer, #mobile-nav, .tab-bar {
+        display: none !important;
+    }
+    .print-only {
+        display: block !important;
+    }
+    .overflow-x-auto {
+        overflow: visible !important;
+    }
+    .print-table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+        border: 1.5px solid #0f172a !important;
+        page-break-inside: auto;
+    }
+    .print-table thead {
+        display: table-header-group !important;
+    }
+    .print-table tr {
+        page-break-inside: avoid !important;
+        page-break-after: auto;
+    }
+    .print-table th {
+        background-color: #f1f5f9 !important;
+        color: #0f172a !important;
+        border: 1px solid #334155 !important;
+        padding: 5px 7px !important;
+        font-size: 8.5pt !important;
+        font-weight: 700 !important;
+    }
+    .print-table td {
+        border: 1px solid #64748b !important;
+        padding: 5px 7px !important;
+        font-size: 8.5pt !important;
+        color: #0f172a !important;
+    }
+    .print-table tfoot td {
+        background-color: #f8fafc !important;
+        font-weight: 700 !important;
+        border-top: 1.5px solid #0f172a !important;
+    }
+}
+</style>
+
+<div class="slide-up w-full pb-10">
+
+    <!-- ════════════════════════════════════════════════════════════════════════
+         DEDICATED FORMAL A4 PRINT HEADER (Visible only on @media print)
+         ════════════════════════════════════════════════════════════════════════ -->
+    <div class="print-only">
+        <div style="border-bottom: 2px solid #0f172a; padding-bottom: 10px; margin-bottom: 14px;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <div>
+                    <h1 style="font-size: 18pt; font-weight: 900; margin: 0; color: #0f172a; text-transform: uppercase; letter-spacing: -0.5px;">
+                        WENER TRADING COMPANY
+                    </h1>
+                    <p style="font-size: 8pt; margin: 2px 0 0 0; color: #475569; font-weight: 600;">
+                        TMT Engineering &amp; Manufacturing Co. Ltd. · Procurement &amp; Supply Chain Division
+                    </p>
+                    <p style="font-size: 7.5pt; margin: 1px 0 0 0; color: #64748b;">
+                        Mirer Bazar, Pubail, Gazipur · Contact: +88 01700 776 239 · wenerfanltd@gmail.com
+                    </p>
+                </div>
+                <div style="text-align: right;">
+                    <div style="display: inline-block; border: 1.5px solid #0f172a; background: #f8fafc; padding: 4px 10px; font-family: monospace; font-weight: 800; font-size: 11pt;">
+                        {{ req.reference_code }}
+                    </div>
+                    <p style="font-size: 8pt; font-family: monospace; margin: 4px 0 0 0; color: #334155;">
+                        Date: {{ req.created_at | format_date_bst('%B %d, %Y') }}
+                    </p>
+                </div>
+            </div>
+
+            <div style="text-align: center; margin: 12px 0 6px 0;">
+                <span style="font-size: 12pt; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; border-bottom: 1.5px solid #0f172a; padding-bottom: 2px;">
+                    PURCHASE REQUISITION ORDER
+                </span>
+            </div>
+
+            <table style="width: 100%; border: none; margin-top: 10px; font-size: 8.5pt;">
+                <tr>
+                    <td style="border: none; padding: 2px 0; width: 60%; vertical-align: top;">
+                        <strong style="color: #475569; text-transform: uppercase; font-size: 7.5pt;">Requisition / Project Title:</strong><br>
+                        <span style="font-size: 10pt; font-weight: 700; color: #0f172a;">{{ req.title }}</span>
+                    </td>
+                    <td style="border: none; padding: 2px 0; width: 40%; vertical-align: top; text-align: right;">
+                        <strong style="color: #475569; text-transform: uppercase; font-size: 7.5pt;">Prepared By:</strong><br>
+                        <span style="font-size: 9.5pt; font-weight: 600; color: #0f172a;">{{ req.creator.full_name if req.creator else 'Procurement Officer' }}</span>
+                        <div style="font-size: 8pt; color: #64748b;">Status: <strong>{{ req.status.value.replace('_', ' ').upper() }}</strong></div>
+                    </td>
+                </tr>
+                {% if req.notes %}
+                <tr>
+                    <td colspan="2" style="border: none; padding: 4px 0 0 0;">
+                        <strong style="color: #475569; text-transform: uppercase; font-size: 7.5pt;">General Notes &amp; Delivery Instructions:</strong>
+                        <div style="font-size: 8pt; color: #1e293b; background: #f8fafc; padding: 4px 6px; border: 1px solid #e2e8f0; margin-top: 2px; border-radius: 4px;">
+                            {{ req.notes }}
+                        </div>
+                    </td>
+                </tr>
+                {% endif %}
+            </table>
         </div>
-        {% if user and (user.is_procurement or user.is_management or user.role == 'admin') and req.status.value in ('draft', 'new', 'in_progress') %}
-        <a href="/requisitions/{{ req.id }}/edit" class="bg-white border border-slate-200 text-slate-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-slate-50 transition shadow-sm shrink-0 flex items-center gap-1.5">
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
-            Edit
-        </a>
-        {% endif %}
     </div>
-    
-    <!-- STATUS + DETAILS CARD -->
-    {% from "components/status_badge.html" import render_status_badge %}
-    <div class="bg-white rounded-2xl border border-slate-200 p-5 mb-4 shadow-sm">
-        <div class="flex items-center justify-between mb-4">
-            {{ render_status_badge(req.status) }}
+
+
+    <!-- ════════════════════════════════════════════════════════════════════════
+         ON-SCREEN TOP NAVIGATION & ACTION BAR (.no-print)
+         ════════════════════════════════════════════════════════════════════════ -->
+    <div class="no-print flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+        <div class="flex items-start sm:items-center gap-3 min-w-0">
+            <a href="/requisitions" class="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50 transition shadow-xs shrink-0 mt-0.5 sm:mt-0" title="Back to Requisitions">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+            </a>
+            <div class="min-w-0">
+                <div class="flex flex-wrap items-center gap-2 mb-1">
+                    <span class="inline-block font-mono text-xs font-bold text-brand-700 bg-brand-50 px-2 py-0.5 rounded border border-brand-200 tracking-wide">
+                        {{ req.reference_code }}
+                    </span>
+                    {% from "components/status_badge.html" import render_status_badge %}
+                    {{ render_status_badge(req.status) }}
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[11px] font-semibold border border-slate-200">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                        Excel Tabular View
+                    </span>
+                </div>
+                <h1 class="text-xl sm:text-2xl font-bold text-slate-900 truncate" id="view-requisition-title">
+                    {{ req.title }}
+                </h1>
+                <p class="text-xs text-slate-400 mt-0.5">
+                    Created {{ req.created_at | format_datetime_bst('%b %d, %Y at %I:%M %p BST') }}
+                    {% if req.creator %} · by <span class="font-semibold text-slate-700">{{ req.creator.full_name }}</span>{% endif %}
+                </p>
+            </div>
         </div>
-        <div class="space-y-4">
-            {% if req.items %}
-            <div class="border border-slate-200 rounded-xl overflow-hidden">
-                <table class="w-full text-left text-sm border-collapse">
-                    <thead class="bg-slate-50 border-b border-slate-200 text-xs text-slate-500 uppercase tracking-wider">
-                        <tr>
-                            <th class="px-4 py-3 font-semibold w-1/3">Item Name</th>
-                            <th class="px-4 py-3 font-semibold">Specification</th>
-                            <th class="px-4 py-3 font-semibold text-right w-28">Quantity</th>
+
+        <!-- ACTION BUTTONS: Print, Edit Worksheet, Save, Cancel -->
+        <div class="flex flex-wrap items-center gap-2 self-start md:self-auto shrink-0">
+            <!-- 1. Print A4 View Button -->
+            <button type="button" onclick="window.print()"
+                    class="inline-flex items-center gap-1.5 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 px-3.5 py-2 rounded-xl text-xs font-bold transition shadow-xs active:scale-95">
+                <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                🖨️ Print / A4 View
+            </button>
+
+            {% if is_editable %}
+            <!-- 2. Edit Mode Toggle Button (Hidden while editing) -->
+            <button type="button" id="btn-start-edit" onclick="toggleEditMode(true)"
+                    class="inline-flex items-center gap-1.5 bg-brand-600 hover:bg-brand-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition shadow-xs active:scale-95">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                ✏️ Edit Worksheet
+            </button>
+
+            <!-- 3. Save Changes Button (Visible only while editing) -->
+            <button type="button" id="btn-save-edit" onclick="submitWorksheetForm()"
+                    class="hidden inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition shadow-xs active:scale-95">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                💾 Save Worksheet
+            </button>
+
+            <!-- 4. Cancel Edit Button (Visible only while editing) -->
+            <button type="button" id="btn-cancel-edit" onclick="toggleEditMode(false)"
+                    class="hidden inline-flex items-center gap-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 px-3.5 py-2 rounded-xl text-xs font-bold transition shadow-xs active:scale-95">
+                ✕ Cancel
+            </button>
+            {% endif %}
+
+            {% if status_str != 'draft' and user and user.can_see_quotes %}
+            <a href="/quotations/compare/{{ req.id }}"
+               class="inline-flex items-center gap-1.5 bg-brand-50 hover:bg-brand-100 text-brand-700 border border-brand-200 px-3.5 py-2 rounded-xl text-xs font-bold transition shadow-xs active:scale-95">
+                <svg class="w-4 h-4 text-brand-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                Compare Quotations
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+
+    <!-- ════════════════════════════════════════════════════════════════════════
+         WORKSHEET FORM WRAPPER (POST to /requisitions/{id}/edit)
+         ════════════════════════════════════════════════════════════════════════ -->
+    <form method="post" action="/requisitions/{{ req.id }}/edit" id="requisitionWorksheetForm" class="space-y-6">
+
+        <!-- GENERAL REQUISITION INFO & DELIVERY NOTES (Editable when in edit mode) -->
+        <div class="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-xs no-print">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                <div class="lg:col-span-2">
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                        Requisition / Project Title <span class="text-rose-500">*</span>
+                    </label>
+                    <div id="view-title-box" class="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900">
+                        {{ req.title }}
+                    </div>
+                    <input type="text" name="title" id="edit-title-input" required value="{{ req.title }}"
+                           class="hidden w-full px-4 py-2.5 bg-white border border-brand-300 rounded-xl text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500 transition">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                        General Notes &amp; Delivery Instructions
+                    </label>
+                    <div id="view-notes-box" class="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 min-h-[42px] leading-relaxed">
+                        {{ req.notes or '— No general notes specified —' }}
+                    </div>
+                    <textarea name="notes" id="edit-notes-input" rows="1" placeholder="Delivery timeline, payment terms, or special requirements..."
+                              class="hidden w-full px-4 py-2 bg-white border border-brand-300 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-brand-500 transition resize-y">{{ req.notes or '' }}</textarea>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- ════════════════════════════════════════════════════════════════════
+             SPREADSHEET BILL OF MATERIALS CANVAS (MS EXCEL TABULAR LAYOUT)
+             ════════════════════════════════════════════════════════════════════ -->
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <!-- Spreadsheet Toolbar (Screen Only) -->
+            <div class="no-print bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white px-6 py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center font-black text-white text-xs shadow-xs">
+                        XLS
+                    </div>
+                    <div>
+                        <h2 class="text-sm font-bold text-white tracking-wide">Bill of Materials &amp; Line Items Worksheet</h2>
+                        <p class="text-[11px] text-slate-300 mt-0.5" id="toolbar-mode-desc">
+                            Tabular view of all items, specifications, quantities, and units. Printable on standard A4.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-3">
+                    <!-- Add Row Button (Visible only while editing) -->
+                    <button type="button" id="btn-add-row" onclick="addRow()"
+                            class="hidden inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-1.5 rounded-xl text-xs font-bold transition shadow-xs active:scale-95">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+                        + Add Row
+                    </button>
+                    <span class="text-xs font-mono font-bold text-slate-300 bg-slate-800/80 px-2.5 py-1 rounded-lg border border-slate-700">
+                        <span id="items-count-badge">{{ req.items|length if req.items else (1 if req.title else 0) }}</span> Items
+                    </span>
+                </div>
+            </div>
+
+            <!-- Spreadsheet Grid Table (Screen & Print Table) -->
+            <div class="overflow-x-auto">
+                <table class="print-table w-full text-left border-collapse min-w-[950px]" id="excel-items-table">
+                    <thead>
+                        <tr class="bg-slate-100 border-b border-slate-200 text-[11px] font-bold text-slate-600 uppercase tracking-wider select-none">
+                            <th class="py-3 px-3 text-center w-12 border-r border-slate-200 bg-slate-200/70">#</th>
+                            <th class="py-3 px-4 min-w-[280px] w-1/4 border-r border-slate-200">Item Name <span class="text-rose-500">*</span></th>
+                            <th class="py-3 px-4 min-w-[420px] border-r border-slate-200">Specification / Dimensions / Technical Details</th>
+                            <th class="py-3 px-3 text-center w-32 border-r border-slate-200">Quantity <span class="text-rose-500">*</span></th>
+                            <th class="py-3 px-3 text-center w-32 border-r border-slate-200">Unit (pcs, kgs, etc.)</th>
+                            <th class="py-3 px-2 text-center w-14 col-action hidden">Action</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-slate-100 text-slate-800">
-                        {% for item in req.items %}
-                        <tr>
-                            <td class="px-4 py-3 font-semibold text-slate-900">{{ item.name }}</td>
-                            <td class="px-4 py-3 text-xs text-slate-600 leading-relaxed">{{ item.description }}</td>
-                            <td class="px-4 py-3 text-right font-mono font-bold text-slate-800">
-                                {{ item.qty | qty_format }} <span class="text-xs text-slate-500 font-normal">{{ item.unit or req.unit or '' }}</span>
-                            </td>
-                        </tr>
-                        {% endfor %}
+                    <tbody class="divide-y divide-slate-200 font-sans text-xs" id="items-body">
+                        {% if req.items %}
+                            {% for item in req.items %}
+                            <tr class="item-row hover:bg-blue-50/20 transition group">
+                                <td class="py-2.5 px-3 text-center font-mono font-bold text-slate-500 bg-slate-50/80 border-r border-slate-200 select-none row-index">
+                                    {{ loop.index }}
+                                </td>
+                                
+                                <!-- Item Name: View Cell vs Edit Input -->
+                                <td class="p-2.5 border-r border-slate-200 align-top">
+                                    <div class="cell-view font-bold text-slate-900 text-xs sm:text-sm">
+                                        {{ item.name }}
+                                    </div>
+                                    <div class="cell-edit hidden">
+                                        <input type="text" name="item_name[]" value="{{ item.name }}" required placeholder="e.g. Item Name"
+                                               class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500 transition">
+                                    </div>
+                                </td>
+
+                                <!-- Technical Specification: View Cell vs Edit Textarea -->
+                                <td class="p-2.5 border-r border-slate-200 align-top">
+                                    <div class="cell-view text-xs text-slate-700 whitespace-pre-line leading-relaxed">
+                                        {{ item.description or '—' }}
+                                    </div>
+                                    <div class="cell-edit hidden">
+                                        <textarea name="item_desc[]" rows="2" placeholder="Technical specifications, dimensions, material..."
+                                                  class="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs text-slate-800 leading-relaxed focus:outline-none focus:ring-2 focus:ring-brand-500 transition resize-y">{{ item.description or '' }}</textarea>
+                                    </div>
+                                </td>
+
+                                <!-- Quantity: View Cell vs Edit Input -->
+                                <td class="p-2.5 border-r border-slate-200 align-top text-center">
+                                    <div class="cell-view font-mono font-bold text-slate-900 text-xs sm:text-sm">
+                                        {{ item.qty | qty_format }}
+                                    </div>
+                                    <div class="cell-edit hidden">
+                                        <input type="number" name="item_qty[]" value="{{ item.qty }}" required min="0.01" step="any" placeholder="1"
+                                               class="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-lg text-xs text-center font-bold font-mono text-slate-900 qty-input focus:outline-none focus:ring-2 focus:ring-brand-500 transition"
+                                               oninput="updateTotals()">
+                                    </div>
+                                </td>
+
+                                <!-- Unit: View Cell vs Edit Input -->
+                                <td class="p-2.5 border-r border-slate-200 align-top text-center">
+                                    <div class="cell-view">
+                                        <span class="inline-block px-2.5 py-1 rounded bg-slate-100 text-slate-700 font-medium text-xs border border-slate-200">
+                                            {{ item.unit or req.unit or '—' }}
+                                        </span>
+                                    </div>
+                                    <div class="cell-edit hidden">
+                                        <input type="text" name="item_unit[]" value="{{ item.unit or req.unit or '' }}" placeholder="pcs, bags, Set..."
+                                               class="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-lg text-xs text-center font-medium text-slate-700 unit-input focus:outline-none focus:ring-2 focus:ring-brand-500 transition"
+                                               onkeydown="handleUnitKeydown(event, this)">
+                                    </div>
+                                </td>
+
+                                <!-- Action (Edit Mode Delete Row) -->
+                                <td class="p-2 text-center align-middle col-action hidden no-print">
+                                    <button type="button" onclick="removeRow(this)" title="Remove line item"
+                                            class="w-8 h-8 inline-flex items-center justify-center rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition active:scale-95">
+                                        ✕
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <!-- Single Item Legacy Requisition Format -->
+                            <tr class="item-row hover:bg-blue-50/20 transition group">
+                                <td class="py-2.5 px-3 text-center font-mono font-bold text-slate-500 bg-slate-50/80 border-r border-slate-200 select-none row-index">
+                                    1
+                                </td>
+                                <td class="p-2.5 border-r border-slate-200 align-top">
+                                    <div class="cell-view font-bold text-slate-900 text-xs sm:text-sm">
+                                        {{ req.title }}
+                                    </div>
+                                    <div class="cell-edit hidden">
+                                        <input type="text" name="item_name[]" value="{{ req.title }}" required placeholder="e.g. Item Name"
+                                               class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500 transition">
+                                    </div>
+                                </td>
+                                <td class="p-2.5 border-r border-slate-200 align-top">
+                                    <div class="cell-view text-xs text-slate-700 whitespace-pre-line leading-relaxed">
+                                        {{ req.item_description or '—' }}
+                                    </div>
+                                    <div class="cell-edit hidden">
+                                        <textarea name="item_desc[]" rows="2" placeholder="Technical specifications, dimensions, material..."
+                                                  class="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs text-slate-800 leading-relaxed focus:outline-none focus:ring-2 focus:ring-brand-500 transition resize-y">{{ req.item_description or '' }}</textarea>
+                                    </div>
+                                </td>
+                                <td class="p-2.5 border-r border-slate-200 align-top text-center">
+                                    <div class="cell-view font-mono font-bold text-slate-900 text-xs sm:text-sm">
+                                        {{ req.quantity | qty_format }}
+                                    </div>
+                                    <div class="cell-edit hidden">
+                                        <input type="number" name="item_qty[]" value="{{ req.quantity }}" required min="0.01" step="any" placeholder="1"
+                                               class="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-lg text-xs text-center font-bold font-mono text-slate-900 qty-input focus:outline-none focus:ring-2 focus:ring-brand-500 transition"
+                                               oninput="updateTotals()">
+                                    </div>
+                                </td>
+                                <td class="p-2.5 border-r border-slate-200 align-top text-center">
+                                    <div class="cell-view">
+                                        <span class="inline-block px-2.5 py-1 rounded bg-slate-100 text-slate-700 font-medium text-xs border border-slate-200">
+                                            {{ req.unit or '—' }}
+                                        </span>
+                                    </div>
+                                    <div class="cell-edit hidden">
+                                        <input type="text" name="item_unit[]" value="{{ req.unit or '' }}" placeholder="pcs, bags, Set..."
+                                               class="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-lg text-xs text-center font-medium text-slate-700 unit-input focus:outline-none focus:ring-2 focus:ring-brand-500 transition"
+                                               onkeydown="handleUnitKeydown(event, this)">
+                                    </div>
+                                </td>
+                                <td class="p-2 text-center align-middle col-action hidden no-print">
+                                    <button type="button" onclick="removeRow(this)" title="Remove line item"
+                                            class="w-8 h-8 inline-flex items-center justify-center rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition active:scale-95">
+                                        ✕
+                                    </button>
+                                </td>
+                            </tr>
+                        {% endif %}
                     </tbody>
-                    <tfoot class="bg-slate-50 border-t border-slate-200">
+
+                    <!-- SUMMARY TOTALS FOOTER -->
+                    <tfoot class="bg-slate-100 border-t-2 border-slate-300 text-xs font-bold text-slate-800">
                         <tr>
-                            <td colspan="2" class="px-4 py-3 font-bold text-right text-slate-700">Total Qty:</td>
-                            <td class="px-4 py-3 font-bold text-right font-mono text-brand-700">{{ req.quantity | qty_format }} <span class="text-xs text-slate-500 font-normal">{{ req.unit or '' }}</span></td>
+                            <td colspan="3" class="py-3 px-4 text-right border-r border-slate-200">
+                                <span class="uppercase tracking-wider text-[11px] text-slate-500 mr-2">Worksheet Summary:</span>
+                                <span id="total-rows" class="text-slate-900 font-bold font-mono">
+                                    {{ req.items|length if req.items else (1 if req.title else 0) }}
+                                </span> Line Item(s)
+                            </td>
+                            <td class="py-3 px-3 text-center border-r border-slate-200 font-mono text-brand-700 font-extrabold text-sm" id="total-qty">
+                                {{ req.quantity | qty_format }}
+                            </td>
+                            <td class="py-3 px-3 text-center text-slate-500 text-xs font-medium">
+                                {{ req.unit or 'Total Units' }}
+                            </td>
+                            <td class="p-2 col-action hidden no-print"></td>
                         </tr>
                     </tfoot>
                 </table>
             </div>
-            <div class="pt-3 border-t border-slate-100">
-                <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Created</p>
-                <p class="text-sm text-slate-800">{{ req.created_at | format_datetime_bst('%b %d, %Y at %I:%M %p BST') }}</p>
-            </div>
-            {% else %}
-            <div>
-                <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Description</p>
-                <p class="text-sm text-slate-800 leading-relaxed">{{ req.item_description }}</p>
-            </div>
-            <div class="grid grid-cols-2 gap-4 pt-3 border-t border-slate-100">
-                <div>
-                    <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Quantity</p>
-                    <p class="text-sm font-bold text-slate-900">{{ req.quantity | qty_format }} {{ req.unit or '' }}</p>
-                </div>
-                <div>
-                    <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Created</p>
-                    <p class="text-sm text-slate-800">{{ req.created_at | format_datetime_bst('%b %d, %Y at %I:%M %p BST') }}</p>
-                </div>
-            </div>
-            {% endif %}
-            {% if req.notes %}
-            <div class="pt-3 border-t border-slate-100">
-                <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Notes</p>
-                <p class="text-sm text-slate-700 leading-relaxed">{{ req.notes }}</p>
-            </div>
-            {% endif %}
+        </div>
+    </form>
 
+
+    <!-- ════════════════════════════════════════════════════════════════════════
+         DEDICATED FORMAL A4 SIGNATURE BLOCK (Visible only on @media print)
+         ════════════════════════════════════════════════════════════════════════ -->
+    <div class="print-only" style="margin-top: 36px; padding-top: 10px;">
+        <table style="width: 100%; border: none; text-align: center; font-size: 8.5pt;">
+            <tr>
+                <td style="border: none; width: 33%; vertical-align: top; padding: 0 12px;">
+                    <div style="border-top: 1.5px solid #0f172a; padding-top: 6px;">
+                        <strong style="font-size: 9pt; color: #0f172a; display: block;">
+                            {{ req.creator.full_name if req.creator else 'Procurement Officer' }}
+                        </strong>
+                        <span style="font-size: 7.5pt; text-transform: uppercase; color: #475569; letter-spacing: 0.5px;">Prepared By (Requester)</span>
+                        <div style="font-size: 7.5pt; color: #64748b; font-family: monospace; margin-top: 3px;">
+                            Date: {{ req.created_at | format_date_bst('%d/%m/%Y') }}
+                        </div>
+                    </div>
+                </td>
+                <td style="border: none; width: 34%; vertical-align: top; padding: 0 12px;">
+                    <div style="border-top: 1.5px solid #0f172a; padding-top: 6px;">
+                        <strong style="font-size: 9pt; color: #0f172a; display: block;">Procurement Lead / DGM</strong>
+                        <span style="font-size: 7.5pt; text-transform: uppercase; color: #475569; letter-spacing: 0.5px;">Checked &amp; Verified By</span>
+                        <div style="font-size: 7.5pt; color: #64748b; font-family: monospace; margin-top: 3px;">
+                            Date: ____________________
+                        </div>
+                    </div>
+                </td>
+                <td style="border: none; width: 33%; vertical-align: top; padding: 0 12px;">
+                    <div style="border-top: 1.5px solid #0f172a; padding-top: 6px;">
+                        <strong style="font-size: 9pt; color: #0f172a; display: block;">Nazir Ahmed (Chairman)</strong>
+                        <span style="font-size: 7.5pt; text-transform: uppercase; color: #475569; letter-spacing: 0.5px;">Approved By (Management)</span>
+                        <div style="font-size: 7.5pt; color: #64748b; font-family: monospace; margin-top: 3px;">
+                            Date: ____________________
+                        </div>
+                    </div>
+                </td>
+            </tr>
+        </table>
+        <div style="text-align: center; font-size: 7pt; color: #94a3b8; border-top: 1px solid #e2e8f0; margin-top: 24px; padding-top: 6px; font-family: monospace;">
+            Official Requisition Copy · Reference: {{ req.reference_code }} · Wener Trading Company / TMT Engineering &amp; Manufacturing Co. Ltd.
+        </div>
+    </div>
+
+
+    <!-- ════════════════════════════════════════════════════════════════════════
+         LOWER SCREEN SECTIONS: WORKFLOW, SUPPLIERS, QC (.no-print)
+         ════════════════════════════════════════════════════════════════════════ -->
+    <div class="no-print mt-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <!-- LEFT COLUMN (1 col): QC, CHALLAN, CANCELLATION DETAILS -->
+        <div class="space-y-4">
             <!-- EXPLICIT QC DONE DATE STAMP & RECEIVING DETAILS -->
             {% if req.qc_done %}
-            <div class="pt-3 border-t border-slate-100 bg-emerald-50/60 -mx-5 -mb-5 p-4 rounded-b-2xl border-emerald-100 border-t">
+            <div class="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 shadow-xs">
                 <div class="flex items-center gap-2 text-emerald-800 font-bold text-sm mb-1.5">
                     <svg class="w-5 h-5 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                    QC done on {{ req.qc_done_at | format_datetime_bst('%b %d, %Y at %I:%M %p BST') if req.qc_done_at else 'Verified' }}
+                    QC verified on {{ req.qc_done_at | format_datetime_bst('%b %d, %Y at %I:%M %p BST') if req.qc_done_at else 'Verified' }}
                 </div>
                 <p class="text-xs text-emerald-700 font-medium">
                     Verified &amp; Accepted by: <span class="font-bold">{{ req.qc_receiver.full_name if req.qc_receiver else 'QC Inspector' }}</span>
                 </p>
                 {% if req.invoice_number %}
-                <div class="mt-2 text-xs text-slate-600 flex items-center justify-between pt-2 border-t border-emerald-200/50">
+                <div class="mt-3 text-xs text-slate-700 pt-2.5 border-t border-emerald-200 flex items-center justify-between">
                     <span>Accepted Challan #: <strong class="text-slate-900 font-mono">{{ req.invoice_number }}</strong></span>
                     {% if req.invoice_url %}
                     <a href="{{ req.invoice_url }}" target="_blank" class="text-brand-600 font-bold hover:underline inline-flex items-center gap-1">
-                        View Accepted Challan &rarr;
+                        View Challan &rarr;
                     </a>
                     {% endif %}
                 </div>
                 {% endif %}
             </div>
             {% endif %}
-        </div>
-    </div>
 
-    <!-- ACTION BUTTON: Invite Suppliers & Send RFQ (draft or new) -->
-    {% if status_str in ('draft', 'new', 'in_progress', 'negotiating') and user and (user.is_procurement or req.created_by == user.id) %}
-    <a href="/requisitions/{{ req.id }}/select-vendors" class="flex items-center justify-center gap-2 bg-brand-600 text-white py-3.5 rounded-xl text-sm font-semibold hover:bg-brand-700 transition shadow-sm mb-4 active:scale-[0.98]">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-        Invite Suppliers &amp; Send RFQ
-    </a>
-    {% endif %}
+            <!-- ACCEPTED CHALLAN LINK — for closed/QC-done requisitions -->
+            {% if req.qc_done or status_str == 'closed' %}
+            <a href="/requisitions/{{ req.id }}/challan" class="flex items-center justify-between bg-white border border-slate-200 rounded-2xl p-4 hover:border-brand-300 hover:shadow-xs transition shadow-2xs group active:scale-[0.98]">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center">
+                        <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    </div>
+                    <div>
+                        <div class="text-sm font-semibold text-slate-900">View / Print Accepted Challan</div>
+                        <div class="text-xs text-slate-400">BDT-denominated, printable Accepted Challan</div>
+                    </div>
+                </div>
+                <svg class="w-4 h-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            </a>
+            {% endif %}
 
-    <!-- ACTION BUTTONS: QC & Delivery Operations (submitted) -->
-    {% if status_str in ('work_order_issued', 'submitted') and user and user.can_perform_qc %}
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
-        <a href="/requisitions/{{ req.id }}/receive" class="flex items-center justify-center gap-2 bg-blue-600 text-white py-3.5 px-4 rounded-xl text-sm font-semibold hover:bg-blue-700 transition shadow-sm active:scale-[0.98]">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-            🚚 Record Delivery
-        </a>
-        <a href="/requisitions/{{ req.id }}/receive?qc=1" class="flex items-center justify-center gap-2 bg-emerald-600 text-white py-3.5 px-4 rounded-xl text-sm font-semibold hover:bg-emerald-700 transition shadow-sm active:scale-[0.98]">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-            ✅ Receive &amp; Do QC
-        </a>
-    </div>
-    {% endif %}
-
-    <!-- ACTION BUTTON: Quality Control Inspection (received) -->
-    {% if status_str in ('receiving', 'received') and user and user.can_perform_qc %}
-    <a href="/requisitions/{{ req.id }}/receive?qc=1" class="flex items-center justify-center gap-2 bg-emerald-600 text-white py-3.5 rounded-xl text-sm font-semibold hover:bg-emerald-700 transition shadow-sm mb-4 active:scale-[0.98]">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-        ✅ Perform Quality Control (QC) Inspection
-    </a>
-    {% endif %}
-
-
-    <!-- COMPARE LINK -->
-    {% if status_str != 'draft' and user and user.can_see_quotes %}
-    <a href="/quotations/compare/{{ req.id }}" class="flex items-center justify-between bg-white border border-slate-200 rounded-2xl p-4 hover:border-brand-300 hover:shadow-sm transition shadow-sm group mb-4 active:scale-[0.98]">
-        <div class="flex items-center gap-3">
-            <div class="w-9 h-9 rounded-xl bg-brand-50 flex items-center justify-center">
-                <svg class="w-4 h-4 text-brand-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+            <!-- CANCELLATION REASON -->
+            {% if req.rejected_reason and status_str in ('cancelled', 'rejected') %}
+            <div class="bg-rose-50 border border-rose-200 rounded-2xl p-4 shadow-xs">
+                <p class="text-xs font-bold text-rose-600 uppercase tracking-wider mb-1">Cancellation Reason</p>
+                <p class="text-sm text-rose-800">{{ req.rejected_reason }}</p>
             </div>
-            <div>
-                <div class="text-sm font-semibold text-slate-900">Compare Quotations</div>
-                <div class="text-xs text-slate-400">Side-by-side supplier offers</div>
-            </div>
-        </div>
-        <svg class="w-4 h-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-    </a>
-    {% endif %}
+            {% endif %}
 
-    <!-- VENDORS SECTION (Hidden for QC Receiver) -->
-    {% if not user or role_str != 'qc_receiver' %}
-    {% set any_submitted = req.vendor_links | selectattr('status', 'equalto', 'submitted') | list | length > 0 %}
-    <div>
-        <div class="flex items-center justify-between mb-3">
-            <h2 class="text-xs font-bold text-slate-400 uppercase tracking-widest">Suppliers Contacted</h2>
-            <div class="flex items-center gap-2">
-                {% if any_submitted and (user.can_see_quotes or user.has_management_authority) %}
-                <form method="post" action="/requisitions/{{ req.id }}/forward-quotes-cc" class="inline"
-                      onsubmit="return confirm('Forward all submitted quotations and PDFs to management CC addresses?')">
-                    <button type="submit" class="text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-xl border border-blue-200 transition active:scale-95 flex items-center gap-1.5 shadow-2xs"
-                            title="Forward all submitted quotations and PDFs to management CC addresses">
-                        <svg class="w-3.5 h-3.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-                        Forward All Quotes to CCs
+            <!-- TEMPORARY / UNLISTED VENDOR CARD -->
+            {% if status_str in ('draft', 'new', 'in_progress', 'negotiating') and (not user or role_str != 'qc_receiver') %}
+            <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
+                <h3 class="text-sm font-bold text-slate-900 mb-1">Unlisted Supplier Quote</h3>
+                <p class="text-xs text-slate-400 mb-3">Generate a quote submission link for a new or unlisted supplier.</p>
+                <form method="post" action="/requisitions/{{ req.id }}/add-temporary-vendor">
+                    <button type="submit" class="w-full bg-slate-800 text-white py-2.5 rounded-xl text-xs font-bold hover:bg-slate-900 transition shadow-xs active:scale-[0.98]">
+                        + Generate Temporary Link
                     </button>
                 </form>
-                {% endif %}
-                {% if req.vendor_links %}
-                <span class="text-xs text-slate-400">{{ req.vendor_links|length }} total</span>
-                {% endif %}
             </div>
+            {% endif %}
         </div>
 
-        {% if req.vendor_links %}
-        {% set post_award_statuses = ['awarded', 'work_order_issued', 'receiving', 'received', 'closed'] %}
-        {% set req_status_str = req.status.value if req.status.value is defined else req.status | string %}
-        {% set is_awarded = req_status_str in post_award_statuses %}
-        {% set sorted_links = req.vendor_links | sort(attribute='negotiation_version', reverse=true) %}
 
-        {% if is_awarded and user.is_procurement_blind %}
-            {# ── PROCUREMENT POST-AWARD: winners only ── #}
-            {% set winning_vid = decision.winning_vendor_id if decision else none %}
-            {% set winners = sorted_links | selectattr('vendor_id', 'equalto', winning_vid) | list %}
-            {% set winner_active_link = winners | first if winners else none %}
-            
-            {# Deduplicate non-winners (only highest version per vendor) #}
-            {% set non_winners = [] %}
-            {% set seen = [] %}
-            {% for link in sorted_links %}
-                {% if link.vendor_id != winning_vid and link.vendor_id not in seen %}
-                    {% set _ = seen.append(link.vendor_id) %}
-                    {% set _ = non_winners.append(link) %}
-                {% endif %}
-            {% endfor %}
+        <!-- RIGHT COLUMN (2 cols): SUPPLIERS CONTACTED & PRIMARY ACTIONS -->
+        <div class="lg:col-span-2 space-y-4">
 
-            <div class="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100 overflow-hidden shadow-sm mb-4">
-                {# Winner rows #}
-                {% if winner_active_link %}
-                {% set link = winner_active_link %}
-                <div class="flex items-center justify-between px-4 py-3.5 min-h-[56px]">
-                    <div class="flex items-center gap-3 min-w-0">
-                        <div class="w-2 h-2 rounded-full bg-emerald-400 shrink-0"></div>
-                        <div class="min-w-0">
-                            <div class="font-semibold text-sm text-slate-900 truncate">{{ link.vendor.company_name }}
-                                {% if link.negotiation_version == 2 %}<span class="text-xs text-amber-600 font-bold ml-1">v2</span>{% endif %}
-                                <span class="ml-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700">Winner</span>
-                            </div>
-                            <div class="text-xs text-slate-400 truncate">{{ link.vendor.contact_email }}</div>
-                        </div>
-                    </div>
-                    <div class="flex items-center gap-2 shrink-0 ml-3">
-                        {% set issued_wo = work_order_by_link.get(link.id) if work_order_by_link else none %}
-                        {% if issued_wo %}
-                        <a href="/work-orders/{{ issued_wo.id }}" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 transition">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                            {{ issued_wo.reference_code }}
-                        </a>
-                        <a href="/work-orders/{{ issued_wo.id }}/pdf" target="_blank" class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition" title="Download PO PDF">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                            PO PDF
-                        </a>
+            <!-- ACTION BUTTON: Invite Suppliers & Send RFQ -->
+            {% if status_str in ('draft', 'new', 'in_progress', 'negotiating') and user and (user.is_procurement or req.created_by == user.id) %}
+            <a href="/requisitions/{{ req.id }}/select-vendors" class="flex items-center justify-center gap-2 bg-brand-600 text-white py-3 px-4 rounded-xl text-sm font-bold hover:bg-brand-700 transition shadow-xs active:scale-[0.98]">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                Invite Suppliers &amp; Send RFQ Link
+            </a>
+            {% endif %}
+
+            <!-- ACTION BUTTONS: QC & Delivery Operations -->
+            {% if status_str in ('work_order_issued', 'submitted') and user and user.can_perform_qc %}
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <a href="/requisitions/{{ req.id }}/receive" class="flex items-center justify-center gap-2 bg-blue-600 text-white py-3 px-4 rounded-xl text-sm font-bold hover:bg-blue-700 transition shadow-xs active:scale-[0.98]">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                    🚚 Record Delivery
+                </a>
+                <a href="/requisitions/{{ req.id }}/receive?qc=1" class="flex items-center justify-center gap-2 bg-emerald-600 text-white py-3 px-4 rounded-xl text-sm font-bold hover:bg-emerald-700 transition shadow-xs active:scale-[0.98]">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    ✅ Receive &amp; Do QC
+                </a>
+            </div>
+            {% endif %}
+
+            {% if status_str in ('receiving', 'received') and user and user.can_perform_qc %}
+            <a href="/requisitions/{{ req.id }}/receive?qc=1" class="flex items-center justify-center gap-2 bg-emerald-600 text-white py-3 rounded-xl text-sm font-bold hover:bg-emerald-700 transition shadow-xs active:scale-[0.98]">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                ✅ Perform Quality Control (QC) Inspection
+            </a>
+            {% endif %}
+
+            <!-- SUPPLIERS CONTACTED LIST -->
+            {% if not user or role_str != 'qc_receiver' %}
+            {% set any_submitted = req.vendor_links | selectattr('status', 'equalto', 'submitted') | list | length > 0 %}
+            <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
+                <div class="flex items-center justify-between p-4 border-b border-slate-100 bg-slate-50/70">
+                    <h2 class="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
+                        <span>Suppliers Contacted</span>
+                        {% if req.vendor_links %}
+                        <span class="px-2 py-0.5 rounded-full bg-slate-200 text-slate-700 text-[10px] font-mono">{{ req.vendor_links|length }}</span>
                         {% endif %}
-                        {% if req_status_str == 'awarded' and (user.is_procurement or user.role == 'admin') and not issued_wo %}
-                        <form method="post" action="/work-orders/issue/{{ req.id }}/{{ link.id }}" class="flex items-center gap-2">
-                            <select name="letterhead_slot" class="text-xs border-slate-300 rounded px-2 py-1 bg-white">
-                                {% for slot, name in letterheads.items() %}
-                                <option value="{{ slot }}">{{ name }}</option>
-                                {% endfor %}
-                            </select>
-                            <button type="submit" class="bg-brand-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-brand-700 transition">Issue WO</button>
-                        </form>
-                        {% endif %}
-                        {% if link.quotation and link.quotation.form_data and link.quotation.form_data.price and user and (user.can_see_quotes or user.has_management_authority) %}
-                        <span class="text-xs font-mono font-bold text-slate-900 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200">
-                            BDT {{ "%.2f"|format(link.quotation.form_data.price|float(0)) }}
-                        </span>
-                        {% endif %}
-                        {% if link.status == 'submitted' and (user.can_see_quotes or user.has_management_authority) %}
-                        <form method="post" action="/quotations/detail/{{ link.id }}/forward-cc" class="inline"
-                              onsubmit="return confirm('Forward quotation copy & PDF for {{ link.vendor.company_name }} to management CC addresses?')">
-                            <button type="submit" class="text-xs text-blue-600 bg-blue-50 hover:bg-blue-100 px-2.5 py-1.5 rounded-lg border border-blue-200 transition active:scale-95 flex items-center gap-1 min-h-[36px]" title="Forward quotation & PDF to management CCs">
-                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-                                Forward CC
+                    </h2>
+                    <div class="flex items-center gap-2">
+                        {% if any_submitted and (user.can_see_quotes or user.has_management_authority) %}
+                        <form method="post" action="/requisitions/{{ req.id }}/forward-quotes-cc" class="inline"
+                              onsubmit="return confirm('Forward all submitted quotations and PDFs to management CC addresses?')">
+                            <button type="submit" class="text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-xl border border-blue-200 transition active:scale-95 flex items-center gap-1.5 shadow-2xs"
+                                    title="Forward all submitted quotations and PDFs to management CC addresses">
+                                <svg class="w-3.5 h-3.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                                Forward All to CCs
                             </button>
                         </form>
                         {% endif %}
-                        <span class="text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wide bg-emerald-100 text-emerald-700">
-                            Quote Received
-                        </span>
                     </div>
                 </div>
-                {% endif %}
 
-                {# Collapsed non-winners #}
-                {% if non_winners %}
-                <div>
-                    <button type="button"
-                        onclick="const el=document.getElementById('non_winners_list');const icon=document.getElementById('non_winners_icon');el.classList.toggle('hidden');icon.classList.toggle('rotate-180');"
-                        class="w-full flex items-center justify-between px-4 py-2.5 text-xs font-semibold text-slate-400 hover:bg-slate-50 transition">
-                        <span>{{ non_winners | length }} other supplier{{ 's' if non_winners | length > 1 else '' }} (not selected)</span>
-                        <svg id="non_winners_icon" class="w-3.5 h-3.5 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-                    </button>
-                    <div id="non_winners_list" class="hidden divide-y divide-slate-100 bg-slate-50/60">
-                        {% for link in non_winners %}
-                        <div class="flex items-center justify-between px-4 py-3 min-h-[48px] opacity-50">
-                            <div class="flex items-center gap-3 min-w-0">
-                                <div class="w-2 h-2 rounded-full bg-slate-300 shrink-0"></div>
-                                <div class="min-w-0">
-                                    <div class="font-medium text-sm text-slate-600 truncate">{{ link.vendor.company_name }}</div>
-                                    <div class="text-xs text-slate-400 truncate">{{ link.vendor.contact_email }}</div>
+                {% if req.vendor_links %}
+                {% set post_award_statuses = ['awarded', 'work_order_issued', 'receiving', 'received', 'closed'] %}
+                {% set req_status_str = req.status.value if req.status.value is defined else req.status | string %}
+                {% set is_awarded = req_status_str in post_award_statuses %}
+                {% set sorted_links = req.vendor_links | sort(attribute='negotiation_version', reverse=true) %}
+
+                <div class="divide-y divide-slate-100 text-xs">
+                    {% for link in sorted_links %}
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between p-4 hover:bg-slate-50/60 transition gap-3">
+                        <div class="flex items-center gap-3 min-w-0">
+                            <div class="w-8 h-8 rounded-lg bg-slate-100 text-slate-700 font-bold flex items-center justify-center shrink-0 border border-slate-200">
+                                {{ link.vendor.company_name[:2] | upper }}
+                            </div>
+                            <div class="min-w-0">
+                                <div class="font-bold text-slate-900 truncate flex items-center gap-1.5">
+                                    {{ link.vendor.company_name }}
+                                    {% if link.negotiation_version == 2 %}
+                                    <span class="text-[10px] text-amber-700 font-bold px-1.5 py-0.5 rounded bg-amber-50 border border-amber-200">v2</span>
+                                    {% endif %}
+                                    {% if link.is_shortlisted %}
+                                    <span class="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-200">Shortlisted</span>
+                                    {% endif %}
                                 </div>
+                                <div class="text-[11px] text-slate-400 truncate">{{ link.vendor.contact_email }}</div>
                             </div>
-                            <span class="text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wide bg-slate-100 text-slate-500 shrink-0">
-                                Not Selected
-                            </span>
                         </div>
-                        {% endfor %}
-                    </div>
-                </div>
-                {% endif %}
-            </div>
 
-        {% else %}
-            {# ── NORMAL VIEW: full list with send actions ── #}
-            {% set winning_vid = decision.winning_vendor_id if decision else none %}
-            {% set active_vendors = [] %}
-            {% set vendor_history = {} %}
-            {% set seen = [] %}
-            {% for link in sorted_links %}
-                {% if link.vendor_id not in seen %}
-                    {% set _ = seen.append(link.vendor_id) %}
-                    {% set _ = active_vendors.append(link) %}
-                {% else %}
-                    {% set cur_hist = vendor_history.get(link.vendor_id, []) %}
-                    {% set _ = cur_hist.append(link) %}
-                    {% set _ = vendor_history.update({link.vendor_id: cur_hist}) %}
-                {% endif %}
-            {% endfor %}
+                        <div class="flex flex-wrap items-center gap-2 shrink-0">
+                            {% set issued_wo = work_order_by_link.get(link.id) if work_order_by_link else none %}
+                            {% if issued_wo %}
+                            <a href="/work-orders/{{ issued_wo.id }}" class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 transition">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                {{ issued_wo.reference_code }}
+                            </a>
+                            <a href="/work-orders/{{ issued_wo.id }}/pdf" target="_blank" class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition" title="Download Work Order PDF">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                PO PDF
+                            </a>
+                            {% endif %}
 
-            <div class="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100 overflow-hidden shadow-sm mb-4">
-                {% for link in active_vendors %}
-                <div class="flex items-center justify-between px-4 py-3.5 min-h-[56px]">
-                    <div class="flex items-center gap-3 min-w-0">
-                        <div class="w-2 h-2 rounded-full shrink-0
-                            {% if link.status == 'submitted' %}bg-emerald-400
-                            {% elif link.status == 'pending' %}bg-amber-400
-                            {% elif link.status == 'flagged' %}bg-red-400
-                            {% else %}bg-slate-300{% endif %}"></div>
-                        <div class="min-w-0">
-                            <div class="font-semibold text-sm text-slate-900 truncate">{{ link.vendor.company_name }}
-                                {% if link.negotiation_version == 2 %}<span class="text-xs text-amber-600 font-bold ml-1">v2</span>{% endif %}
-                                {% if is_awarded and link.vendor_id == winning_vid %}<span class="ml-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700">Winner</span>{% endif %}
-                            </div>
-                            <div class="text-xs text-slate-400 truncate">{{ link.vendor.contact_email }}</div>
-                        </div>
-                    </div>
-                    <div class="flex items-center gap-2 shrink-0 ml-3">
-                        {% set issued_wo = work_order_by_link.get(link.id) if work_order_by_link else none %}
-                        {% if issued_wo %}
-                        <a href="/work-orders/{{ issued_wo.id }}" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 transition">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                            {{ issued_wo.reference_code }}
-                        </a>
-                        <a href="/work-orders/{{ issued_wo.id }}/pdf" target="_blank" class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition" title="Download PO PDF">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                            PO PDF
-                        </a>
-                        {% endif %}
-                        {% if req_status_str == 'awarded' and link.vendor_id == winning_vid and (user.is_procurement or user.role == 'admin') and not issued_wo %}
-                        <form method="post" action="/work-orders/issue/{{ req.id }}/{{ link.id }}" class="flex items-center gap-2">
-                            <select name="letterhead_slot" class="text-xs border-slate-300 rounded px-2 py-1 bg-white">
-                                {% for slot, name in letterheads.items() %}
-                                <option value="{{ slot }}">{{ name }}</option>
-                                {% endfor %}
-                            </select>
-                            <button type="submit" class="bg-brand-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-brand-700 transition">Issue WO</button>
-                        </form>
-                        {% endif %}
-                        {% if not is_awarded and link.status != 'submitted' %}
-                        <div class="flex items-center gap-1">
+                            {% if req_status_str == 'awarded' and (user.is_procurement or user.role == 'admin') and not issued_wo and (link.is_shortlisted or (decision and decision.winning_vendor_id == link.vendor_id)) %}
+                            <form method="post" action="/work-orders/issue/{{ req.id }}/{{ link.id }}" class="flex items-center gap-1.5">
+                                <select name="letterhead_slot" class="text-xs border-slate-300 rounded-lg px-2 py-1 bg-white">
+                                    {% for slot, name in letterheads.items() %}
+                                    <option value="{{ slot }}">{{ name }}</option>
+                                    {% endfor %}
+                                </select>
+                                <button type="submit" class="bg-brand-600 text-white px-2.5 py-1.5 rounded-lg text-xs font-bold hover:bg-brand-700 transition">Issue WO</button>
+                            </form>
+                            {% endif %}
+
+                            {% if not is_awarded and link.status != 'submitted' %}
                             <form method="post" action="/requisitions/{{ req.id }}/resend-link/{{ link.id }}" class="inline">
-                                {% if link.link_sent_at %}
-                                <button type="submit" class="text-xs text-amber-600 bg-amber-50 hover:bg-amber-100 px-2.5 py-1.5 rounded-lg border border-amber-200 transition active:scale-95 flex items-center gap-1 min-h-[36px]" title="Last sent: {{ link.link_sent_at | format_datetime_bst('%Y-%m-%d %I:%M %p BST') }}">
+                                <button type="submit" class="text-xs text-amber-700 bg-amber-50 hover:bg-amber-100 px-2.5 py-1.5 rounded-lg border border-amber-200 transition active:scale-95 flex items-center gap-1" title="Resend Quote Link Email">
                                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
                                     Resend
                                 </button>
-                                {% else %}
-                                <button type="submit" class="text-xs text-amber-600 bg-amber-50 hover:bg-amber-100 px-2.5 py-1.5 rounded-lg border border-amber-100 transition active:scale-95 flex items-center gap-1 min-h-[36px]" title="Send Email">
-                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-                                    Email
-                                </button>
-                                {% endif %}
                             </form>
                             <button type="button"
-                                onclick="navigator.clipboard.writeText('{{ request.base_url }}vendor-quote/{{ link.unique_link_token }}');const t=this;const o=t.innerHTML;t.innerHTML='Copied!';setTimeout(()=>t.innerHTML=o,2000)"
-                                class="text-xs text-brand-600 bg-brand-50 hover:bg-brand-100 px-2.5 py-1.5 rounded-lg border border-brand-100 transition active:scale-95 flex items-center gap-1 min-h-[36px]" title="Copy Link">
+                                    onclick="navigator.clipboard.writeText('{{ request.base_url }}vendor-quote/{{ link.unique_link_token }}');const t=this;const o=t.innerHTML;t.innerHTML='Copied!';setTimeout(()=>t.innerHTML=o,2000)"
+                                    class="text-xs text-brand-600 bg-brand-50 hover:bg-brand-100 px-2.5 py-1.5 rounded-lg border border-brand-200 transition active:scale-95 flex items-center gap-1" title="Copy Direct Quote Link">
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
                                 Link
                             </button>
+                            {% endif %}
+
+                            {% if link.status == 'submitted' and (user.can_see_quotes or user.has_management_authority) %}
+                            <form method="post" action="/quotations/detail/{{ link.id }}/forward-cc" class="inline"
+                                  onsubmit="return confirm('Forward quotation copy & PDF for {{ link.vendor.company_name }} to management CC addresses?')">
+                                <button type="submit" class="text-xs text-blue-600 bg-blue-50 hover:bg-blue-100 px-2.5 py-1.5 rounded-lg border border-blue-200 transition active:scale-95 flex items-center gap-1" title="Forward quotation & PDF to management CCs">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                                    Forward CC
+                                </button>
+                            </form>
+                            {% endif %}
+
+                            <span class="text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wide
+                                {% if link.status == 'pending' %}bg-amber-100 text-amber-800 border border-amber-200
+                                {% elif link.status == 'submitted' %}bg-emerald-100 text-emerald-800 border border-emerald-200
+                                {% elif link.status == 'flagged' %}bg-rose-100 text-rose-800 border border-rose-200
+                                {% else %}bg-slate-100 text-slate-700 border border-slate-200{% endif %}">
+                                {% if link.status == 'submitted' %}Quote Received{% elif link.status == 'pending' %}Awaiting Quote{% else %}{{ link.status }}{% endif %}
+                            </span>
                         </div>
-                        {% endif %}
-                        {% if link.status == 'submitted' and (user.can_see_quotes or user.has_management_authority) %}
-                        <form method="post" action="/quotations/detail/{{ link.id }}/forward-cc" class="inline"
-                              onsubmit="return confirm('Forward quotation copy & PDF for {{ link.vendor.company_name }} to management CC addresses?')">
-                            <button type="submit" class="text-xs text-blue-600 bg-blue-50 hover:bg-blue-100 px-2.5 py-1.5 rounded-lg border border-blue-200 transition active:scale-95 flex items-center gap-1 min-h-[36px]" title="Forward quotation & PDF to management CCs">
-                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-                                Forward CC
-                            </button>
-                        </form>
-                        {% endif %}
-                        <span class="text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wide shrink-0
-                            {% if link.status == 'pending' %}bg-amber-100 text-amber-700
-                            {% elif link.status == 'submitted' %}bg-emerald-100 text-emerald-700
-                            {% elif link.status == 'flagged' %}bg-red-100 text-red-700
-                            {% else %}bg-slate-100 text-slate-600{% endif %}">
-                            {% if link.status == 'submitted' %}Quote Received{% elif link.status == 'pending' %}Awaiting Quote{% else %}{{ link.status }}{% endif %}
-                        </span>
-                    </div>
-                </div>
-                
-                {# Historical versions (e.g. v1 when v2 exists) #}
-                {% set cur_hist = vendor_history.get(link.vendor_id, []) %}
-                {% if cur_hist %}
-                <div class="bg-slate-50/50 border-t border-slate-100">
-                    {% for h_link in cur_hist %}
-                    <div class="flex items-center justify-between px-4 py-2 opacity-60">
-                        <div class="flex items-center gap-3 min-w-0 pl-5 border-l-2 border-slate-200 ml-[3px]">
-                            <div class="min-w-0">
-                                <div class="font-medium text-xs text-slate-500 truncate">Previous Version
-                                    <span class="text-[10px] text-slate-500 font-bold ml-1">v{{ h_link.negotiation_version }}</span>
-                                </div>
-                            </div>
-                        </div>
-                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide bg-slate-200 text-slate-500 shrink-0">
-                            {{ h_link.status }}
-                        </span>
                     </div>
                     {% endfor %}
                 </div>
+                {% else %}
+                <div class="p-8 text-center text-slate-400 text-xs">
+                    No suppliers invited or contacted for this requisition yet.
+                </div>
                 {% endif %}
-                
-                {% endfor %}
             </div>
-        {% endif %}
-
-
-        {% else %}
-        <div class="bg-white rounded-2xl border border-slate-200 p-8 text-center shadow-sm mb-4">
-            <p class="text-sm text-slate-400">No suppliers selected yet.</p>
+            {% endif %}
         </div>
-        {% endif %}
-
-        <!-- TEMPORARY VENDOR CARD -->
-        {% if status_str in ('draft', 'new', 'in_progress', 'negotiating') %}
-        <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
-            <h3 class="text-sm font-bold text-slate-900 mb-1">Unlisted Supplier</h3>
-            <p class="text-xs text-slate-400 mb-3">Generate a quote link for an unlisted or temporary supplier.</p>
-            <form method="post" action="/requisitions/{{ req.id }}/add-temporary-vendor">
-                <button type="submit" class="w-full bg-slate-800 text-white py-3 rounded-xl text-sm font-semibold hover:bg-slate-900 transition shadow-sm active:scale-[0.98]">
-                    Generate Temporary Link
-                </button>
-            </form>
-        </div>
-        {% endif %}
     </div>
-    {% endif %}
-
-    <!-- ACCEPTED CHALLAN LINK — for closed/QC-done requisitions -->
-    {% if req.qc_done or status_str == 'closed' %}
-    <a href="/requisitions/{{ req.id }}/challan" class="flex items-center justify-between bg-white border border-slate-200 rounded-2xl p-4 hover:border-brand-300 hover:shadow-sm transition shadow-sm group mb-4 active:scale-[0.98] mt-4">
-        <div class="flex items-center gap-3">
-            <div class="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center">
-                <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-            </div>
-            <div>
-                <div class="text-sm font-semibold text-slate-900">View / Print Accepted Challan</div>
-                <div class="text-xs text-slate-400">BDT-denominated, printable Accepted Challan</div>
-            </div>
-        </div>
-        <svg class="w-4 h-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-    </a>
-    {% endif %}
-
-
-
-    <!-- CANCELLATION REASON -->
-    {% if req.rejected_reason and status_str in ('cancelled', 'rejected') %}
-    <div class="bg-rose-50 border border-rose-200 rounded-2xl p-4 shadow-sm mt-4">
-        <p class="text-xs font-bold text-rose-600 uppercase tracking-wider mb-1">Cancellation Reason</p>
-        <p class="text-sm text-rose-800">{{ req.rejected_reason }}</p>
-    </div>
-    {% endif %}
-
-
 </div>
+
+<!-- SCRIPT: INLINE WORKSHEET EDITING, TAB NAVIGATION, LIVE TOTALS -->
+<script>
+let isEditing = false;
+
+function toggleEditMode(enable) {
+    isEditing = enable;
+
+    // Toggle Buttons
+    const btnStart = document.getElementById('btn-start-edit');
+    const btnSave = document.getElementById('btn-save-edit');
+    const btnCancel = document.getElementById('btn-cancel-edit');
+    const btnAddRow = document.getElementById('btn-add-row');
+
+    if (btnStart) btnStart.classList.toggle('hidden', enable);
+    if (btnSave) btnSave.classList.toggle('hidden', !enable);
+    if (btnCancel) btnCancel.classList.toggle('hidden', !enable);
+    if (btnAddRow) btnAddRow.classList.toggle('hidden', !enable);
+
+    // Toggle General Information Inputs
+    const viewTitle = document.getElementById('view-title-box');
+    const editTitle = document.getElementById('edit-title-input');
+    const viewNotes = document.getElementById('view-notes-box');
+    const editNotes = document.getElementById('edit-notes-input');
+
+    if (viewTitle) viewTitle.classList.toggle('hidden', enable);
+    if (editTitle) editTitle.classList.toggle('hidden', !enable);
+    if (viewNotes) viewNotes.classList.toggle('hidden', enable);
+    if (editNotes) editNotes.classList.toggle('hidden', !enable);
+
+    // Toggle Cells in Rows
+    document.querySelectorAll('.cell-view').forEach(el => el.classList.toggle('hidden', enable));
+    document.querySelectorAll('.cell-edit').forEach(el => el.classList.toggle('hidden', !enable));
+    document.querySelectorAll('.col-action').forEach(el => el.classList.toggle('hidden', !enable));
+
+    const toolbarDesc = document.getElementById('toolbar-mode-desc');
+    if (toolbarDesc) {
+        toolbarDesc.textContent = enable
+            ? "Editing mode active. Click any cell to edit, tab through fields, or add rows. Click 'Save Worksheet' when done."
+            : "Tabular view of all items, specifications, quantities, and units. Printable on standard A4.";
+    }
+
+    if (enable) {
+        // Focus first editable item name
+        const firstInput = document.querySelector('#items-body input[name="item_name[]"]');
+        if (firstInput) firstInput.focus();
+    }
+}
+
+function submitWorksheetForm() {
+    const form = document.getElementById('requisitionWorksheetForm');
+    if (form) {
+        // Validate required fields
+        const names = form.querySelectorAll('input[name="item_name[]"]');
+        let hasValidName = false;
+        for (let input of names) {
+            if (input.value.trim().length > 0) {
+                hasValidName = true;
+                break;
+            }
+        }
+        if (!hasValidName) {
+            alert('Please specify at least one valid line item name.');
+            return;
+        }
+        form.submit();
+    }
+}
+
+function updateRowIndices() {
+    const rows = document.querySelectorAll('#items-body .item-row');
+    rows.forEach((row, index) => {
+        const idxCell = row.querySelector('.row-index');
+        if (idxCell) idxCell.textContent = index + 1;
+    });
+    const countBadge = document.getElementById('items-count-badge');
+    const totalRowsFooter = document.getElementById('total-rows');
+    if (countBadge) countBadge.textContent = rows.length;
+    if (totalRowsFooter) totalRowsFooter.textContent = rows.length;
+}
+
+function updateTotals() {
+    let sum = 0;
+    const qtyInputs = document.querySelectorAll('#items-body .qty-input');
+    qtyInputs.forEach(input => {
+        const val = parseFloat(input.value);
+        if (!isNaN(val) && val > 0) sum += val;
+    });
+
+    const totalQtyEl = document.getElementById('total-qty');
+    if (totalQtyEl) {
+        totalQtyEl.textContent = Number.isInteger(sum) ? sum.toLocaleString() : sum.toLocaleString(undefined, {minimumFractionDigits: 1, maximumFractionDigits: 3});
+    }
+    updateRowIndices();
+}
+
+function addRow() {
+    const tbody = document.getElementById('items-body');
+    const rowCount = tbody.querySelectorAll('.item-row').length + 1;
+
+    const tr = document.createElement('tr');
+    tr.className = 'item-row hover:bg-blue-50/20 transition group';
+    tr.innerHTML = `
+        <td class="py-2.5 px-3 text-center font-mono font-bold text-slate-500 bg-slate-50/80 border-r border-slate-200 select-none row-index">
+            ${rowCount}
+        </td>
+        <td class="p-2.5 border-r border-slate-200 align-top">
+            <div class="cell-view font-bold text-slate-900 text-xs sm:text-sm hidden">New Item</div>
+            <div class="cell-edit">
+                <input type="text" name="item_name[]" required placeholder="e.g. Item Name"
+                       class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500 transition">
+            </div>
+        </td>
+        <td class="p-2.5 border-r border-slate-200 align-top">
+            <div class="cell-view text-xs text-slate-700 whitespace-pre-line leading-relaxed hidden">—</div>
+            <div class="cell-edit">
+                <textarea name="item_desc[]" rows="2" placeholder="Technical specifications, dimensions, material..."
+                          class="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs text-slate-800 leading-relaxed focus:outline-none focus:ring-2 focus:ring-brand-500 transition resize-y"></textarea>
+            </div>
+        </td>
+        <td class="p-2.5 border-r border-slate-200 align-top text-center">
+            <div class="cell-view font-mono font-bold text-slate-900 text-xs sm:text-sm hidden">1</div>
+            <div class="cell-edit">
+                <input type="number" name="item_qty[]" value="1" required min="0.01" step="any" placeholder="1"
+                       class="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-lg text-xs text-center font-bold font-mono text-slate-900 qty-input focus:outline-none focus:ring-2 focus:ring-brand-500 transition"
+                       oninput="updateTotals()">
+            </div>
+        </td>
+        <td class="p-2.5 border-r border-slate-200 align-top text-center">
+            <div class="cell-view hidden">
+                <span class="inline-block px-2.5 py-1 rounded bg-slate-100 text-slate-700 font-medium text-xs border border-slate-200">pcs</span>
+            </div>
+            <div class="cell-edit">
+                <input type="text" name="item_unit[]" value="" placeholder="pcs, bags, Set..."
+                       class="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-lg text-xs text-center font-medium text-slate-700 unit-input focus:outline-none focus:ring-2 focus:ring-brand-500 transition"
+                       onkeydown="handleUnitKeydown(event, this)">
+            </div>
+        </td>
+        <td class="p-2 text-center align-middle col-action no-print">
+            <button type="button" onclick="removeRow(this)" title="Remove line item"
+                    class="w-8 h-8 inline-flex items-center justify-center rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition active:scale-95">
+                ✕
+            </button>
+        </td>
+    `;
+    tbody.appendChild(tr);
+    updateTotals();
+
+    // Focus newly created item name input
+    const input = tr.querySelector('input[name="item_name[]"]');
+    if (input) input.focus();
+}
+
+function removeRow(btn) {
+    const rows = document.querySelectorAll('#items-body .item-row');
+    if (rows.length <= 1) {
+        alert('A requisition must contain at least one line item.');
+        return;
+    }
+    const row = btn.closest('.item-row');
+    if (row) {
+        row.remove();
+        updateTotals();
+    }
+}
+
+function handleUnitKeydown(event, input) {
+    // If pressing Tab (without shift) on the last row's unit field, automatically create a new row
+    if (event.key === 'Tab' && !event.shiftKey) {
+        const rows = document.querySelectorAll('#items-body .item-row');
+        const lastRow = rows[rows.length - 1];
+        if (lastRow && lastRow.contains(input)) {
+            event.preventDefault();
+            addRow();
+        }
+    }
+}
+
+// Check if ?edit=1 is present in the URL on load
+document.addEventListener('DOMContentLoaded', function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('edit') === '1') {
+        toggleEditMode(true);
+    }
+});
+</script>
 {% endblock %}

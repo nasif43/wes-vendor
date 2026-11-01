@@ -715,6 +715,50 @@ async def test_delete_user_reassigns_foreign_keys_safely(async_db):
     assert updated_log.actor_id is None
 
 
+def test_requisition_tabular_view_and_inline_editable_cells_and_a4_printing():
+    """Verify requisition detail view features Excel tabular view, toggleable editable cells, and A4 print layout."""
+    from pathlib import Path
+    detail_path = Path("/home/muhts/dev/Codes/wes-vendor/app/templates/requisitions/detail.html")
+    list_path = Path("/home/muhts/dev/Codes/wes-vendor/app/templates/requisitions/list.html")
+    compare_path = Path("/home/muhts/dev/Codes/wes-vendor/app/templates/quotations/compare.html")
+
+    assert detail_path.exists()
+    detail_content = detail_path.read_text(encoding="utf-8")
+
+    # Wide layout
+    assert "max-w-[1750px]" in detail_content
+    # Excel table id & printable table
+    assert "excel-items-table" in detail_content
+    assert "print-table" in detail_content
+    # Toggleable cells (view vs edit)
+    assert "cell-view" in detail_content
+    assert "cell-edit" in detail_content
+    assert "toggleEditMode" in detail_content
+    assert "btn-start-edit" in detail_content
+    assert "btn-save-edit" in detail_content
+    # A4 printable styling & signature block
+    assert "print-only" in detail_content
+    assert "PURCHASE REQUISITION ORDER" in detail_content
+    assert "Prepared By (Requester)" in detail_content
+    assert "Approved By (Management)" in detail_content
+    assert "@page" in detail_content
+    assert "A4 portrait" in detail_content
+
+    # List page excel table
+    assert list_path.exists()
+    list_content = list_path.read_text(encoding="utf-8")
+    assert "excel-requisitions-table" in list_content
+    assert "Print Register (A4)" in list_content
+
+    # Compare page cell edit mode matches view mode
+    assert compare_path.exists()
+    compare_content = compare_path.read_text(encoding="utf-8")
+    assert "cell-edit-mode" in compare_content
+    assert "Unit Rate:" in compare_content
+    assert "Assign Item" in compare_content
+
+
+
 
 
 
