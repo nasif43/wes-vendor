@@ -48,10 +48,13 @@ async def list_requisitions(
 
     # ── Status filter ─────────────────────────────────────────────────────────
     if status_filter:
-        try:
-            stmt = stmt.where(Requisition.status == RequisitionStatus(status_filter).value)
-        except ValueError:
-            pass
+        if status_filter == "cancelled":
+            stmt = stmt.where(Requisition.status.in_([RequisitionStatus.CANCELLED.value, RequisitionStatus.REJECTED.value]))
+        else:
+            try:
+                stmt = stmt.where(Requisition.status == RequisitionStatus(status_filter).value)
+            except ValueError:
+                pass
 
     # ── Role-based visibility ──────────────────────────────────────────────────
     if user.role == UserRole.QC_RECEIVER and not user.can_view_all_requisitions:
@@ -95,26 +98,25 @@ async def list_requisitions(
     for req in requisitions:
         decision = decisions_map.get(req.id)
         
-        # Determine Kanban stage:
-        # 1. 'closed': QC done
-        # 2. 'received': Delivery received (pending QC)
-        # 3. 'submitted': Vendor selected (Decision made / awaiting delivery)
-        # 4. 'in_progress': Quotes under review / vendors yet to be selected
-        # 5. 'new': Vendors invited to send quotations
-        # 6. 'draft': Created but not forwarded to any vendors yet
+        # Determine stage:
         if req.qc_done or req.status == RequisitionStatus.CLOSED:
             stage = "closed"
-        elif req.status == RequisitionStatus.RECEIVED:
-            stage = "received"
-        elif req.status == RequisitionStatus.SUBMITTED or decision:
-            stage = "submitted"
+        elif req.status in (RequisitionStatus.RECEIVING, RequisitionStatus.RECEIVED):
+            stage = "receiving"
+        elif req.status in (RequisitionStatus.CANCELLED, RequisitionStatus.REJECTED):
+            stage = "cancelled"
+        elif req.status == RequisitionStatus.WORK_ORDER_ISSUED:
+            stage = "work_order_issued"
+        elif req.status in (RequisitionStatus.AWARDED, RequisitionStatus.SUBMITTED) or decision:
+            stage = "awarded"
+        elif req.status == RequisitionStatus.NEGOTIATING:
+            stage = "negotiating"
         elif req.status == RequisitionStatus.IN_PROGRESS:
             stage = "in_progress"
         elif req.status == RequisitionStatus.NEW or (req.vendor_links and len(req.vendor_links) > 0):
             stage = "new"
         else:
             stage = "draft"
-
 
         confirmed_at = decision.approved_at or decision.decided_at if decision else None
         lead_time_days = None
@@ -132,8 +134,7 @@ async def list_requisitions(
             "lead_time_days": lead_time_days,
         })
 
-
-    # UI status filter order (excludes legacy aliases)
+    # UI status filter order (excludes legacy aliases and rejected)
     ui_status_list = [
         RequisitionStatus.DRAFT,
         RequisitionStatus.NEW,
@@ -144,7 +145,6 @@ async def list_requisitions(
         RequisitionStatus.RECEIVING,
         RequisitionStatus.CLOSED,
         RequisitionStatus.CANCELLED,
-        RequisitionStatus.REJECTED,
     ]
 
     return templates.TemplateResponse(
@@ -196,7 +196,6 @@ async def edit_requisition_page(
         RequisitionStatus.RECEIVING,
         RequisitionStatus.CLOSED,
         RequisitionStatus.CANCELLED,
-        RequisitionStatus.REJECTED,
     ]
 
     return templates.TemplateResponse(
@@ -278,7 +277,6 @@ async def new_requisition_page(
         RequisitionStatus.RECEIVING,
         RequisitionStatus.CLOSED,
         RequisitionStatus.CANCELLED,
-        RequisitionStatus.REJECTED,
     ]
 
     return templates.TemplateResponse(
@@ -391,7 +389,6 @@ async def view_requisition(
         RequisitionStatus.RECEIVING,
         RequisitionStatus.CLOSED,
         RequisitionStatus.CANCELLED,
-        RequisitionStatus.REJECTED,
     ]
 
     return templates.TemplateResponse(

@@ -155,3 +155,63 @@ async def test_generate_work_order_pdf_fallback_to_rv_quotation():
         assert "15 days" in html
         assert "100% on delivery" in html
         assert "October 24, 2026" in html
+
+
+@pytest.mark.asyncio
+async def test_negotiation_procurement_notification():
+    from app.email.resend import build_negotiation_procurement_notification
+
+    payload = await build_negotiation_procurement_notification(
+        to="procurement@wenerbd.com",
+        procurement_officer_name="Sadik Rahman",
+        requisition_title="High Density Foam",
+        requisition_ref="REQ-9A4B8C12",
+        contacted_suppliers=["Bengal Poly Ltd", "Padma Polymer"],
+        requisition_url="https://procurement.wenerbd.cloud/requisitions/9a4b8c12",
+    )
+    assert payload["to"] == ["procurement@wenerbd.com"]
+    assert "Negotiation Started: REQ-9A4B8C12 (High Density Foam)" in payload["subject"]
+    html = payload["html"]
+    assert "Sadik Rahman" in html
+    assert "Bengal Poly Ltd" in html
+    assert "Padma Polymer" in html
+    assert "call them or send them links" in html or "follow up with these suppliers" in html
+    assert "https://procurement.wenerbd.cloud/requisitions/9a4b8c12" in html
+
+
+def test_status_badge_colors_are_unique():
+    from jinja2 import Environment, FileSystemLoader
+
+    env = Environment(loader=FileSystemLoader("app/templates"))
+    template = env.from_string("""
+    {% from "components/status_badge.html" import render_status_badge %}
+    {{ render_status_badge(status) }}
+    """)
+
+    statuses = [
+        "draft",
+        "new",
+        "in_progress",
+        "negotiating",
+        "awarded",
+        "work_order_issued",
+        "receiving",
+        "closed",
+        "cancelled",
+    ]
+
+    rendered_colors = {}
+    for st in statuses:
+        rendered = template.render(status=st)
+        # Find bg- color
+        import re
+        bg_match = re.search(r"bg-([a-z]+)-\d+", rendered)
+        assert bg_match, f"No bg color found for {st}: {rendered}"
+        color_family = bg_match.group(1)
+        assert color_family not in rendered_colors.values(), (
+            f"Duplicate color '{color_family}' found for '{st}'! Already used by '{[k for k, v in rendered_colors.items() if v == color_family]}'"
+        )
+        rendered_colors[st] = color_family
+
+    assert len(rendered_colors) == 9
+

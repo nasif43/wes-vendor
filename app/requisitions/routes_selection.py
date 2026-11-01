@@ -519,6 +519,11 @@ async def start_negotiation(
     from app.requisitions.models import RequisitionStatus
     import logging
     logger = logging.getLogger(__name__)
+
+    contacted_supplier_names = [
+        v2_lnk.vendor.company_name for v2_lnk in v2_links if v2_lnk.vendor and v2_lnk.vendor.company_name
+    ]
+
     try:
         await transition_requisition_status(
             db,
@@ -526,39 +531,30 @@ async def start_negotiation(
             target_status=RequisitionStatus.NEGOTIATING,
             actor=user,
             action_name="NEGOTIATION_STARTED",
-            notes=f"v2 links generated for {len(v2_links)} supplier(s). Non-shortlisted suppliers will be notified.",
+            notes=f"v2 negotiation links generated for {len(v2_links)} supplier(s): {', '.join(contacted_supplier_names)}.",
         )
     except InvalidStateTransitionError as e:
         logger.warning("Could not transition to NEGOTIATING: %s", e)
 
-    # Send rejection notifications to non-shortlisted v1 vendors
-    try:
-        from app.email.resend import send_batch
-        non_shortlisted_res = await db.execute(
-            select(RequisitionVendor).where(
-                RequisitionVendor.requisition_id == req_id,
-                RequisitionVendor.is_shortlisted == False,
-                RequisitionVendor.negotiation_version == 1,
-                RequisitionVendor.status == "submitted",
+    # Notify the procurement officer responsible for this requisition
+    creator = req.creator
+    if creator and creator.email:
+        try:
+            from app.email.resend import build_negotiation_procurement_notification
+            base_url = str(request.base_url).rstrip("/")
+            req_url = f"{base_url}/requisitions/{req.id}"
+            proc_param = await build_negotiation_procurement_notification(
+                to=creator.email,
+                procurement_officer_name=creator.full_name or creator.username,
+                requisition_title=req.title,
+                requisition_ref=req.reference_code,
+                contacted_suppliers=contacted_supplier_names,
+                requisition_url=req_url,
             )
-        )
-        non_shortlisted = non_shortlisted_res.scalars().all()
-        rejection_params = []
-        for lnk in non_shortlisted:
-            vendor = lnk.vendor
-            if vendor and vendor.contact_email:
-                param = await build_rejection_notification(
-                    to=vendor.contact_email,
-                    supplier_name=vendor.contact_person or vendor.company_name,
-                    requisition_title=req.title,
-                )
-                if param:
-                    rejection_params.append(param)
-        if rejection_params:
-            await send_batch(rejection_params)
-    except Exception as _e:
-        import logging as _logging
-        _logging.getLogger(__name__).warning("Failed to send rejection emails: %s", _e)
+            if proc_param:
+                await send_batch([proc_param])
+        except Exception as _e:
+            logger.warning("Failed to notify procurement officer of negotiation: %s", _e)
 
     await log_action(
         db,
@@ -566,8 +562,8 @@ async def start_negotiation(
         action="NEGOTIATION_STARTED",
         entity_type="requisition",
         entity_id=req_id,
-        entity_label=req.title,
-        notes=f"v2 negotiation links generated for {len(v2_links)} vendor(s) by {user.full_name}",
+        entity_label=f"Requisition #{req_id}",
+        notes=f"v2 negotiation started for {len(v2_links)} supplier(s): {', '.join(contacted_supplier_names)}. Procurement officer ({creator.full_name if creator else 'Procurement'}) notified.",
     )
     await db.flush()
     await db.commit()

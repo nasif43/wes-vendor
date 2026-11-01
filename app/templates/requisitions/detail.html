@@ -459,11 +459,11 @@
 
 
 
-    <!-- REJECTION/CANCELLATION REASON -->
+    <!-- CANCELLATION REASON -->
     {% if req.rejected_reason and status_str in ('cancelled', 'rejected') %}
-    <div class="bg-red-50 border border-red-200 rounded-2xl p-4 shadow-sm mt-4">
-        <p class="text-xs font-bold text-red-600 uppercase tracking-wider mb-1">Reason</p>
-        <p class="text-sm text-red-800">{{ req.rejected_reason }}</p>
+    <div class="bg-rose-50 border border-rose-200 rounded-2xl p-4 shadow-sm mt-4">
+        <p class="text-xs font-bold text-rose-600 uppercase tracking-wider mb-1">Cancellation Reason</p>
+        <p class="text-sm text-rose-800">{{ req.rejected_reason }}</p>
     </div>
     {% endif %}
 

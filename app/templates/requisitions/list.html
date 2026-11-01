@@ -85,13 +85,14 @@
             <div class="flex items-center gap-3.5 min-w-0">
                 <div class="w-10 h-10 rounded-xl shrink-0 flex items-center justify-center
                     {% if item.stage == 'draft' %}bg-slate-100 text-slate-500
-                    {% elif item.stage in ('new', 'in_progress') %}bg-amber-50 text-amber-600
-                    {% elif item.stage == 'awarded' %}bg-emerald-50 text-emerald-600
-                    {% elif item.stage == 'submitted' %}bg-purple-50 text-purple-600
-                    {% elif item.stage == 'received' %}bg-sky-50 text-sky-600
-                    {% elif item.stage == 'closed' %}bg-blue-50 text-blue-600
-                    {% elif item.stage == 'cancelled' %}bg-gray-100 text-gray-500
-                    {% elif item.stage == 'rejected' %}bg-red-50 text-red-600{% endif %}">
+                    {% elif item.stage == 'new' %}bg-sky-50 text-sky-600
+                    {% elif item.stage == 'in_progress' %}bg-amber-50 text-amber-600
+                    {% elif item.stage == 'negotiating' %}bg-orange-50 text-orange-600
+                    {% elif item.stage == 'awarded' %}bg-indigo-50 text-indigo-600
+                    {% elif item.stage in ('work_order_issued', 'submitted') %}bg-purple-50 text-purple-600
+                    {% elif item.stage in ('receiving', 'received') %}bg-teal-50 text-teal-600
+                    {% elif item.stage == 'closed' %}bg-emerald-50 text-emerald-600
+                    {% elif item.stage in ('cancelled', 'rejected') %}bg-rose-50 text-rose-600{% endif %}">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                 </div>
                 <div class="min-w-0">
@@ -123,23 +124,24 @@
                 {% endif %}
 
                 <span class="text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider
-                    {% if item.stage == 'draft' %}bg-slate-100 text-slate-600 border border-slate-200
-                    {% elif item.stage in ('new', 'in_progress') %}bg-amber-100 text-amber-800 border border-amber-300
-                    {% elif item.stage == 'awarded' %}bg-emerald-100 text-emerald-800 border border-emerald-300
-                    {% elif item.stage == 'submitted' %}bg-purple-100 text-purple-700 border border-purple-200
-                    {% elif item.stage == 'received' %}bg-sky-100 text-sky-700 border border-sky-200
-                    {% elif item.stage == 'closed' %}bg-blue-100 text-blue-800 border border-blue-300
-                    {% elif item.stage == 'cancelled' %}bg-gray-200 text-gray-700 border border-gray-300
-                    {% elif item.stage == 'rejected' %}bg-red-100 text-red-700 border border-red-200{% endif %}">
+                    {% if item.stage == 'draft' %}bg-slate-100 text-slate-700 border border-slate-300
+                    {% elif item.stage == 'new' %}bg-sky-100 text-sky-800 border border-sky-300
+                    {% elif item.stage == 'in_progress' %}bg-amber-100 text-amber-800 border border-amber-300
+                    {% elif item.stage == 'negotiating' %}bg-orange-100 text-orange-800 border border-orange-300
+                    {% elif item.stage == 'awarded' %}bg-indigo-100 text-indigo-800 border border-indigo-300
+                    {% elif item.stage in ('work_order_issued', 'submitted') %}bg-purple-100 text-purple-800 border border-purple-300
+                    {% elif item.stage in ('receiving', 'received') %}bg-teal-100 text-teal-800 border border-teal-300
+                    {% elif item.stage == 'closed' %}bg-emerald-100 text-emerald-800 border border-emerald-300
+                    {% elif item.stage in ('cancelled', 'rejected') %}bg-rose-100 text-rose-800 border border-rose-300{% endif %}">
                     {% if item.stage == 'draft' %}Draft
                     {% elif item.stage == 'new' %}RFQ / Tender
                     {% elif item.stage == 'in_progress' %}Quotation
+                    {% elif item.stage == 'negotiating' %}Negotiating (v2)
                     {% elif item.stage == 'awarded' %}Awarded
-                    {% elif item.stage == 'submitted' %}Submitted
-                    {% elif item.stage == 'received' %}Received
+                    {% elif item.stage in ('work_order_issued', 'submitted') %}WO Issued
+                    {% elif item.stage in ('receiving', 'received') %}Receiving
                     {% elif item.stage == 'closed' %}Closed
-                    {% elif item.stage == 'cancelled' %}Cancelled
-                    {% elif item.stage == 'rejected' %}Rejected{% endif %}
+                    {% elif item.stage in ('cancelled', 'rejected') %}Cancelled{% endif %}
                 </span>
                 {% if user and user.can_perform_qc and item.stage in ('submitted', 'received') %}
                 <div class="flex items-center gap-1.5" onclick="event.stopPropagation()">
@@ -385,55 +387,28 @@
             </div>
 
             <!-- COLUMN 7: CANCELLED -->
-            <div class="bg-slate-100/50 rounded-2xl p-3 border border-slate-200/50 flex flex-col min-h-[500px]">
+            <div class="bg-rose-50/50 rounded-2xl p-3 border border-rose-200/50 flex flex-col min-h-[500px]">
                 <div class="flex items-center justify-between px-2 py-1.5 mb-3">
-                    <span class="text-xs font-extrabold text-slate-600 uppercase tracking-wider flex items-center gap-1.5">
-                        <span class="w-2 h-2 rounded-full bg-slate-400"></span> Cancelled
+                    <span class="text-xs font-extrabold text-rose-800 uppercase tracking-wider flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-rose-500"></span> Cancelled
                     </span>
-                    <span class="text-xs font-bold text-slate-500 bg-slate-200/80 px-2 py-0.5 rounded-full">
-                        {{ items | selectattr("stage", "equalto", "cancelled") | list | length }}
+                    <span class="text-xs font-bold text-rose-700 bg-rose-100/80 px-2 py-0.5 rounded-full">
+                        {{ items | selectattr("stage", "in", ["cancelled", "rejected"]) | list | length }}
                     </span>
                 </div>
                 <div class="space-y-3 flex-1 overflow-y-auto">
-                    {% for item in items if item.stage == 'cancelled' %}
+                    {% for item in items if item.stage in ('cancelled', 'rejected') %}
                     {% set req = item.req %}
-                    <a href="/requisitions/{{ req.id }}" class="block bg-white rounded-xl p-3.5 border border-slate-200 hover:border-slate-300 hover:shadow-md transition active:scale-[0.98] opacity-75">
+                    <a href="/requisitions/{{ req.id }}" class="block bg-white rounded-xl p-3.5 border border-rose-200/80 hover:border-rose-400 hover:shadow-md transition active:scale-[0.98]">
                         <div class="text-xs font-extrabold text-slate-900 mb-1 truncate">{{ req.title }}</div>
                         <div class="text-[11px] font-medium text-slate-500 mb-2 truncate">{{ req.quantity | qty_format }} {{ req.unit or '' }}</div>
                         <div class="text-[10px] text-slate-400 font-medium border-t border-slate-100 pt-2 flex items-center justify-between">
                             <span>Status</span>
-                            <span class="font-bold text-slate-500">Cancelled</span>
+                            <span class="font-bold text-rose-600">Cancelled</span>
                         </div>
                     </a>
                     {% else %}
                     <div class="text-center py-8 text-xs text-slate-400 font-medium">No cancelled orders</div>
-                    {% endfor %}
-                </div>
-            </div>
-
-            <!-- COLUMN 8: REJECTED -->
-            <div class="bg-red-50/50 rounded-2xl p-3 border border-red-200/50 flex flex-col min-h-[500px]">
-                <div class="flex items-center justify-between px-2 py-1.5 mb-3">
-                    <span class="text-xs font-extrabold text-red-800 uppercase tracking-wider flex items-center gap-1.5">
-                        <span class="w-2 h-2 rounded-full bg-red-500"></span> Rejected
-                    </span>
-                    <span class="text-xs font-bold text-red-700 bg-red-100/80 px-2 py-0.5 rounded-full">
-                        {{ items | selectattr("stage", "equalto", "rejected") | list | length }}
-                    </span>
-                </div>
-                <div class="space-y-3 flex-1 overflow-y-auto">
-                    {% for item in items if item.stage == 'rejected' %}
-                    {% set req = item.req %}
-                    <a href="/requisitions/{{ req.id }}" class="block bg-white rounded-xl p-3.5 border border-red-200/80 hover:border-red-400 hover:shadow-md transition active:scale-[0.98]">
-                        <div class="text-xs font-extrabold text-slate-900 mb-1 truncate">{{ req.title }}</div>
-                        <div class="text-[11px] font-medium text-slate-500 mb-2 truncate">{{ req.quantity | qty_format }} {{ req.unit or '' }}</div>
-                        <div class="text-[10px] text-slate-400 font-medium border-t border-slate-100 pt-2 flex items-center justify-between">
-                            <span>Status</span>
-                            <span class="font-bold text-red-600">Rejected</span>
-                        </div>
-                    </a>
-                    {% else %}
-                    <div class="text-center py-8 text-xs text-slate-400 font-medium">No rejected orders</div>
                     {% endfor %}
                 </div>
             </div>

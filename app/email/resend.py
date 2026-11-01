@@ -388,6 +388,40 @@ async def build_negotiation_invitation(
     return _apply_cc(payload, cc)
 
 
+async def build_negotiation_procurement_notification(
+    to: str,
+    procurement_officer_name: str,
+    requisition_title: str,
+    requisition_ref: str,
+    contacted_suppliers: list[str],
+    requisition_url: str,
+) -> dict:
+    """Notify the procurement officer that negotiation requests have been dispatched to specific suppliers."""
+    cc = await get_cc_emails()
+    suppliers_list_html = "".join(f"<li><strong>{s}</strong></li>" for s in contacted_suppliers)
+    html = f"""
+    <h2>Negotiation Started: {requisition_ref} — {requisition_title}</h2>
+    <p>Dear {procurement_officer_name},</p>
+    <p>Management has initiated a negotiation round for <strong>{requisition_ref} ({requisition_title})</strong>.</p>
+    <p>The following suppliers have been contacted directly with revised quotation requests:</p>
+    <ul>
+        {suppliers_list_html}
+    </ul>
+    <p>You may follow up with these suppliers by phone or resend them their quotation links via the portal in case they require assistance providing their revised quote.</p>
+    <p><a href="{requisition_url}" style="display:inline-block;background:#2563eb;color:white;
+    padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:600;
+    margin:15px 0;">View Requisition &amp; Quotation Links</a></p>
+    <hr>
+    <p style="font-size: 12px; color: #666;">This is an automated system notification.</p>
+    """
+    return _apply_cc({
+        "from": f"Wener Supplier Management <{settings.mail_from}>",
+        "to": [to],
+        "subject": f"Negotiation Started: {requisition_ref} ({requisition_title})",
+        "html": html,
+    }, cc)
+
+
 async def build_rejection_notification(
     to: str,
     supplier_name: str,
