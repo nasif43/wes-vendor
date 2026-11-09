@@ -382,7 +382,6 @@ async def start_negotiation(
 ):
     """Generate v2 quote links for all shortlisted vendors in this requisition."""
     from app.auth.models import UserRole
-    from datetime import UTC, datetime
 
     if not (user.has_management_authority or user.is_procurement or user.role == UserRole.ADMIN):
         return RedirectResponse(url=f"/quotations/compare/{req_id}?error=Permission+denied", status_code=303)
@@ -706,7 +705,6 @@ async def resend_supplier_link(
                     url=f"/requisitions/{req_id}?error=Failed+to+send+email",
                     status_code=303,
                 )
-            from datetime import datetime, UTC
             link.link_sent_at = datetime.now(UTC)
             await db.commit()
             return RedirectResponse(url=f"/requisitions/{req_id}?success=Email+sent+to+{vendor.company_name}", status_code=303)

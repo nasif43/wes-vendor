@@ -110,3 +110,26 @@ async def test_send_batch_sanitizes_legacy_domain():
         assert "portal@wenerbd.cloud" in sent_payloads[0]["from"]
         assert "coolcompany.tech" not in sent_payloads[0]["from"]
 
+
+@pytest.mark.anyio
+async def test_get_cc_emails_reads_directly_from_db():
+    from app.email.resend import get_cc_emails
+    from app.settings.models import SystemSettings
+    from unittest.mock import AsyncMock, patch
+
+    mock_db = AsyncMock()
+    mock_row = SystemSettings(key="cc_emails", value='["user1@example.com", "user2@example.com"]')
+    mock_db.get.return_value = mock_row
+
+    with patch("app.database.AsyncSessionLocal") as mock_session_cls:
+        mock_session_cls.return_value.__aenter__.return_value = mock_db
+        emails = await get_cc_emails()
+        assert emails == ["user1@example.com", "user2@example.com"]
+
+        # If DB row is updated with a third email, get_cc_emails reflects it immediately
+        mock_row_v2 = SystemSettings(key="cc_emails", value='["user1@example.com", "user2@example.com", "user3@example.com"]')
+        mock_db.get.return_value = mock_row_v2
+        emails_v2 = await get_cc_emails()
+        assert emails_v2 == ["user1@example.com", "user2@example.com", "user3@example.com"]
+
+

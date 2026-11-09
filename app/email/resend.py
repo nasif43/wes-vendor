@@ -24,17 +24,12 @@ if settings.resend_api_key:
     resend.api_key = settings.resend_api_key
 
 
-import time
-
 _cc_cache: list[str] | None = None
-_cc_cache_ts: float = 0.0
-_CC_TTL: float = 300.0  # cache for 5 minutes
 
 
 def invalidate_cc_cache() -> None:
-    global _cc_cache, _cc_cache_ts
+    global _cc_cache
     _cc_cache = None
-    _cc_cache_ts = 0.0
 
 
 def _seed_from_env() -> list[str]:
@@ -48,15 +43,13 @@ def _seed_from_env() -> list[str]:
 
 async def get_cc_emails() -> list[str]:
     """
-    Return the current CC list from the DB with in-memory TTL caching.
-    Falls back to DEFAULT_CC env var if no DB row exists yet.
+    Return the current CC list directly from the database.
+    Always queries the DB so changes made in /settings take effect immediately
+    across all Uvicorn worker processes without stale cache delays.
+    Falls back to in-memory cache or DEFAULT_CC env var if DB query fails.
     Never raises — returns [] on any error.
     """
-    global _cc_cache, _cc_cache_ts
-    now = time.monotonic()
-    if _cc_cache is not None and (now - _cc_cache_ts) < _CC_TTL:
-        return _cc_cache
-
+    global _cc_cache
     try:
         from app.database import AsyncSessionLocal
         from app.settings.models import SystemSettings
@@ -65,7 +58,6 @@ async def get_cc_emails() -> list[str]:
             row = await db.get(SystemSettings, SystemSettings.cc_emails_key())
             if row is not None:
                 _cc_cache = row.get_list()
-                _cc_cache_ts = now
                 return _cc_cache
 
             # No DB row yet — seed from env var and persist
@@ -79,7 +71,6 @@ async def get_cc_emails() -> list[str]:
                 await db.commit()
                 logger.info("Seeded CC emails from env: %s", seeded)
             _cc_cache = seeded
-            _cc_cache_ts = now
             return _cc_cache
     except Exception as exc:
         logger.warning("Could not load CC emails from DB: %s", exc)

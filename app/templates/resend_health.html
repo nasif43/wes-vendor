@@ -173,7 +173,8 @@
                 <table class="w-full text-left text-xs text-slate-300">
                     <thead class="text-[11px] uppercase bg-slate-800/40 text-slate-400 border-b border-slate-800">
                         <tr>
-                            <th class="px-4 py-3 font-semibold">Recipient</th>
+                            <th class="px-4 py-3 font-semibold">Subject &amp; Recipients</th>
+                            <th class="px-4 py-3 font-semibold">Status</th>
                             <th class="px-4 py-3 font-semibold">Sender</th>
                             <th class="px-4 py-3 font-semibold">Created At (UTC)</th>
                             <th class="px-4 py-3 font-semibold">Message ID</th>
@@ -182,16 +183,51 @@
                     <tbody class="divide-y divide-slate-800/60 font-mono">
                         {% for email in data.recent_emails %}
                         <tr class="hover:bg-slate-800/30 transition">
-                            <td class="px-4 py-2.5 font-sans font-medium text-slate-200">
-                                {% if email.to is iterable and email.to is not string %}
-                                    {{ email.to | join(', ') }}
-                                {% else %}
-                                    {{ email.to }}
+                            <td class="px-4 py-3 font-sans text-slate-200">
+                                {% if email.subject %}
+                                <div class="font-semibold text-slate-100 text-xs mb-1">{{ email.subject }}</div>
+                                {% endif %}
+                                <div class="text-[11px] text-slate-300">
+                                    <span class="text-slate-400 font-medium">To:</span>
+                                    {% if email.to is iterable and email.to is not string %}
+                                        {{ email.to | join(', ') }}
+                                    {% else %}
+                                        {{ email.to }}
+                                    {% endif %}
+                                </div>
+                                {% if email.cc %}
+                                <div class="mt-1 text-[11px] text-blue-300 flex items-center gap-1.5 flex-wrap">
+                                    <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20">CC</span>
+                                    <span>
+                                    {% if email.cc is iterable and email.cc is not string %}
+                                        {{ email.cc | join(', ') }}
+                                    {% else %}
+                                        {{ email.cc }}
+                                    {% endif %}
+                                    </span>
+                                </div>
                                 {% endif %}
                             </td>
-                            <td class="px-4 py-2.5 font-sans text-slate-400">{{ email.from }}</td>
-                            <td class="px-4 py-2.5 text-slate-400">{{ email.created_at }}</td>
-                            <td class="px-4 py-2.5 text-[11px] text-slate-500">{{ email.id }}</td>
+                            <td class="px-4 py-3 font-sans">
+                                {% if email.last_event == 'delivered' %}
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                    Delivered
+                                </span>
+                                {% elif email.last_event == 'suppressed' %}
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                                    Suppressed
+                                </span>
+                                {% elif email.last_event %}
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-800 text-slate-300 border border-slate-700">
+                                    {{ email.last_event|title }}
+                                </span>
+                                {% else %}
+                                <span class="text-slate-500">—</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-4 py-3 font-sans text-slate-400 text-xs">{{ email.from }}</td>
+                            <td class="px-4 py-3 text-slate-400 text-xs">{{ email.created_at }}</td>
+                            <td class="px-4 py-3 text-[11px] text-slate-500">{{ email.id }}</td>
                         </tr>
                         {% endfor %}
                     </tbody>
